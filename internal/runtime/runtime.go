@@ -306,6 +306,13 @@ func (m *Manager) registerModules(
 		"get": envModule.Get,
 	})
 
+	// SMTP
+	smtpModule := modules.NewSMTPModule(envModule)
+	vm.Set("smtp", map[string]interface{}{
+		"send":     smtpModule.Send,
+		"sendHTML": smtpModule.SendHTML,
+	})
+
 	// Storage
 	storageModule := modules.NewStorageModule(m.storageService, projectIDStr)
 	vm.Set("storage", map[string]interface{}{
@@ -315,6 +322,17 @@ func (m *Manager) registerModules(
 		"delete": storageModule.Delete,
 		"list":   storageModule.List,
 		"mkdir":  storageModule.MkDir,
+	})
+
+	// Image
+	imageModule := modules.NewImageModule(m.storageService, projectIDStr)
+	vm.Set("image", map[string]interface{}{
+		"info":            imageModule.Info,
+		"resize":          imageModule.Resize,
+		"resizeKeepRatio": imageModule.ResizeKeepRatio,
+		"crop":            imageModule.Crop,
+		"thumbnail":       imageModule.Thumbnail,
+		"readAsBase64":    imageModule.ReadAsBase64,
 	})
 
 	// Database

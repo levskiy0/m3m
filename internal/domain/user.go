@@ -13,6 +13,7 @@ type User struct {
 	Name        string             `bson:"name" json:"name"`
 	Avatar      string             `bson:"avatar" json:"avatar"`
 	IsRoot      bool               `bson:"is_root" json:"is_root"`
+	IsBlocked   bool               `bson:"is_blocked" json:"is_blocked"`
 	Permissions Permissions        `bson:"permissions" json:"permissions"`
 	CreatedAt   time.Time          `bson:"created_at" json:"created_at"`
 	UpdatedAt   time.Time          `bson:"updated_at" json:"updated_at"`

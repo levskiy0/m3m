@@ -39,6 +39,8 @@ func (h *UserHandler) Register(r *gin.RouterGroup, authMiddleware *middleware.Au
 			admin.GET("/:id", h.Get)
 			admin.PUT("/:id", h.Update)
 			admin.DELETE("/:id", h.Delete)
+			admin.POST("/:id/block", h.Block)
+			admin.POST("/:id/unblock", h.Unblock)
 		}
 	}
 }
@@ -192,4 +194,38 @@ func (h *UserHandler) Delete(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "user deleted successfully"})
+}
+
+func (h *UserHandler) Block(c *gin.Context) {
+	id, err := primitive.ObjectIDFromHex(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		return
+	}
+
+	if err := h.userService.Block(c.Request.Context(), id); err != nil {
+		if err == service.ErrCannotBlockRoot {
+			c.JSON(http.StatusForbidden, gin.H{"error": "cannot block root user"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "user blocked successfully"})
+}
+
+func (h *UserHandler) Unblock(c *gin.Context) {
+	id, err := primitive.ObjectIDFromHex(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		return
+	}
+
+	if err := h.userService.Unblock(c.Request.Context(), id); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "user unblocked successfully"})
 }

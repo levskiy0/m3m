@@ -40,6 +40,10 @@ func (h *AuthHandler) Login(c *gin.Context) {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid credentials"})
 			return
 		}
+		if err == service.ErrUserBlocked {
+			c.JSON(http.StatusForbidden, gin.H{"error": "user is blocked"})
+			return
+		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}

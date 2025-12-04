@@ -13,6 +13,7 @@ import (
 var (
 	ErrCannotDeleteRoot = errors.New("cannot delete root user")
 	ErrCannotModifyRoot = errors.New("cannot modify root user permissions")
+	ErrCannotBlockRoot  = errors.New("cannot block root user")
 )
 
 type UserService struct {
@@ -171,4 +172,36 @@ func (s *UserService) Delete(ctx context.Context, id primitive.ObjectID) error {
 	}
 
 	return s.userRepo.Delete(ctx, id)
+}
+
+func (s *UserService) Block(ctx context.Context, id primitive.ObjectID) error {
+	user, err := s.userRepo.FindByID(ctx, id)
+	if err != nil {
+		return err
+	}
+
+	if user.IsRoot {
+		return ErrCannotBlockRoot
+	}
+
+	user.IsBlocked = true
+	return s.userRepo.Update(ctx, user)
+}
+
+func (s *UserService) Unblock(ctx context.Context, id primitive.ObjectID) error {
+	user, err := s.userRepo.FindByID(ctx, id)
+	if err != nil {
+		return err
+	}
+
+	user.IsBlocked = false
+	return s.userRepo.Update(ctx, user)
+}
+
+func (s *UserService) IsBlocked(ctx context.Context, id primitive.ObjectID) (bool, error) {
+	user, err := s.userRepo.FindByID(ctx, id)
+	if err != nil {
+		return false, err
+	}
+	return user.IsBlocked, nil
 }

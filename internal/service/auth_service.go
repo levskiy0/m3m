@@ -16,6 +16,7 @@ import (
 var (
 	ErrInvalidCredentials = errors.New("invalid credentials")
 	ErrInvalidToken       = errors.New("invalid token")
+	ErrUserBlocked        = errors.New("user is blocked")
 )
 
 type AuthService struct {
@@ -47,6 +48,10 @@ func (s *AuthService) Login(ctx context.Context, req *domain.LoginRequest) (*dom
 
 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.Password)); err != nil {
 		return nil, ErrInvalidCredentials
+	}
+
+	if user.IsBlocked {
+		return nil, ErrUserBlocked
 	}
 
 	token, err := s.generateToken(user)

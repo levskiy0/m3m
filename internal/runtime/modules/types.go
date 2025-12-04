@@ -58,6 +58,32 @@ declare const env: {
     get(key: string): any;
 };
 
+// SMTP module
+interface EmailOptions {
+    from?: string;
+    reply_to?: string;
+    cc?: string[];
+    bcc?: string[];
+    headers?: { [key: string]: string };
+    content_type?: 'text/plain' | 'text/html';
+}
+
+interface SMTPResult {
+    success: boolean;
+    error?: string;
+}
+
+declare const smtp: {
+    /**
+     * Send an email.
+     * Requires env vars: SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM
+     */
+    send(to: string, subject: string, body: string, options?: EmailOptions): SMTPResult;
+
+    /** Send an HTML email (convenience method) */
+    sendHTML(to: string, subject: string, body: string): SMTPResult;
+};
+
 // Storage module
 declare const storage: {
     read(path: string): string;
@@ -66,6 +92,33 @@ declare const storage: {
     delete(path: string): boolean;
     list(path: string): string[];
     mkdir(path: string): boolean;
+};
+
+// Image module
+interface ImageInfo {
+    width: number;
+    height: number;
+    format: string;
+}
+
+declare const image: {
+    /** Get image dimensions and format */
+    info(path: string): ImageInfo | null;
+
+    /** Resize image to exact dimensions */
+    resize(src: string, dst: string, width: number, height: number): boolean;
+
+    /** Resize image keeping aspect ratio (fit within bounds) */
+    resizeKeepRatio(src: string, dst: string, maxWidth: number, maxHeight: number): boolean;
+
+    /** Crop image to specified region */
+    crop(src: string, dst: string, x: number, y: number, width: number, height: number): boolean;
+
+    /** Create square thumbnail centered on image */
+    thumbnail(src: string, dst: string, size: number): boolean;
+
+    /** Read image as base64 data URI */
+    readAsBase64(path: string): string;
 };
 
 // Database module
@@ -143,6 +196,27 @@ declare const utils: {
 // Delayed module
 declare const delayed: {
     run(handler: () => void): void;
+};
+
+// Service lifecycle module
+declare const service: {
+    /**
+     * Register a callback to be called during service initialization (boot phase).
+     * Use this for setting up initial state, loading configuration, etc.
+     */
+    boot(callback: () => void): void;
+
+    /**
+     * Register a callback to be called when service is ready (start phase).
+     * Use this for starting listeners, scheduling tasks, etc.
+     */
+    start(callback: () => void): void;
+
+    /**
+     * Register a callback to be called when service is stopping (shutdown phase).
+     * Use this for cleanup, saving state, closing connections, etc.
+     */
+    shutdown(callback: () => void): void;
 };
 `
 }
