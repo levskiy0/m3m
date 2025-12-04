@@ -138,12 +138,6 @@ func (h *JSTestHelper) ClearLogs() {
 func (h *JSTestHelper) SetupRouter() *modules.RouterModule {
 	routerModule := modules.NewRouterModule()
 	routerModule.SetVM(h.VM)
-	h.VM.Set("router", map[string]interface{}{
-		"get":      routerModule.Get,
-		"post":     routerModule.Post,
-		"put":      routerModule.Put,
-		"delete":   routerModule.Delete,
-		"response": routerModule.Response,
-	})
+	routerModule.Register(h.VM)
 	return routerModule
 }
