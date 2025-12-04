@@ -27,7 +27,9 @@ make web-build      # Build frontend
 make web-dev        # Run Vite dev server
 
 # Tests
-make test           # go test -v ./...
+make test                              # Run all tests
+go test -v ./internal/service/...      # Run tests for a specific package
+go test -v -run TestFunctionName ./... # Run a single test by name
 
 # Create admin user
 make new-admin EMAIL=admin@example.com PASSWORD=yourpassword
@@ -62,9 +64,14 @@ The runtime (`internal/runtime/runtime.go`) provides services with lifecycle man
 - `service.start(callback)` - when service is ready
 - `service.shutdown(callback)` - graceful shutdown
 
-**Built-in modules:** logger, router, schedule, env, storage, database, goals, http, crypto, encoding, utils, delayed
+**Built-in modules:**
+- Core: logger, router, schedule, env, service
+- Data: storage, database, goals
+- Network: http, smtp
+- Utilities: crypto, encoding, utils, delayed, validator
+- Media: image, draw
 
-Type definitions for Monaco IntelliSense are in `internal/runtime/modules/types.go`.
+Type definitions for Monaco IntelliSense are in `internal/runtime/modules/types.go`. Schema validation logic is in `schema.go`.
 
 ### Frontend (React + Vite)
 
@@ -74,7 +81,7 @@ Located in `web/ui/`:
 - Radix UI primitives with shadcn/ui components
 - Built assets are embedded into Go binary via `web/static.go`
 
-**UI style reference:** See `ui-style.md` for component patterns using shadcn/ui Field components.
+Uses shadcn/ui Field components (FieldGroup, Field, FieldLabel, FieldDescription, FieldSeparator) for form layouts.
 
 ### Key Domain Concepts
 
