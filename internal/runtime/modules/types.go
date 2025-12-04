@@ -116,6 +116,98 @@ declare const storage: {
     mkdir(path: string): boolean;
 };
 
+// Draw (Canvas) module
+interface Canvas {
+    /** Set the drawing color (hex string like "#FF0000" or named color like "red") */
+    setColor(color: string): void;
+
+    /** Set the line width for drawing */
+    setLineWidth(width: number): void;
+
+    /** Clear the canvas with the specified color */
+    clear(color: string): void;
+
+    /** Draw a rectangle outline */
+    rect(x: number, y: number, width: number, height: number): void;
+
+    /** Draw a filled rectangle */
+    fillRect(x: number, y: number, width: number, height: number): void;
+
+    /** Draw a circle outline */
+    circle(x: number, y: number, radius: number): void;
+
+    /** Draw a filled circle */
+    fillCircle(x: number, y: number, radius: number): void;
+
+    /** Draw a line between two points */
+    line(x1: number, y1: number, x2: number, y2: number): void;
+
+    /** Draw an ellipse outline */
+    ellipse(x: number, y: number, rx: number, ry: number): void;
+
+    /** Draw a filled ellipse */
+    fillEllipse(x: number, y: number, rx: number, ry: number): void;
+
+    /** Draw an arc */
+    arc(x: number, y: number, r: number, angle1: number, angle2: number): void;
+
+    /** Draw text at the specified position */
+    text(text: string, x: number, y: number): void;
+
+    /** Draw text centered at the specified position */
+    textCentered(text: string, x: number, y: number): void;
+
+    /** Set the font size */
+    setFontSize(size: number): void;
+
+    /** Draw a rounded rectangle outline */
+    roundedRect(x: number, y: number, w: number, h: number, r: number): void;
+
+    /** Draw a filled rounded rectangle */
+    fillRoundedRect(x: number, y: number, w: number, h: number, r: number): void;
+
+    /** Draw a polygon from points */
+    polygon(points: [number, number][]): void;
+
+    /** Draw a filled polygon from points */
+    fillPolygon(points: [number, number][]): void;
+
+    /** Save the canvas to storage */
+    save(path: string): boolean;
+
+    /** Get the canvas as a base64 data URI */
+    toBase64(format?: 'png' | 'jpeg'): string;
+
+    /** Get the canvas width */
+    width(): number;
+
+    /** Get the canvas height */
+    height(): number;
+
+    /** Apply a translation transformation */
+    translate(x: number, y: number): void;
+
+    /** Apply a rotation transformation (in radians) */
+    rotate(angle: number): void;
+
+    /** Apply a scale transformation */
+    scale(sx: number, sy: number): void;
+
+    /** Save the current transformation state */
+    push(): void;
+
+    /** Restore the previously saved transformation state */
+    pop(): void;
+}
+
+declare const draw: {
+    /** Create a new canvas with the specified dimensions */
+    createCanvas(width: number, height: number): Canvas;
+
+    /** Load an image from storage and create a canvas from it */
+    loadImage(path: string): Canvas | null;
+};
+
 // Image module
 interface ImageInfo {
     width: number;

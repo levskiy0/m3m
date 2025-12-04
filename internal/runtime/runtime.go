@@ -342,6 +342,13 @@ func (m *Manager) registerModules(
 		"readAsBase64":    imageModule.ReadAsBase64,
 	})
 
+	// Draw (Canvas)
+	drawModule := modules.NewDrawModule(m.storageService, projectIDStr)
+	vm.Set("draw", map[string]interface{}{
+		"createCanvas": drawModule.CreateCanvas,
+		"loadImage":    drawModule.LoadImage,
+	})
+
 	// Database
 	databaseModule := modules.NewDatabaseModule(m.modelService, projectID)
 	vm.Set("database", map[string]interface{}{
