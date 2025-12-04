@@ -16,7 +16,7 @@ type HTTPModule struct {
 
 // Name returns the module name for JavaScript
 func (h *HTTPModule) Name() string {
-	return "http"
+	return "$http"
 }
 
 // Register registers the module into the JavaScript VM
@@ -146,7 +146,7 @@ func (h *HTTPModule) Delete(url string, options ...*HTTPOptions) *HTTPResponse {
 // GetSchema implements JSSchemaProvider
 func (h *HTTPModule) GetSchema() JSModuleSchema {
 	return JSModuleSchema{
-		Name:        "http",
+		Name:        "$http",
 		Description: "HTTP client for making external API requests",
 		Types: []JSTypeSchema{
 			{

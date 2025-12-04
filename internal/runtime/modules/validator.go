@@ -23,7 +23,7 @@ func NewValidatorModule() *ValidatorModule {
 
 // Name returns the module name for JavaScript
 func (v *ValidatorModule) Name() string {
-	return "validator"
+	return "$validator"
 }
 
 // Register registers the module into the JavaScript VM
@@ -440,7 +440,7 @@ func formatValidationMessageSimple(e validator.FieldError) string {
 // GetSchema implements JSSchemaProvider
 func (v *ValidatorModule) GetSchema() JSModuleSchema {
 	return JSModuleSchema{
-		Name:        "validator",
+		Name:        "$validator",
 		Description: "Data validation utilities powered by go-playground/validator",
 		Types: []JSTypeSchema{
 			{

@@ -21,7 +21,7 @@ func NewDelayedModule(poolSize int) *DelayedModule {
 
 // Name returns the module name for JavaScript
 func (d *DelayedModule) Name() string {
-	return "delayed"
+	return "$delayed"
 }
 
 // Register registers the module into the JavaScript VM
@@ -49,7 +49,7 @@ func (d *DelayedModule) Run(handler goja.Callable) {
 // GetSchema implements JSSchemaProvider
 func (d *DelayedModule) GetSchema() JSModuleSchema {
 	return JSModuleSchema{
-		Name:        "delayed",
+		Name:        "$delayed",
 		Description: "Run tasks asynchronously in background with worker pool limiting",
 		Methods: []JSMethodSchema{
 			{

@@ -40,7 +40,7 @@ func NewDrawModule(storage *service.StorageService, projectID string) *DrawModul
 
 // Name returns the module name for JavaScript
 func (d *DrawModule) Name() string {
-	return "draw"
+	return "$draw"
 }
 
 // Register registers the module into the JavaScript VM
@@ -384,7 +384,7 @@ func hexToByte(s string) byte {
 // GetSchema implements JSSchemaProvider
 func (d *DrawModule) GetSchema() JSModuleSchema {
 	return JSModuleSchema{
-		Name:        "draw",
+		Name:        "$draw",
 		Description: "Canvas-based drawing and graphics creation",
 		Types: []JSTypeSchema{
 			{

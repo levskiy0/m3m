@@ -15,7 +15,7 @@ type SMTPModule struct {
 
 // Name returns the module name for JavaScript
 func (m *SMTPModule) Name() string {
-	return "smtp"
+	return "$smtp"
 }
 
 // Register registers the module into the JavaScript VM
@@ -214,7 +214,7 @@ func (m *SMTPModule) getEnvString(key string) string {
 // GetSchema implements JSSchemaProvider
 func (m *SMTPModule) GetSchema() JSModuleSchema {
 	return JSModuleSchema{
-		Name:        "smtp",
+		Name:        "$smtp",
 		Description: "Email sending via SMTP (requires SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM env vars)",
 		Types: []JSTypeSchema{
 			{

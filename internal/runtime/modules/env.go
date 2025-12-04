@@ -21,7 +21,7 @@ func NewEnvModule(vars map[string]interface{}) *EnvModule {
 
 // Name returns the module name for JavaScript
 func (e *EnvModule) Name() string {
-	return "env"
+	return "$env"
 }
 
 // Register registers the module into the JavaScript VM
@@ -156,7 +156,7 @@ func (e *EnvModule) GetAll() map[string]interface{} {
 // GetSchema implements JSSchemaProvider
 func (e *EnvModule) GetSchema() JSModuleSchema {
 	return JSModuleSchema{
-		Name:        "env",
+		Name:        "$env",
 		Description: "Access to environment variables configured for the project",
 		Methods: []JSMethodSchema{
 			{

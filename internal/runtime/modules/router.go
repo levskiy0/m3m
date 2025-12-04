@@ -54,7 +54,7 @@ func (r *RouterModule) SetVM(vm *goja.Runtime) {
 
 // Name returns the module name for JavaScript
 func (r *RouterModule) Name() string {
-	return "router"
+	return "$router"
 }
 
 // Register registers the module into the JavaScript VM
@@ -260,7 +260,7 @@ func (r *RouterModule) RoutesByMethod() map[string]int {
 // GetSchema implements JSSchemaProvider
 func (r *RouterModule) GetSchema() JSModuleSchema {
 	return JSModuleSchema{
-		Name:        "router",
+		Name:        "$router",
 		Description: "HTTP routing for creating API endpoints",
 		Types: []JSTypeSchema{
 			{

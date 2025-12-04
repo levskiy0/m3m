@@ -35,7 +35,7 @@ func NewImageModule(storage *service.StorageService, projectID string) *ImageMod
 
 // Name returns the module name for JavaScript
 func (m *ImageModule) Name() string {
-	return "image"
+	return "$image"
 }
 
 // Register registers the module into the JavaScript VM
@@ -287,7 +287,7 @@ func init() {
 // GetSchema implements JSSchemaProvider
 func (m *ImageModule) GetSchema() JSModuleSchema {
 	return JSModuleSchema{
-		Name:        "image",
+		Name:        "$image",
 		Description: "Image manipulation operations (resize, crop, thumbnail)",
 		Types: []JSTypeSchema{
 			{

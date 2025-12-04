@@ -20,7 +20,7 @@ func NewStorageModule(storage *service.StorageService, projectID string) *Storag
 
 // Name returns the module name for JavaScript
 func (s *StorageModule) Name() string {
-	return "storage"
+	return "$storage"
 }
 
 // Register registers the module into the JavaScript VM
@@ -78,7 +78,7 @@ func (s *StorageModule) MkDir(path string) bool {
 // GetSchema implements JSSchemaProvider
 func (s *StorageModule) GetSchema() JSModuleSchema {
 	return JSModuleSchema{
-		Name:        "storage",
+		Name:        "$storage",
 		Description: "File storage operations for the project",
 		Methods: []JSMethodSchema{
 			{

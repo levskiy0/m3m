@@ -41,7 +41,7 @@ func NewGoalsModule(goalService *service.GoalService, projectID primitive.Object
 
 // Name returns the module name for JavaScript
 func (g *GoalsModule) Name() string {
-	return "goals"
+	return "$goals"
 }
 
 // Register registers the module into the JavaScript VM
@@ -251,7 +251,7 @@ func (g *GoalsModule) Get(slug string) *GoalInfo {
 // GetSchema implements JSSchemaProvider
 func (g *GoalsModule) GetSchema() JSModuleSchema {
 	return JSModuleSchema{
-		Name:        "goals",
+		Name:        "$goals",
 		Description: "Goal tracking and metrics management",
 		Types: []JSTypeSchema{
 			{

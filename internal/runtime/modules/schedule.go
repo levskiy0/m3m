@@ -101,7 +101,7 @@ func (s *ScheduleModule) IsStarted() bool {
 
 // Name returns the module name for JavaScript
 func (s *ScheduleModule) Name() string {
-	return "schedule"
+	return "$schedule"
 }
 
 // Register registers the module into the JavaScript VM
@@ -116,7 +116,7 @@ func (s *ScheduleModule) Register(vm interface{}) {
 // GetSchema implements JSSchemaProvider
 func (s *ScheduleModule) GetSchema() JSModuleSchema {
 	return JSModuleSchema{
-		Name:        "schedule",
+		Name:        "$schedule",
 		Description: "Job scheduling for periodic tasks using cron expressions",
 		Methods: []JSMethodSchema{
 			{

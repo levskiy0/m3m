@@ -145,7 +145,7 @@ func (s *ServiceModule) GetJSObject() map[string]interface{} {
 
 // Name returns the module name for JavaScript
 func (s *ServiceModule) Name() string {
-	return "service"
+	return "$service"
 }
 
 // Register registers the module into the JavaScript VM
@@ -156,7 +156,7 @@ func (s *ServiceModule) Register(vm interface{}) {
 // GetSchema implements JSSchemaProvider
 func (s *ServiceModule) GetSchema() JSModuleSchema {
 	return JSModuleSchema{
-		Name:        "service",
+		Name:        "$service",
 		Description: "Service lifecycle management for boot, start, and shutdown phases",
 		Methods: []JSMethodSchema{
 			{

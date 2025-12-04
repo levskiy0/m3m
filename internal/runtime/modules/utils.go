@@ -19,7 +19,7 @@ func NewUtilsModule() *UtilsModule {
 
 // Name returns the module name for JavaScript
 func (u *UtilsModule) Name() string {
-	return "utils"
+	return "$utils"
 }
 
 // Register registers the module into the JavaScript VM
@@ -152,7 +152,7 @@ func (u *UtilsModule) Timestamp() int64 {
 // GetSchema implements JSSchemaProvider
 func (u *UtilsModule) GetSchema() JSModuleSchema {
 	return JSModuleSchema{
-		Name:        "utils",
+		Name:        "$utils",
 		Description: "General utility functions for common operations",
 		Methods: []JSMethodSchema{
 			{

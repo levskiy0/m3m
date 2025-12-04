@@ -330,5 +330,69 @@ FrontEnd
 Cannot find name 'schedule'.
 ```
 
+---
 
+```
+logs-page.tsx:42 Uncaught TypeError: logs.filter is not a function
+at LogsPage (logs-page.tsx:42:29) 
+```
+
+``` 
+breadcrumb.tsx:71 In HTML, <li> cannot be a descendant of <li>.
+This will cause a hydration error.
+
+  ...
+    <TooltipProvider delayDuration={0}>
+      <TooltipProvider data-slot="tooltip-pr..." delayDuration={0}>
+        <TooltipProviderProvider scope={undefined} isOpenDelayedRef={{current:true}} delayDuration={0} onOpen={function} ...>
+          <div data-slot="sidebar-wr..." style={{...}} className="group/side...">
+            <AppSidebar>
+            <SidebarInset>
+              <main data-slot="sidebar-inset" className="bg-backgro...">
+                <header className="flex h-16 ...">
+                  <div className="flex items...">
+                    <SidebarTrigger>
+                    <Separator>
+                    <Breadcrumb>
+                      <nav aria-label="breadcrumb" data-slot="breadcrumb">
+                        <BreadcrumbList>
+                          <ol data-slot="breadcrumb..." className="text-muted...">
+                            <BreadcrumbItem>
+                            <BreadcrumbItem>
+>                             <li data-slot="breadcrumb-item" className="inline-flex items-center gap-1.5">
+                                <BreadcrumbSeparator>
+>                                 <li
+>                                   data-slot="breadcrumb-separator"
+>                                   role="presentation"
+>                                   aria-hidden="true"
+>                                   className={"[&>svg]:size-3.5"}
+>                                 >
+                                ...
+                            ...
+                ...
+            ...
+```
+
+```
+??? какой блять тег при создании папки ??? 
+{
+    "error": "Key: 'Path' Error:Field validation for 'Path' failed on the 'required' tag"
+}
+```
+
+При создании релиза
+
+```
+@radix-ui_react-select.js?v=ecbf922e:1062 Uncaught Error: A <Select.Item /> must have a value prop that is not an empty string. This is because the Select value can be set to an empty string to clear the selection and show the placeholder.
+    at SelectItem (@radix-ui_react-select.js?v=ecbf922e:1062:13)
+    at Object.react_stack_bottom_frame (react-dom_client.js?v=ecbf922e:18509:20)
+    at renderWithHooks (react-dom_client.js?v=ecbf922e:5654:24)
+    at updateForwardRef (react-dom_client.js?v=ecbf922e:7198:21)
+    at beginWork (react-dom_client.js?v=ecbf922e:8735:20)
+    at runWithFiberInDEV (react-dom_client.js?v=ecbf922e:997:72)
+    at performUnitOfWork (react-dom_client.js?v=ecbf922e:12561:98)
+    at workLoopSync (react-dom_client.js?v=ecbf922e:12424:43)
+    at renderRootSync (react-dom_client.js?v=ecbf922e:12408:13)
+    at performWorkOnRoot (react-dom_client.js?v=ecbf922e:11827:37)
+```
 

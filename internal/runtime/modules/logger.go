@@ -25,7 +25,7 @@ func NewLoggerModule(logPath string) *LoggerModule {
 
 // Name returns the module name for JavaScript
 func (l *LoggerModule) Name() string {
-	return "logger"
+	return "$logger"
 }
 
 // Register registers the module into the JavaScript VM
@@ -85,7 +85,7 @@ func (l *LoggerModule) Close() {
 // GetSchema implements JSSchemaProvider
 func (l *LoggerModule) GetSchema() JSModuleSchema {
 	return JSModuleSchema{
-		Name:        "logger",
+		Name:        "$logger",
 		Description: "Logging utilities for debugging and monitoring",
 		Methods: []JSMethodSchema{
 			{

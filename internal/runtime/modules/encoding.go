@@ -16,7 +16,7 @@ func NewEncodingModule() *EncodingModule {
 
 // Name returns the module name for JavaScript
 func (e *EncodingModule) Name() string {
-	return "encoding"
+	return "$encoding"
 }
 
 // Register registers the module into the JavaScript VM
@@ -74,7 +74,7 @@ func (e *EncodingModule) URLDecode(data string) string {
 // GetSchema implements JSSchemaProvider
 func (e *EncodingModule) GetSchema() JSModuleSchema {
 	return JSModuleSchema{
-		Name:        "encoding",
+		Name:        "$encoding",
 		Description: "Data encoding and decoding utilities",
 		Methods: []JSMethodSchema{
 			{

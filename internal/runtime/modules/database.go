@@ -24,7 +24,7 @@ func NewDatabaseModule(modelService *service.ModelService, projectID primitive.O
 
 // Name returns the module name for JavaScript
 func (d *DatabaseModule) Name() string {
-	return "database"
+	return "$database"
 }
 
 // Register registers the module into the JavaScript VM
@@ -265,7 +265,7 @@ func (c *CollectionWrapper) Count(filter map[string]interface{}) int64 {
 // GetSchema implements JSSchemaProvider
 func (d *DatabaseModule) GetSchema() JSModuleSchema {
 	return JSModuleSchema{
-		Name:        "database",
+		Name:        "$database",
 		Description: "Database operations for model-based data storage. Supports MongoDB-style filter operators: $eq, $ne, $gt, $gte, $lt, $lte, $contains, $startsWith, $endsWith, $in, $nin",
 		Types: []JSTypeSchema{
 			{

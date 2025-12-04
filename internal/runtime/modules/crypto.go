@@ -17,7 +17,7 @@ func NewCryptoModule() *CryptoModule {
 
 // Name returns the module name for JavaScript
 func (c *CryptoModule) Name() string {
-	return "crypto"
+	return "$crypto"
 }
 
 // Register registers the module into the JavaScript VM
@@ -51,7 +51,7 @@ func (c *CryptoModule) RandomBytes(length int) string {
 // GetSchema implements JSSchemaProvider
 func (c *CryptoModule) GetSchema() JSModuleSchema {
 	return JSModuleSchema{
-		Name:        "crypto",
+		Name:        "$crypto",
 		Description: "Cryptographic utilities for hashing and random data",
 		Methods: []JSMethodSchema{
 			{
