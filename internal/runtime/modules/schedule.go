@@ -84,3 +84,36 @@ func (s *ScheduleModule) Stop() {
 		s.logger.Info("Scheduler stopped")
 	}
 }
+
+// GetSchema implements JSSchemaProvider
+func (s *ScheduleModule) GetSchema() JSModuleSchema {
+	return JSModuleSchema{
+		Name:        "schedule",
+		Description: "Job scheduling for periodic tasks using cron expressions",
+		Methods: []JSMethodSchema{
+			{
+				Name:        "daily",
+				Description: "Schedule a job to run daily at midnight",
+				Params:      []JSParamSchema{{Name: "handler", Type: "() => void", Description: "Function to execute"}},
+			},
+			{
+				Name:        "hourly",
+				Description: "Schedule a job to run at the start of every hour",
+				Params:      []JSParamSchema{{Name: "handler", Type: "() => void", Description: "Function to execute"}},
+			},
+			{
+				Name:        "cron",
+				Description: "Schedule a job using a cron expression",
+				Params: []JSParamSchema{
+					{Name: "expression", Type: "string", Description: "Cron expression (e.g., '0 0 * * *')"},
+					{Name: "handler", Type: "() => void", Description: "Function to execute"},
+				},
+			},
+		},
+	}
+}
+
+// GetScheduleSchema returns the schedule schema (static version)
+func GetScheduleSchema() JSModuleSchema {
+	return (&ScheduleModule{}).GetSchema()
+}

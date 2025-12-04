@@ -195,3 +195,61 @@ func (m *SMTPModule) getEnvString(key string) string {
 	}
 	return ""
 }
+
+// GetSchema implements JSSchemaProvider
+func (m *SMTPModule) GetSchema() JSModuleSchema {
+	return JSModuleSchema{
+		Name:        "smtp",
+		Description: "Email sending via SMTP (requires SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM env vars)",
+		Types: []JSTypeSchema{
+			{
+				Name:        "EmailOptions",
+				Description: "Options for sending email",
+				Fields: []JSParamSchema{
+					{Name: "from", Type: "string", Description: "Sender email address (overrides SMTP_FROM)", Optional: true},
+					{Name: "reply_to", Type: "string", Description: "Reply-to address", Optional: true},
+					{Name: "cc", Type: "string[]", Description: "CC recipients", Optional: true},
+					{Name: "bcc", Type: "string[]", Description: "BCC recipients", Optional: true},
+					{Name: "headers", Type: "{ [key: string]: string }", Description: "Custom headers", Optional: true},
+					{Name: "content_type", Type: "string", Description: "Content type (text/plain or text/html)", Optional: true},
+				},
+			},
+			{
+				Name:        "SMTPResult",
+				Description: "Result of sending email",
+				Fields: []JSParamSchema{
+					{Name: "success", Type: "boolean", Description: "Whether the email was sent successfully"},
+					{Name: "error", Type: "string", Description: "Error message if failed", Optional: true},
+				},
+			},
+		},
+		Methods: []JSMethodSchema{
+			{
+				Name:        "send",
+				Description: "Send an email",
+				Params: []JSParamSchema{
+					{Name: "to", Type: "string", Description: "Recipient email address"},
+					{Name: "subject", Type: "string", Description: "Email subject"},
+					{Name: "body", Type: "string", Description: "Email body content"},
+					{Name: "options", Type: "EmailOptions", Description: "Additional email options", Optional: true},
+				},
+				Returns: &JSParamSchema{Type: "SMTPResult"},
+			},
+			{
+				Name:        "sendHTML",
+				Description: "Send an HTML email",
+				Params: []JSParamSchema{
+					{Name: "to", Type: "string", Description: "Recipient email address"},
+					{Name: "subject", Type: "string", Description: "Email subject"},
+					{Name: "body", Type: "string", Description: "HTML email body"},
+				},
+				Returns: &JSParamSchema{Type: "SMTPResult"},
+			},
+		},
+	}
+}
+
+// GetSMTPSchema returns the smtp schema (static version)
+func GetSMTPSchema() JSModuleSchema {
+	return (&SMTPModule{}).GetSchema()
+}

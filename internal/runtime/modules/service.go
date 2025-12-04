@@ -142,3 +142,33 @@ func (s *ServiceModule) GetJSObject() map[string]interface{} {
 		"shutdown": s.Shutdown,
 	}
 }
+
+// GetSchema implements JSSchemaProvider
+func (s *ServiceModule) GetSchema() JSModuleSchema {
+	return JSModuleSchema{
+		Name:        "service",
+		Description: "Service lifecycle management for boot, start, and shutdown phases",
+		Methods: []JSMethodSchema{
+			{
+				Name:        "boot",
+				Description: "Register a callback to run during service initialization",
+				Params:      []JSParamSchema{{Name: "callback", Type: "() => void", Description: "Function to execute during boot phase"}},
+			},
+			{
+				Name:        "start",
+				Description: "Register a callback to run when service is ready",
+				Params:      []JSParamSchema{{Name: "callback", Type: "() => void", Description: "Function to execute when service starts"}},
+			},
+			{
+				Name:        "shutdown",
+				Description: "Register a callback to run when service is stopping",
+				Params:      []JSParamSchema{{Name: "callback", Type: "() => void", Description: "Function to execute during shutdown"}},
+			},
+		},
+	}
+}
+
+// GetServiceSchema returns the service schema (static version)
+func GetServiceSchema() JSModuleSchema {
+	return (&ServiceModule{}).GetSchema()
+}

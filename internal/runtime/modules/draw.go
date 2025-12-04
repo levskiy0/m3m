@@ -366,3 +366,68 @@ func hexToByte(s string) byte {
 	}
 	return result
 }
+
+// GetSchema implements JSSchemaProvider
+func (d *DrawModule) GetSchema() JSModuleSchema {
+	return JSModuleSchema{
+		Name:        "draw",
+		Description: "Canvas-based drawing and graphics creation",
+		Types: []JSTypeSchema{
+			{
+				Name:        "Canvas",
+				Description: "A drawing canvas with various drawing methods",
+				Fields: []JSParamSchema{
+					{Name: "setColor", Type: "(color: string) => void", Description: "Set drawing color (hex or named)"},
+					{Name: "setLineWidth", Type: "(width: number) => void", Description: "Set line width"},
+					{Name: "clear", Type: "(color: string) => void", Description: "Clear canvas with color"},
+					{Name: "rect", Type: "(x: number, y: number, w: number, h: number) => void", Description: "Draw rectangle outline"},
+					{Name: "fillRect", Type: "(x: number, y: number, w: number, h: number) => void", Description: "Draw filled rectangle"},
+					{Name: "circle", Type: "(x: number, y: number, r: number) => void", Description: "Draw circle outline"},
+					{Name: "fillCircle", Type: "(x: number, y: number, r: number) => void", Description: "Draw filled circle"},
+					{Name: "line", Type: "(x1: number, y1: number, x2: number, y2: number) => void", Description: "Draw a line"},
+					{Name: "ellipse", Type: "(x: number, y: number, rx: number, ry: number) => void", Description: "Draw ellipse outline"},
+					{Name: "fillEllipse", Type: "(x: number, y: number, rx: number, ry: number) => void", Description: "Draw filled ellipse"},
+					{Name: "arc", Type: "(x: number, y: number, r: number, a1: number, a2: number) => void", Description: "Draw an arc"},
+					{Name: "text", Type: "(text: string, x: number, y: number) => void", Description: "Draw text"},
+					{Name: "textCentered", Type: "(text: string, x: number, y: number) => void", Description: "Draw centered text"},
+					{Name: "setFontSize", Type: "(size: number) => void", Description: "Set font size"},
+					{Name: "roundedRect", Type: "(x: number, y: number, w: number, h: number, r: number) => void", Description: "Draw rounded rectangle outline"},
+					{Name: "fillRoundedRect", Type: "(x: number, y: number, w: number, h: number, r: number) => void", Description: "Draw filled rounded rectangle"},
+					{Name: "polygon", Type: "(points: number[][]) => void", Description: "Draw polygon outline"},
+					{Name: "fillPolygon", Type: "(points: number[][]) => void", Description: "Draw filled polygon"},
+					{Name: "save", Type: "(path: string) => boolean", Description: "Save canvas to storage"},
+					{Name: "toBase64", Type: "(format: string) => string", Description: "Export as base64 data URI"},
+					{Name: "width", Type: "() => number", Description: "Get canvas width"},
+					{Name: "height", Type: "() => number", Description: "Get canvas height"},
+					{Name: "translate", Type: "(x: number, y: number) => void", Description: "Apply translation"},
+					{Name: "rotate", Type: "(angle: number) => void", Description: "Apply rotation (radians)"},
+					{Name: "scale", Type: "(sx: number, sy: number) => void", Description: "Apply scale"},
+					{Name: "push", Type: "() => void", Description: "Save transformation state"},
+					{Name: "pop", Type: "() => void", Description: "Restore transformation state"},
+				},
+			},
+		},
+		Methods: []JSMethodSchema{
+			{
+				Name:        "createCanvas",
+				Description: "Create a new drawing canvas",
+				Params: []JSParamSchema{
+					{Name: "width", Type: "number", Description: "Canvas width in pixels"},
+					{Name: "height", Type: "number", Description: "Canvas height in pixels"},
+				},
+				Returns: &JSParamSchema{Type: "Canvas"},
+			},
+			{
+				Name:        "loadImage",
+				Description: "Load an image from storage as a canvas",
+				Params:      []JSParamSchema{{Name: "path", Type: "string", Description: "Path to image in storage"}},
+				Returns:     &JSParamSchema{Type: "Canvas | null"},
+			},
+		},
+	}
+}
+
+// GetDrawSchema returns the draw schema (static version)
+func GetDrawSchema() JSModuleSchema {
+	return (&DrawModule{}).GetSchema()
+}

@@ -51,3 +51,54 @@ func (e *EncodingModule) URLDecode(data string) string {
 	}
 	return decoded
 }
+
+// GetSchema implements JSSchemaProvider
+func (e *EncodingModule) GetSchema() JSModuleSchema {
+	return JSModuleSchema{
+		Name:        "encoding",
+		Description: "Data encoding and decoding utilities",
+		Methods: []JSMethodSchema{
+			{
+				Name:        "base64Encode",
+				Description: "Encode data as base64 string",
+				Params:      []JSParamSchema{{Name: "data", Type: "string", Description: "Data to encode"}},
+				Returns:     &JSParamSchema{Type: "string"},
+			},
+			{
+				Name:        "base64Decode",
+				Description: "Decode base64 string to data",
+				Params:      []JSParamSchema{{Name: "data", Type: "string", Description: "Base64 string to decode"}},
+				Returns:     &JSParamSchema{Type: "string"},
+			},
+			{
+				Name:        "jsonParse",
+				Description: "Parse JSON string to object",
+				Params:      []JSParamSchema{{Name: "data", Type: "string", Description: "JSON string to parse"}},
+				Returns:     &JSParamSchema{Type: "any"},
+			},
+			{
+				Name:        "jsonStringify",
+				Description: "Convert object to JSON string",
+				Params:      []JSParamSchema{{Name: "data", Type: "any", Description: "Object to stringify"}},
+				Returns:     &JSParamSchema{Type: "string"},
+			},
+			{
+				Name:        "urlEncode",
+				Description: "URL-encode a string",
+				Params:      []JSParamSchema{{Name: "data", Type: "string", Description: "String to encode"}},
+				Returns:     &JSParamSchema{Type: "string"},
+			},
+			{
+				Name:        "urlDecode",
+				Description: "URL-decode a string",
+				Params:      []JSParamSchema{{Name: "data", Type: "string", Description: "String to decode"}},
+				Returns:     &JSParamSchema{Type: "string"},
+			},
+		},
+	}
+}
+
+// GetEncodingSchema returns the encoding schema (static version)
+func GetEncodingSchema() JSModuleSchema {
+	return (&EncodingModule{}).GetSchema()
+}

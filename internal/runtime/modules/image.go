@@ -265,3 +265,86 @@ func init() {
 	// Additional formats can be registered here if needed
 	_ = os.Getenv("") // Prevent unused import error
 }
+
+// GetSchema implements JSSchemaProvider
+func (m *ImageModule) GetSchema() JSModuleSchema {
+	return JSModuleSchema{
+		Name:        "image",
+		Description: "Image manipulation operations (resize, crop, thumbnail)",
+		Types: []JSTypeSchema{
+			{
+				Name:        "ImageInfo",
+				Description: "Information about an image",
+				Fields: []JSParamSchema{
+					{Name: "width", Type: "number", Description: "Image width in pixels"},
+					{Name: "height", Type: "number", Description: "Image height in pixels"},
+					{Name: "format", Type: "string", Description: "Image format (png, jpeg, etc.)"},
+				},
+			},
+		},
+		Methods: []JSMethodSchema{
+			{
+				Name:        "info",
+				Description: "Get image information (dimensions, format)",
+				Params:      []JSParamSchema{{Name: "path", Type: "string", Description: "Path to image in storage"}},
+				Returns:     &JSParamSchema{Type: "ImageInfo | null"},
+			},
+			{
+				Name:        "resize",
+				Description: "Resize image to exact dimensions",
+				Params: []JSParamSchema{
+					{Name: "src", Type: "string", Description: "Source image path"},
+					{Name: "dst", Type: "string", Description: "Destination image path"},
+					{Name: "width", Type: "number", Description: "Target width"},
+					{Name: "height", Type: "number", Description: "Target height"},
+				},
+				Returns: &JSParamSchema{Type: "boolean"},
+			},
+			{
+				Name:        "resizeKeepRatio",
+				Description: "Resize image keeping aspect ratio within bounds",
+				Params: []JSParamSchema{
+					{Name: "src", Type: "string", Description: "Source image path"},
+					{Name: "dst", Type: "string", Description: "Destination image path"},
+					{Name: "maxWidth", Type: "number", Description: "Maximum width"},
+					{Name: "maxHeight", Type: "number", Description: "Maximum height"},
+				},
+				Returns: &JSParamSchema{Type: "boolean"},
+			},
+			{
+				Name:        "crop",
+				Description: "Crop a region from image",
+				Params: []JSParamSchema{
+					{Name: "src", Type: "string", Description: "Source image path"},
+					{Name: "dst", Type: "string", Description: "Destination image path"},
+					{Name: "x", Type: "number", Description: "X offset"},
+					{Name: "y", Type: "number", Description: "Y offset"},
+					{Name: "width", Type: "number", Description: "Crop width"},
+					{Name: "height", Type: "number", Description: "Crop height"},
+				},
+				Returns: &JSParamSchema{Type: "boolean"},
+			},
+			{
+				Name:        "thumbnail",
+				Description: "Create a square thumbnail from center",
+				Params: []JSParamSchema{
+					{Name: "src", Type: "string", Description: "Source image path"},
+					{Name: "dst", Type: "string", Description: "Destination image path"},
+					{Name: "size", Type: "number", Description: "Thumbnail size (width and height)"},
+				},
+				Returns: &JSParamSchema{Type: "boolean"},
+			},
+			{
+				Name:        "readAsBase64",
+				Description: "Read image as base64 data URI",
+				Params:      []JSParamSchema{{Name: "path", Type: "string", Description: "Path to image in storage"}},
+				Returns:     &JSParamSchema{Type: "string"},
+			},
+		},
+	}
+}
+
+// GetImageSchema returns the image schema (static version)
+func GetImageSchema() JSModuleSchema {
+	return (&ImageModule{}).GetSchema()
+}

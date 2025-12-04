@@ -55,3 +55,57 @@ func (s *StorageModule) MkDir(path string) bool {
 	err := s.storage.MkDir(s.projectID, path)
 	return err == nil
 }
+
+// GetSchema implements JSSchemaProvider
+func (s *StorageModule) GetSchema() JSModuleSchema {
+	return JSModuleSchema{
+		Name:        "storage",
+		Description: "File storage operations for the project",
+		Methods: []JSMethodSchema{
+			{
+				Name:        "read",
+				Description: "Read file contents as string",
+				Params:      []JSParamSchema{{Name: "path", Type: "string", Description: "File path relative to project storage"}},
+				Returns:     &JSParamSchema{Type: "string"},
+			},
+			{
+				Name:        "write",
+				Description: "Write string content to file",
+				Params: []JSParamSchema{
+					{Name: "path", Type: "string", Description: "File path relative to project storage"},
+					{Name: "content", Type: "string", Description: "Content to write"},
+				},
+				Returns: &JSParamSchema{Type: "boolean"},
+			},
+			{
+				Name:        "exists",
+				Description: "Check if file or directory exists",
+				Params:      []JSParamSchema{{Name: "path", Type: "string", Description: "File path to check"}},
+				Returns:     &JSParamSchema{Type: "boolean"},
+			},
+			{
+				Name:        "delete",
+				Description: "Delete file or directory",
+				Params:      []JSParamSchema{{Name: "path", Type: "string", Description: "File path to delete"}},
+				Returns:     &JSParamSchema{Type: "boolean"},
+			},
+			{
+				Name:        "list",
+				Description: "List files in directory",
+				Params:      []JSParamSchema{{Name: "path", Type: "string", Description: "Directory path"}},
+				Returns:     &JSParamSchema{Type: "string[]"},
+			},
+			{
+				Name:        "mkdir",
+				Description: "Create directory",
+				Params:      []JSParamSchema{{Name: "path", Type: "string", Description: "Directory path to create"}},
+				Returns:     &JSParamSchema{Type: "boolean"},
+			},
+		},
+	}
+}
+
+// GetStorageSchema returns the storage schema (static version)
+func GetStorageSchema() JSModuleSchema {
+	return (&StorageModule{}).GetSchema()
+}

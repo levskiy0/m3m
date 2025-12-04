@@ -108,3 +108,76 @@ func (e *EnvModule) GetAll() map[string]interface{} {
 	}
 	return result
 }
+
+// GetSchema implements JSSchemaProvider
+func (e *EnvModule) GetSchema() JSModuleSchema {
+	return JSModuleSchema{
+		Name:        "env",
+		Description: "Access to environment variables configured for the project",
+		Methods: []JSMethodSchema{
+			{
+				Name:        "get",
+				Description: "Get a value by key, returns undefined if not found",
+				Params:      []JSParamSchema{{Name: "key", Type: "string", Description: "Environment variable key"}},
+				Returns:     &JSParamSchema{Type: "any"},
+			},
+			{
+				Name:        "has",
+				Description: "Check if a key exists in the environment",
+				Params:      []JSParamSchema{{Name: "key", Type: "string", Description: "Environment variable key"}},
+				Returns:     &JSParamSchema{Type: "boolean"},
+			},
+			{
+				Name:        "keys",
+				Description: "Get all environment variable keys",
+				Returns:     &JSParamSchema{Type: "string[]"},
+			},
+			{
+				Name:        "getString",
+				Description: "Get a string value with default fallback",
+				Params: []JSParamSchema{
+					{Name: "key", Type: "string", Description: "Environment variable key"},
+					{Name: "defaultValue", Type: "string", Description: "Default value if not found"},
+				},
+				Returns: &JSParamSchema{Type: "string"},
+			},
+			{
+				Name:        "getInt",
+				Description: "Get an integer value with default fallback",
+				Params: []JSParamSchema{
+					{Name: "key", Type: "string", Description: "Environment variable key"},
+					{Name: "defaultValue", Type: "number", Description: "Default value if not found"},
+				},
+				Returns: &JSParamSchema{Type: "number"},
+			},
+			{
+				Name:        "getFloat",
+				Description: "Get a float value with default fallback",
+				Params: []JSParamSchema{
+					{Name: "key", Type: "string", Description: "Environment variable key"},
+					{Name: "defaultValue", Type: "number", Description: "Default value if not found"},
+				},
+				Returns: &JSParamSchema{Type: "number"},
+			},
+			{
+				Name:        "getBool",
+				Description: "Get a boolean value with default fallback",
+				Params: []JSParamSchema{
+					{Name: "key", Type: "string", Description: "Environment variable key"},
+					{Name: "defaultValue", Type: "boolean", Description: "Default value if not found"},
+				},
+				Returns: &JSParamSchema{Type: "boolean"},
+			},
+			{
+				Name:        "getAll",
+				Description: "Get all environment variables as a map",
+				Returns:     &JSParamSchema{Type: "{ [key: string]: any }"},
+			},
+		},
+	}
+}
+
+// GetEnvSchema returns the env schema (static version)
+func GetEnvSchema() JSModuleSchema {
+	return (&EnvModule{}).GetSchema()
+}

@@ -153,3 +153,38 @@ func (c *CollectionWrapper) Count(filter map[string]interface{}) int64 {
 	}
 	return total
 }
+
+// GetSchema implements JSSchemaProvider
+func (d *DatabaseModule) GetSchema() JSModuleSchema {
+	return JSModuleSchema{
+		Name:        "database",
+		Description: "Database operations for model-based data storage",
+		Types: []JSTypeSchema{
+			{
+				Name:        "Collection",
+				Description: "A database collection for a model",
+				Fields: []JSParamSchema{
+					{Name: "find", Type: "(filter?: object) => object[]", Description: "Find documents matching filter"},
+					{Name: "findOne", Type: "(filter?: object) => object | null", Description: "Find first document matching filter"},
+					{Name: "insert", Type: "(data: object) => object | null", Description: "Insert a new document"},
+					{Name: "update", Type: "(id: string, data: object) => boolean", Description: "Update a document by ID"},
+					{Name: "delete", Type: "(id: string) => boolean", Description: "Delete a document by ID"},
+					{Name: "count", Type: "(filter?: object) => number", Description: "Count documents matching filter"},
+				},
+			},
+		},
+		Methods: []JSMethodSchema{
+			{
+				Name:        "collection",
+				Description: "Get a collection wrapper for a model",
+				Params:      []JSParamSchema{{Name: "name", Type: "string", Description: "Model slug name"}},
+				Returns:     &JSParamSchema{Type: "Collection"},
+			},
+		},
+	}
+}
+
+// GetDatabaseSchema returns the database schema (static version)
+func GetDatabaseSchema() JSModuleSchema {
+	return (&DatabaseModule{}).GetSchema()
+}

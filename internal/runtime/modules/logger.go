@@ -53,3 +53,46 @@ func (l *LoggerModule) Close() {
 		l.file.Close()
 	}
 }
+
+// GetSchema implements JSSchemaProvider
+func (l *LoggerModule) GetSchema() JSModuleSchema {
+	return JSModuleSchema{
+		Name:        "logger",
+		Description: "Logging utilities for debugging and monitoring",
+		Methods: []JSMethodSchema{
+			{
+				Name:        "debug",
+				Description: "Log a debug message",
+				Params: []JSParamSchema{
+					{Name: "args", Type: "any", Description: "Values to log"},
+				},
+			},
+			{
+				Name:        "info",
+				Description: "Log an info message",
+				Params: []JSParamSchema{
+					{Name: "args", Type: "any", Description: "Values to log"},
+				},
+			},
+			{
+				Name:        "warn",
+				Description: "Log a warning message",
+				Params: []JSParamSchema{
+					{Name: "args", Type: "any", Description: "Values to log"},
+				},
+			},
+			{
+				Name:        "error",
+				Description: "Log an error message",
+				Params: []JSParamSchema{
+					{Name: "args", Type: "any", Description: "Values to log"},
+				},
+			},
+		},
+	}
+}
+
+// GetLoggerSchema returns the logger schema (static version)
+func GetLoggerSchema() JSModuleSchema {
+	return (&LoggerModule{}).GetSchema()
+}

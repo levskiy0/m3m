@@ -33,3 +33,23 @@ func (d *DelayedModule) Run(handler goja.Callable) {
 		handler(nil, nil)
 	}()
 }
+
+// GetSchema implements JSSchemaProvider
+func (d *DelayedModule) GetSchema() JSModuleSchema {
+	return JSModuleSchema{
+		Name:        "delayed",
+		Description: "Run tasks asynchronously in background with worker pool limiting",
+		Methods: []JSMethodSchema{
+			{
+				Name:        "run",
+				Description: "Execute a function asynchronously in the background",
+				Params:      []JSParamSchema{{Name: "handler", Type: "() => void", Description: "Function to execute"}},
+			},
+		},
+	}
+}
+
+// GetDelayedSchema returns the delayed schema (static version)
+func GetDelayedSchema() JSModuleSchema {
+	return (&DelayedModule{}).GetSchema()
+}

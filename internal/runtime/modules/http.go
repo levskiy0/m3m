@@ -125,3 +125,76 @@ func (h *HTTPModule) Delete(url string, options ...*HTTPOptions) *HTTPResponse {
 	}
 	return h.doRequest("DELETE", url, nil, opts)
 }
+
+// GetSchema implements JSSchemaProvider
+func (h *HTTPModule) GetSchema() JSModuleSchema {
+	return JSModuleSchema{
+		Name:        "http",
+		Description: "HTTP client for making external API requests",
+		Types: []JSTypeSchema{
+			{
+				Name:        "HTTPResponse",
+				Description: "Response from an HTTP request",
+				Fields: []JSParamSchema{
+					{Name: "status", Type: "number", Description: "HTTP status code"},
+					{Name: "statusText", Type: "string", Description: "HTTP status text"},
+					{Name: "headers", Type: "{ [key: string]: string }", Description: "Response headers"},
+					{Name: "body", Type: "string", Description: "Response body as string"},
+				},
+			},
+			{
+				Name:        "HTTPOptions",
+				Description: "Options for HTTP requests",
+				Fields: []JSParamSchema{
+					{Name: "headers", Type: "{ [key: string]: string }", Description: "Request headers", Optional: true},
+					{Name: "timeout", Type: "number", Description: "Request timeout in milliseconds", Optional: true},
+				},
+			},
+		},
+		Methods: []JSMethodSchema{
+			{
+				Name:        "get",
+				Description: "Make a GET request",
+				Params: []JSParamSchema{
+					{Name: "url", Type: "string", Description: "URL to request"},
+					{Name: "options", Type: "HTTPOptions", Description: "Request options", Optional: true},
+				},
+				Returns: &JSParamSchema{Type: "HTTPResponse"},
+			},
+			{
+				Name:        "post",
+				Description: "Make a POST request",
+				Params: []JSParamSchema{
+					{Name: "url", Type: "string", Description: "URL to request"},
+					{Name: "body", Type: "any", Description: "Request body (will be JSON encoded)"},
+					{Name: "options", Type: "HTTPOptions", Description: "Request options", Optional: true},
+				},
+				Returns: &JSParamSchema{Type: "HTTPResponse"},
+			},
+			{
+				Name:        "put",
+				Description: "Make a PUT request",
+				Params: []JSParamSchema{
+					{Name: "url", Type: "string", Description: "URL to request"},
+					{Name: "body", Type: "any", Description: "Request body (will be JSON encoded)"},
+					{Name: "options", Type: "HTTPOptions", Description: "Request options", Optional: true},
+				},
+				Returns: &JSParamSchema{Type: "HTTPResponse"},
+			},
+			{
+				Name:        "delete",
+				Description: "Make a DELETE request",
+				Params: []JSParamSchema{
+					{Name: "url", Type: "string", Description: "URL to request"},
+					{Name: "options", Type: "HTTPOptions", Description: "Request options", Optional: true},
+				},
+				Returns: &JSParamSchema{Type: "HTTPResponse"},
+			},
+		},
+	}
+}
+
+// GetHTTPSchema returns the http schema (static version)
+func GetHTTPSchema() JSModuleSchema {
+	return (&HTTPModule{}).GetSchema()
+}

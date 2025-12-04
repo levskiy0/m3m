@@ -230,3 +230,75 @@ func (g *GoalsModule) Get(slug string) *GoalInfo {
 		Color:       goal.Color,
 	}
 }
+
+// GetSchema implements JSSchemaProvider
+func (g *GoalsModule) GetSchema() JSModuleSchema {
+	return JSModuleSchema{
+		Name:        "goals",
+		Description: "Goal tracking and metrics management",
+		Types: []JSTypeSchema{
+			{
+				Name:        "GoalInfo",
+				Description: "Information about a goal",
+				Fields: []JSParamSchema{
+					{Name: "id", Type: "string", Description: "Goal ID"},
+					{Name: "name", Type: "string", Description: "Goal name"},
+					{Name: "slug", Type: "string", Description: "Goal slug identifier"},
+					{Name: "type", Type: "string", Description: "Goal type (counter or daily_counter)"},
+					{Name: "description", Type: "string", Description: "Goal description"},
+					{Name: "color", Type: "string", Description: "Goal color"},
+				},
+			},
+			{
+				Name:        "GoalStatInfo",
+				Description: "Goal statistics for a date",
+				Fields: []JSParamSchema{
+					{Name: "date", Type: "string", Description: "Date in YYYY-MM-DD format"},
+					{Name: "value", Type: "number", Description: "Value for the date"},
+				},
+			},
+		},
+		Methods: []JSMethodSchema{
+			{
+				Name:        "increment",
+				Description: "Increment a goal counter",
+				Params: []JSParamSchema{
+					{Name: "slug", Type: "string", Description: "Goal slug identifier"},
+					{Name: "value", Type: "number", Description: "Amount to increment (default 1)", Optional: true},
+				},
+				Returns: &JSParamSchema{Type: "boolean"},
+			},
+			{
+				Name:        "getValue",
+				Description: "Get current value of a goal",
+				Params:      []JSParamSchema{{Name: "slug", Type: "string", Description: "Goal slug identifier"}},
+				Returns:     &JSParamSchema{Type: "number"},
+			},
+			{
+				Name:        "getStats",
+				Description: "Get statistics for a goal over a period",
+				Params: []JSParamSchema{
+					{Name: "slug", Type: "string", Description: "Goal slug identifier"},
+					{Name: "days", Type: "number", Description: "Number of days (default 7)"},
+				},
+				Returns: &JSParamSchema{Type: "GoalStatInfo[]"},
+			},
+			{
+				Name:        "list",
+				Description: "List all accessible goals",
+				Returns:     &JSParamSchema{Type: "GoalInfo[]"},
+			},
+			{
+				Name:        "get",
+				Description: "Get goal information by slug",
+				Params:      []JSParamSchema{{Name: "slug", Type: "string", Description: "Goal slug identifier"}},
+				Returns:     &JSParamSchema{Type: "GoalInfo | null"},
+			},
+		},
+	}
+}
+
+// GetGoalsSchema returns the goals schema (static version)
+func GetGoalsSchema() JSModuleSchema {
+	return (&GoalsModule{}).GetSchema()
+}

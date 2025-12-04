@@ -212,3 +212,82 @@ func (r *RouterModule) HasRoutes() bool {
 	}
 	return false
 }
+
+// GetSchema implements JSSchemaProvider
+func (r *RouterModule) GetSchema() JSModuleSchema {
+	return JSModuleSchema{
+		Name:        "router",
+		Description: "HTTP routing for creating API endpoints",
+		Types: []JSTypeSchema{
+			{
+				Name:        "RequestContext",
+				Description: "HTTP request context passed to route handlers",
+				Fields: []JSParamSchema{
+					{Name: "method", Type: "string", Description: "HTTP method"},
+					{Name: "path", Type: "string", Description: "Request path"},
+					{Name: "params", Type: "{ [key: string]: string }", Description: "URL path parameters"},
+					{Name: "query", Type: "{ [key: string]: string }", Description: "Query string parameters"},
+					{Name: "headers", Type: "{ [key: string]: string }", Description: "Request headers"},
+					{Name: "body", Type: "any", Description: "Request body"},
+				},
+			},
+			{
+				Name:        "ResponseData",
+				Description: "HTTP response data",
+				Fields: []JSParamSchema{
+					{Name: "status", Type: "number", Description: "HTTP status code"},
+					{Name: "body", Type: "any", Description: "Response body"},
+					{Name: "headers", Type: "{ [key: string]: string }", Description: "Response headers", Optional: true},
+				},
+			},
+		},
+		Methods: []JSMethodSchema{
+			{
+				Name:        "get",
+				Description: "Register a GET route handler",
+				Params: []JSParamSchema{
+					{Name: "path", Type: "string", Description: "URL path pattern (supports :param)"},
+					{Name: "handler", Type: "(ctx: RequestContext) => ResponseData | any", Description: "Route handler function"},
+				},
+			},
+			{
+				Name:        "post",
+				Description: "Register a POST route handler",
+				Params: []JSParamSchema{
+					{Name: "path", Type: "string", Description: "URL path pattern (supports :param)"},
+					{Name: "handler", Type: "(ctx: RequestContext) => ResponseData | any", Description: "Route handler function"},
+				},
+			},
+			{
+				Name:        "put",
+				Description: "Register a PUT route handler",
+				Params: []JSParamSchema{
+					{Name: "path", Type: "string", Description: "URL path pattern (supports :param)"},
+					{Name: "handler", Type: "(ctx: RequestContext) => ResponseData | any", Description: "Route handler function"},
+				},
+			},
+			{
+				Name:        "delete",
+				Description: "Register a DELETE route handler",
+				Params: []JSParamSchema{
+					{Name: "path", Type: "string", Description: "URL path pattern (supports :param)"},
+					{Name: "handler", Type: "(ctx: RequestContext) => ResponseData | any", Description: "Route handler function"},
+				},
+			},
+			{
+				Name:        "response",
+				Description: "Create a response object",
+				Params: []JSParamSchema{
+					{Name: "status", Type: "number", Description: "HTTP status code"},
+					{Name: "body", Type: "any", Description: "Response body"},
+				},
+				Returns: &JSParamSchema{Type: "ResponseData"},
+			},
+		},
+	}
+}
+
+// GetRouterSchema returns the router schema (static version)
+func GetRouterSchema() JSModuleSchema {
+	return (&RouterModule{}).GetSchema()
+}

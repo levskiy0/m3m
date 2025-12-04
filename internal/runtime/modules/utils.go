@@ -121,3 +121,105 @@ func (u *UtilsModule) ParseDate(text, format string) int64 {
 func (u *UtilsModule) Timestamp() int64 {
 	return time.Now().UnixMilli()
 }
+
+// GetSchema implements JSSchemaProvider
+func (u *UtilsModule) GetSchema() JSModuleSchema {
+	return JSModuleSchema{
+		Name:        "utils",
+		Description: "General utility functions for common operations",
+		Methods: []JSMethodSchema{
+			{
+				Name:        "sleep",
+				Description: "Pause execution for specified milliseconds",
+				Params:      []JSParamSchema{{Name: "ms", Type: "number", Description: "Milliseconds to sleep"}},
+			},
+			{
+				Name:        "random",
+				Description: "Generate random float between 0 and 1",
+				Returns:     &JSParamSchema{Type: "number"},
+			},
+			{
+				Name:        "randomInt",
+				Description: "Generate random integer between min and max",
+				Params: []JSParamSchema{
+					{Name: "min", Type: "number", Description: "Minimum value (inclusive)"},
+					{Name: "max", Type: "number", Description: "Maximum value (exclusive)"},
+				},
+				Returns: &JSParamSchema{Type: "number"},
+			},
+			{
+				Name:        "uuid",
+				Description: "Generate a UUID v4 string",
+				Returns:     &JSParamSchema{Type: "string"},
+			},
+			{
+				Name:        "slugify",
+				Description: "Convert text to URL-safe slug",
+				Params:      []JSParamSchema{{Name: "text", Type: "string", Description: "Text to slugify"}},
+				Returns:     &JSParamSchema{Type: "string"},
+			},
+			{
+				Name:        "truncate",
+				Description: "Truncate text to specified length with ellipsis",
+				Params: []JSParamSchema{
+					{Name: "text", Type: "string", Description: "Text to truncate"},
+					{Name: "length", Type: "number", Description: "Maximum length"},
+				},
+				Returns: &JSParamSchema{Type: "string"},
+			},
+			{
+				Name:        "capitalize",
+				Description: "Capitalize first letter of text",
+				Params:      []JSParamSchema{{Name: "text", Type: "string", Description: "Text to capitalize"}},
+				Returns:     &JSParamSchema{Type: "string"},
+			},
+			{
+				Name:        "regexMatch",
+				Description: "Find all regex matches in text",
+				Params: []JSParamSchema{
+					{Name: "text", Type: "string", Description: "Text to search"},
+					{Name: "pattern", Type: "string", Description: "Regex pattern"},
+				},
+				Returns: &JSParamSchema{Type: "string[]"},
+			},
+			{
+				Name:        "regexReplace",
+				Description: "Replace regex matches in text",
+				Params: []JSParamSchema{
+					{Name: "text", Type: "string", Description: "Text to modify"},
+					{Name: "pattern", Type: "string", Description: "Regex pattern"},
+					{Name: "replacement", Type: "string", Description: "Replacement string"},
+				},
+				Returns: &JSParamSchema{Type: "string"},
+			},
+			{
+				Name:        "formatDate",
+				Description: "Format timestamp to date string",
+				Params: []JSParamSchema{
+					{Name: "timestamp", Type: "number", Description: "Unix timestamp in milliseconds"},
+					{Name: "format", Type: "string", Description: "Format string (YYYY-MM-DD HH:mm:ss)"},
+				},
+				Returns: &JSParamSchema{Type: "string"},
+			},
+			{
+				Name:        "parseDate",
+				Description: "Parse date string to timestamp",
+				Params: []JSParamSchema{
+					{Name: "text", Type: "string", Description: "Date string to parse"},
+					{Name: "format", Type: "string", Description: "Format string (YYYY-MM-DD HH:mm:ss)"},
+				},
+				Returns: &JSParamSchema{Type: "number"},
+			},
+			{
+				Name:        "timestamp",
+				Description: "Get current Unix timestamp in milliseconds",
+				Returns:     &JSParamSchema{Type: "number"},
+			},
+		},
+	}
+}
+
+// GetUtilsSchema returns the utils schema (static version)
+func GetUtilsSchema() JSModuleSchema {
+	return (&UtilsModule{}).GetSchema()
+}
