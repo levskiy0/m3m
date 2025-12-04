@@ -1,10 +1,10 @@
 .idea
 .DS_Store
-temp
-bin
-storage
-internal/app/dist
-server
+./temp/
+./bin/
+./storage/
+./internal/app/dist/
+./server
 issue.md
 
 web/ui/dist
