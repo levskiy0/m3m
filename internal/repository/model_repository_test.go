@@ -43,8 +43,8 @@ func setupTestDB(t *testing.T) (*MongoDB, func()) {
 	}
 
 	mongodb := &MongoDB{
-		client: client,
-		db:     db,
+		Client:   client,
+		Database: db,
 	}
 
 	cleanup := func() {
