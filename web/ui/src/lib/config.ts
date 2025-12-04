@@ -9,5 +9,5 @@ declare global {
 }
 
 export const config: AppConfig = {
-    apiURL: window.__APP_CONFIG__?.apiURL || 'http://localhost:3000',
+    apiURL: window.__APP_CONFIG__?.apiURL || import.meta.env.VITE_API_URL || 'http://localhost:8080',
 };

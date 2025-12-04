@@ -1,0 +1,88 @@
+import { api } from './client';
+import type {
+  StorageItem,
+  CreateDirRequest,
+  RenameRequest,
+  CreateFileRequest,
+  GenerateLinkRequest,
+  PublicLink,
+} from '@/types';
+
+export const storageApi = {
+  list: async (projectId: string, path: string = ''): Promise<StorageItem[]> => {
+    const searchParams = new URLSearchParams();
+    if (path) {
+      searchParams.set('path', path);
+    }
+    const query = searchParams.toString();
+    return api.get<StorageItem[]>(
+      `/api/projects/${projectId}/storage${query ? `?${query}` : ''}`
+    );
+  },
+
+  mkdir: async (projectId: string, data: CreateDirRequest): Promise<void> => {
+    return api.post(`/api/projects/${projectId}/storage/mkdir`, data);
+  },
+
+  upload: async (projectId: string, path: string, file: File): Promise<StorageItem> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('path', path);
+
+    const token = localStorage.getItem('m3m_token');
+    const headers: HeadersInit = {};
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    const response = await fetch(
+      `${api['baseURL']}/api/projects/${projectId}/storage/upload`,
+      {
+        method: 'POST',
+        headers,
+        body: formData,
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error('Upload failed');
+    }
+
+    return response.json();
+  },
+
+  download: async (projectId: string, path: string): Promise<Blob> => {
+    return api.download(`/api/projects/${projectId}/storage/download/${path}`);
+  },
+
+  rename: async (projectId: string, data: RenameRequest): Promise<void> => {
+    return api.put(`/api/projects/${projectId}/storage/rename`, data);
+  },
+
+  delete: async (projectId: string, path: string): Promise<void> => {
+    return api.delete(`/api/projects/${projectId}/storage/${path}`);
+  },
+
+  createFile: async (projectId: string, data: CreateFileRequest): Promise<StorageItem> => {
+    return api.post<StorageItem>(`/api/projects/${projectId}/storage/file`, data);
+  },
+
+  updateFile: async (projectId: string, path: string, content: string): Promise<void> => {
+    return api.put(`/api/projects/${projectId}/storage/file/${path}`, { content });
+  },
+
+  getThumbnail: async (projectId: string, path: string): Promise<Blob> => {
+    return api.download(`/api/projects/${projectId}/storage/thumbnail/${path}`);
+  },
+
+  generateLink: async (
+    projectId: string,
+    data: GenerateLinkRequest
+  ): Promise<PublicLink> => {
+    return api.post<PublicLink>(`/api/projects/${projectId}/storage/link`, data);
+  },
+
+  getDownloadUrl: (projectId: string, path: string): string => {
+    return api.getDownloadURL(`/api/projects/${projectId}/storage/download/${path}`);
+  },
+};
