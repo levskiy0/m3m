@@ -435,6 +435,10 @@ func (l *LoggerAPI) GetSchema() JSModuleSchema {
 
 ---
 
+Нужно добавить получение статистики по использованию JS Runtime - память/цпу/uptime 
+
+---
+
 Есть ли способ грузить runtime api вот так в JS `import 'validator'`
 
 ---
