@@ -49,7 +49,7 @@ func (h *JSTestHelper) registerMockLogger(vm *goja.Runtime) {
 		}
 	}
 
-	vm.Set("logger", map[string]interface{}{
+	vm.Set("$logger", map[string]interface{}{
 		"debug": capture("DEBUG"),
 		"info":  capture("INFO"),
 		"warn":  capture("WARN"),
