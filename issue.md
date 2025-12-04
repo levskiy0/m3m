@@ -22,6 +22,7 @@
   - `Shadcn`
     - https://ui.shadcn.com/docs/registry/mcp (Нужно добавить MCP)
     - https://ui.shadcn.com/docs/components
+  - `TipTap`
 - MongoDB
 
 Примерный конфиг
@@ -128,6 +129,8 @@ Root пользователь имеет доступ ко всем проект
 
 У каждого проекта есть свой storage который будет доступен в `runtime` и функционал `API` файлового менеджера для доступа к нему
 
+`./{base-storage-dir}/{bot-id}/storage/...`
+
 - Каталоги
   - Создание каталога
   - Удаление
@@ -194,6 +197,130 @@ Root пользователь имеет доступ ко всем проект
 Лог можно скачать, или посмотреть в админке (как то мб с пагинации при скролле ).
 
 Если запускается новая версия - предыдущие логи чистятся.
+
+
+#### Хранилище данных
+
+Для каждого проекта можно настроить своеобразную БД
+
+Настраиваем модели:
+- Поля
+  - Ключ
+  - Тип
+    - String
+    - Text
+    - Number
+    - Float
+    - Bool
+    - Document
+    - File
+    - Ref
+    - Date
+    - DateTime
+    - и тд ...
+  - Required
+  - Default Value
+    - Nullable
+    - Значение должно от типа завить
+- Настройка вида таблицы (выбор полей, выбор по каким мы будем фильтровать, сортировать и тд)
+- Настройка формы (отображаются поля, можно скрыть те которые по умолчанию и менять их местами), настройка представления, например `Text` может иметь вид или `Textarea` или `TipTap`. Настройка валидации.
+
+Далее мы можем это все просматривать и делать круд.
+
+В `runtime` есть доступ к хранилищу данных.
+
+
+#### Runtime
+
+Собственно говоря это как раз таки `GOJA` запуск.
+
+`Runtiume API` - Это подключаемые модули:
+- `storage`
+  - Доступ к файлам
+- `image`
+  - Работа с картинками, ресайз, кроп, и тд
+- `draw`
+  - Работа с холстом - рисование
+- `database`
+  - Работа с Хранилищем данных
+  - Формируем из существующих подсказки для `Monaco`
+- `env`
+  - Доступ к переменным окружения
+- `http`
+  - Полноценная работа с запросами
+- `smtp`
+  - Отправка писем
+- `logger`
+- `сrypto`, `encoding`, `strings`
+  - что то типа
+  ``` 
+  // Crypto utilities
+	if err := a.engine.Set("crypto", map[string]interface{}{
+		"md5":         a.md5Hash,
+		"sha256":      a.sha256Hash,
+		"randomBytes": a.randomBytes,
+	}); err != nil {
+		return err
+	}
+
+	// Encoding utilities
+	if err := a.engine.Set("encoding", map[string]interface{}{
+		"base64Encode":  a.base64Encode,
+		"base64Decode":  a.base64Decode,
+		"jsonParse":     a.jsonParse,
+		"jsonStringify": a.jsonStringify,
+		"urlEncode":     a.urlEncode,
+		"urlDecode":     a.urlDecode,
+	}); err != nil {
+		return err
+	}
+
+	// String utilities
+	if err := a.engine.Set("utils", map[string]interface{}{
+		"sleep":        a.sleep,
+		"random":       a.random,
+		"randomInt":    a.randomInt,
+		"uuid":         a.uuid,
+		"slugify":      a.slugify,
+		"truncate":     a.truncate,
+		"capitalize":   a.capitalize,
+		"regexMatch":   a.regexMatch,
+		"regexReplace": a.regexReplace,
+		"formatDate":   a.formatDate,
+		"parseDate":    a.parseDate,
+		"timestamp":    a.timestamp,
+	}); err != nil {
+		return err
+	} 
+  ```
+- `и тд`
+
+Сервер должен формировать в разрезе существующих `Runtiume API` подсказки для `Monaco Editor`. 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
