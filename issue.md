@@ -439,7 +439,7 @@ func (l *LoggerAPI) GetSchema() JSModuleSchema {
 
 ---
 
-Добавить мощный валидатор - runtime api - validator
+Добавить мощный валидатор - runtime api - validator (https://github.com/go-playground/validator)
 
 Тесты обновить на использование валидатора
 
