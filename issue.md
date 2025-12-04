@@ -435,7 +435,10 @@ func (l *LoggerAPI) GetSchema() JSModuleSchema {
 
 ---
 
-Нужно добавить получение статистики по использованию JS Runtime - память/цпу/uptime 
+если запущен runtime - Нужно добавить получение статистики  использования JS Runtime - память/цпу/uptime
+по API что то типа - /{project-id}/monitor
+
+это отладочная инфа в админку
 
 ---
 
