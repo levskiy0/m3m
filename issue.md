@@ -340,7 +340,7 @@ service.shotdown(() => {
 
 `./web/static.go`
 
-`./web/ui`
+`./web/ui/...`
 
 ``` 
 //go:embed dist/*

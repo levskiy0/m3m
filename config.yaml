@@ -1,0 +1,26 @@
+server:
+  host: "0.0.0.0"
+  port: 3000
+  uri: "http://127.0.0.1:3000"
+
+mongodb:
+  uri: "mongodb://localhost:27017"
+  database: "m3m"
+
+jwt:
+  secret: "your-jwt-secret-key-change-in-production"
+  expiration: 168h
+
+storage:
+  path: "./storage"
+
+runtime:
+  worker_pool_size: 10
+  timeout: 30s
+
+plugins:
+  path: "./plugins"
+
+logging:
+  level: "info"
+  path: "./logs"

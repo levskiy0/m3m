@@ -7,5 +7,5 @@ internal/app/dist
 server
 issue.md
 
-web/dist
-web/node_modules
+web/ui/dist
+web/ui/node_modules
