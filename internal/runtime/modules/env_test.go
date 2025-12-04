@@ -523,8 +523,8 @@ func TestEnvModule_GetBool(t *testing.T) {
 	vars := map[string]interface{}{
 		"bool_true":  true,
 		"bool_false": false,
-		"string_key": "true", // Not a bool type
-		"int_key":    1,      // Not a bool type
+		"string_key": "maybe", // Not a bool string
+		"int_key":    1,       // Not a bool type
 	}
 	env := NewEnvModule(vars)
 
