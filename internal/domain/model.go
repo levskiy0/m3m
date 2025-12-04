@@ -81,5 +81,42 @@ type DataQuery struct {
 	Limit   int               `form:"limit"`
 	Sort    string            `form:"sort"`
 	Order   string            `form:"order"`
-	Filters map[string]string `form:"filters"`
+	Filters map[string]string `form:"-"` // Parsed from query params
+}
+
+// FilterOperator represents a filter operation
+type FilterOperator string
+
+const (
+	FilterOpEquals     FilterOperator = "eq"
+	FilterOpNotEquals  FilterOperator = "ne"
+	FilterOpGreater    FilterOperator = "gt"
+	FilterOpGreaterEq  FilterOperator = "gte"
+	FilterOpLess       FilterOperator = "lt"
+	FilterOpLessEq     FilterOperator = "lte"
+	FilterOpContains   FilterOperator = "contains"
+	FilterOpStartsWith FilterOperator = "startsWith"
+	FilterOpEndsWith   FilterOperator = "endsWith"
+	FilterOpIn         FilterOperator = "in"
+	FilterOpNotIn      FilterOperator = "notIn"
+	FilterOpIsNull     FilterOperator = "isNull"
+	FilterOpIsNotNull  FilterOperator = "isNotNull"
+)
+
+// FilterCondition represents a single filter condition
+type FilterCondition struct {
+	Field    string         `json:"field"`
+	Operator FilterOperator `json:"operator"`
+	Value    interface{}    `json:"value"`
+}
+
+// AdvancedDataQuery supports complex filtering
+type AdvancedDataQuery struct {
+	Page     int               `json:"page" form:"page"`
+	Limit    int               `json:"limit" form:"limit"`
+	Sort     string            `json:"sort" form:"sort"`
+	Order    string            `json:"order" form:"order"`
+	Filters  []FilterCondition `json:"filters"`
+	Search   string            `json:"search" form:"search"`     // Full-text search query
+	SearchIn []string          `json:"searchIn" form:"searchIn"` // Fields to search in
 }

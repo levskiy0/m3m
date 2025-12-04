@@ -21,6 +21,12 @@ func NewModelService(modelRepo *repository.ModelRepository) *ModelService {
 }
 
 func (s *ModelService) Create(ctx context.Context, projectID primitive.ObjectID, req *domain.CreateModelRequest) (*domain.Model, error) {
+	// Validate model schema
+	schemaValidator := NewModelSchemaValidator()
+	if err := schemaValidator.ValidateModel(req); err != nil {
+		return nil, err
+	}
+
 	model := &domain.Model{
 		ProjectID: projectID,
 		Name:      req.Name,
@@ -83,6 +89,12 @@ func (s *ModelService) Update(ctx context.Context, id primitive.ObjectID, req *d
 		return nil, err
 	}
 
+	// Validate update request
+	schemaValidator := NewModelSchemaValidator()
+	if err := schemaValidator.ValidateModelUpdate(req, model); err != nil {
+		return nil, err
+	}
+
 	if req.Name != nil {
 		model.Name = *req.Name
 	}
@@ -124,8 +136,15 @@ func (s *ModelService) CreateData(ctx context.Context, modelID primitive.ObjectI
 		return nil, err
 	}
 
-	// Validate and apply defaults
-	validatedData := s.validateAndApplyDefaults(model, data)
+	// Apply defaults for missing fields
+	dataWithDefaults := s.applyDefaults(model, data)
+
+	// Validate data against schema
+	validator := NewDataValidator(model)
+	validatedData, err := validator.ValidateAndCoerce(dataWithDefaults)
+	if err != nil {
+		return nil, err
+	}
 
 	result, err := s.modelRepo.CreateData(ctx, model, validatedData)
 	if err != nil {
@@ -149,6 +168,16 @@ func (s *ModelService) GetData(ctx context.Context, modelID primitive.ObjectID, 
 	return s.modelRepo.FindData(ctx, model, query)
 }
 
+// GetDataAdvanced retrieves data with advanced filtering
+func (s *ModelService) GetDataAdvanced(ctx context.Context, modelID primitive.ObjectID, query *domain.AdvancedDataQuery) ([]bson.M, int64, error) {
+	model, err := s.modelRepo.FindByID(ctx, modelID)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	return s.modelRepo.FindDataAdvanced(ctx, model, query)
+}
+
 func (s *ModelService) GetDataByID(ctx context.Context, modelID, dataID primitive.ObjectID) (map[string]interface{}, error) {
 	model, err := s.modelRepo.FindByID(ctx, modelID)
 	if err != nil {
@@ -164,7 +193,25 @@ func (s *ModelService) UpdateData(ctx context.Context, modelID, dataID primitive
 		return err
 	}
 
-	return s.modelRepo.UpdateData(ctx, model, dataID, data)
+	// Validate partial data (only provided fields)
+	validator := NewDataValidator(model)
+	if err := validator.ValidatePartial(data); err != nil {
+		return err
+	}
+
+	// Coerce values to proper types
+	coercedData := make(map[string]interface{})
+	fieldMap := make(map[string]domain.ModelField)
+	for _, f := range model.Fields {
+		fieldMap[f.Key] = f
+	}
+	for key, value := range data {
+		if field, exists := fieldMap[key]; exists {
+			coercedData[key] = validator.CoerceValue(field, value)
+		}
+	}
+
+	return s.modelRepo.UpdateData(ctx, model, dataID, coercedData)
 }
 
 func (s *ModelService) DeleteData(ctx context.Context, modelID, dataID primitive.ObjectID) error {
@@ -176,13 +223,17 @@ func (s *ModelService) DeleteData(ctx context.Context, modelID, dataID primitive
 	return s.modelRepo.DeleteData(ctx, model, dataID)
 }
 
-func (s *ModelService) validateAndApplyDefaults(model *domain.Model, data map[string]interface{}) map[string]interface{} {
+func (s *ModelService) applyDefaults(model *domain.Model, data map[string]interface{}) map[string]interface{} {
 	result := make(map[string]interface{})
 
+	// Copy existing data
+	for k, v := range data {
+		result[k] = v
+	}
+
+	// Apply defaults for missing fields
 	for _, field := range model.Fields {
-		if val, ok := data[field.Key]; ok {
-			result[field.Key] = val
-		} else if field.DefaultValue != nil {
+		if _, exists := result[field.Key]; !exists && field.DefaultValue != nil {
 			result[field.Key] = field.DefaultValue
 		}
 	}

@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -36,6 +37,7 @@ func (h *ModelHandler) Register(r *gin.RouterGroup, authMiddleware *middleware.A
 		// Data routes
 		models.GET("/:modelId/data", h.ListData)
 		models.POST("/:modelId/data", h.CreateData)
+		models.POST("/:modelId/data/query", h.QueryData) // Advanced filtering
 		models.GET("/:modelId/data/:dataId", h.GetData)
 		models.PUT("/:modelId/data/:dataId", h.UpdateData)
 		models.DELETE("/:modelId/data/:dataId", h.DeleteData)
@@ -87,6 +89,14 @@ func (h *ModelHandler) Create(c *gin.Context) {
 
 	model, err := h.modelService.Create(c.Request.Context(), projectID, &req)
 	if err != nil {
+		var validationErr service.ValidationErrors
+		if errors.As(err, &validationErr) {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error":   "validation failed",
+				"details": validationErr.Errors,
+			})
+			return
+		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -135,6 +145,11 @@ func (h *ModelHandler) Update(c *gin.Context) {
 
 	model, err := h.modelService.Update(c.Request.Context(), modelID, &req)
 	if err != nil {
+		var validationErr service.ValidationErrors
+		if errors.As(err, &validationErr) {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error":   "validation failed",
+				
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -182,15 +197,45 @@ func (h *ModelHandler) ListData(c *gin.Context) {
 		return
 	}
 
+	// Parse filter params from query string (format: filter[field]=value)
+	if query.Filters == nil {
+		query.Filters = make(map[string]string)
+	}
+	for key, values := range c.Request.URL.Query() {
+		if len(key) > 7 && key[:7] == "filter[" && key[len(key)-1] == ']' {
+			field := key[7 : len(key)-1]
+			if len(values) > 0 {
+				query.Filters[field] = values[0]
+			}
+		}
+	}
+
+	// Set defaults
+	if query.Limit <= 0 {
+		query.Limit = 50
+	}
+	if query.Page <= 0 {
+		query.Page = 1
+	}
+
 	data, total, err := h.modelService.GetData(c.Request.Context(), modelID, &query)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
+	// Calculate pagination metadata
+	totalPages := int64(0)
+	if query.Limit > 0 {
+		totalPages = (total + int64(query.Limit) - 1) / int64(query.Limit)
+	}
+
 	c.JSON(http.StatusOK, gin.H{
-		"data":  data,
-		"total": total,
+		"data":       data,
+		"total":      total,
+		"page":       query.Page,
+		"limit":      query.Limit,
+		"totalPages": totalPages,
 	})
 }
 
@@ -214,11 +259,67 @@ func (h *ModelHandler) CreateData(c *gin.Context) {
 
 	result, err := h.modelService.CreateData(c.Request.Context(), modelID, data)
 	if err != nil {
+		var validationErr service.ValidationErrors
+		if errors.As(err, &validationErr) {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error":   "validation failed",
+				"details": validationErr.Errors,
+			})
+			return
+		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
 	c.JSON(http.StatusCreated, result)
+}
+
+// QueryData handles advanced data queries with filtering
+func (h *ModelHandler) QueryData(c *gin.Context) {
+	_, ok := h.checkAccess(c)
+	if !ok {
+		return
+	}
+
+	modelID, err := primitive.ObjectIDFromHex(c.Param("modelId"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid model id"})
+		return
+	}
+
+	var query domain.AdvancedDataQuery
+	if err := c.ShouldBindJSON(&query); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Set defaults
+	if query.Limit <= 0 {
+		query.Limit = 50
+	}
+	if query.Page <= 0 {
+		query.Page = 1
+	}
+
+	data, total, err := h.modelService.GetDataAdvanced(c.Request.Context(), modelID, &query)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Calculate pagination metadata
+	totalPages := int64(0)
+	if query.Limit > 0 {
+		totalPages = (total + int64(query.Limit) - 1) / int64(query.Limit)
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"data":       data,
+		"total":      total,
+		"page":       query.Page,
+		"limit":      query.Limit,
+		"totalPages": totalPages,
+	})
 }
 
 func (h *ModelHandler) GetData(c *gin.Context) {
@@ -273,6 +374,14 @@ func (h *ModelHandler) UpdateData(c *gin.Context) {
 	}
 
 	if err := h.modelService.UpdateData(c.Request.Context(), modelID, dataID, data); err != nil {
+		var validationErr service.ValidationErrors
+		if errors.As(err, &validationErr) {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error":   "validation failed",
+				"details": validationErr.Errors,
+			})
+			return
+		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}

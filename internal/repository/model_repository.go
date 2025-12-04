@@ -240,3 +240,187 @@ func (r *ModelRepository) DropDataCollection(ctx context.Context, model *domain.
 	collectionName := r.dataCollectionName(model.ProjectID, model.Slug)
 	return r.db.Collection(collectionName).Drop(ctx)
 }
+
+// FindDataAdvanced finds data with advanced filtering support
+func (r *ModelRepository) FindDataAdvanced(ctx context.Context, model *domain.Model, query *domain.AdvancedDataQuery) ([]bson.M, int64, error) {
+	collectionName := r.dataCollectionName(model.ProjectID, model.Slug)
+	collection := r.db.Collection(collectionName)
+
+	filter := r.buildAdvancedFilter(query, model)
+
+	total, err := collection.CountDocuments(ctx, filter)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	opts := options.Find()
+	limit := query.Limit
+	if limit <= 0 {
+		limit = 50
+	}
+	opts.SetLimit(int64(limit))
+
+	if query.Page > 0 {
+		opts.SetSkip(int64((query.Page - 1) * limit))
+	}
+	if query.Sort != "" {
+		order := 1
+		if query.Order == "desc" {
+			order = -1
+		}
+		opts.SetSort(bson.D{{Key: query.Sort, Value: order}})
+	}
+
+	cursor, err := collection.Find(ctx, filter, opts)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer cursor.Close(ctx)
+
+	var results []bson.M
+	if err := cursor.All(ctx, &results); err != nil {
+		return nil, 0, err
+	}
+	return results, total, nil
+}
+
+// buildAdvancedFilter builds MongoDB filter from AdvancedDataQuery
+func (r *ModelRepository) buildAdvancedFilter(query *domain.AdvancedDataQuery, model *domain.Model) bson.M {
+	filter := bson.M{}
+	conditions := []bson.M{}
+
+	// Build field type map for type-aware filtering
+	fieldTypes := make(map[string]domain.FieldType)
+	for _, f := range model.Fields {
+		fieldTypes[f.Key] = f.Type
+	}
+
+	// Process filter conditions
+	for _, cond := range query.Filters {
+		mongoFilter := r.buildFilterCondition(cond, fieldTypes[cond.Field])
+		if mongoFilter != nil {
+			conditions = append(conditions, mongoFilter)
+		}
+	}
+
+	// Add search filter if provided
+	if query.Search != "" && len(query.SearchIn) > 0 {
+		searchConditions := make([]bson.M, 0, len(query.SearchIn))
+		for _, field := range query.SearchIn {
+			searchConditions = append(searchConditions, bson.M{
+				field: bson.M{"$regex": query.Search, "$options": "i"},
+			})
+		}
+		conditions = append(conditions, bson.M{"$or": searchConditions})
+	}
+
+	if len(conditions) > 0 {
+		filter["$and"] = conditions
+	}
+
+	return filter
+}
+
+// buildFilterCondition converts a FilterCondition to MongoDB filter
+func (r *ModelRepository) buildFilterCondition(cond domain.FilterCondition, fieldType domain.FieldType) bson.M {
+	field := cond.Field
+	value := r.coerceFilterValue(cond.Value, fieldType)
+
+	switch cond.Operator {
+	case domain.FilterOpEquals, "":
+		return bson.M{field: value}
+	case domain.FilterOpNotEquals:
+		return bson.M{field: bson.M{"$ne": value}}
+	case domain.FilterOpGreater:
+		return bson.M{field: bson.M{"$gt": value}}
+	case domain.FilterOpGreaterEq:
+		return bson.M{field: bson.M{"$gte": value}}
+	case domain.FilterOpLess:
+		return bson.M{field: bson.M{"$lt": value}}
+	case domain.FilterOpLessEq:
+		return bson.M{field: bson.M{"$lte": value}}
+	case domain.FilterOpContains:
+		if str, ok := value.(string); ok {
+			return bson.M{field: bson.M{"$regex": str, "$options": "i"}}
+		}
+		return nil
+	case domain.FilterOpStartsWith:
+		if str, ok := value.(string); ok {
+			return bson.M{field: bson.M{"$regex": "^" + str, "$options": "i"}}
+		}
+		return nil
+	case domain.FilterOpEndsWith:
+		if str, ok := value.(string); ok {
+			return bson.M{field: bson.M{"$regex": str + "$", "$options": "i"}}
+		}
+		return nil
+	case domain.FilterOpIn:
+		if arr, ok := value.([]interface{}); ok {
+			return bson.M{field: bson.M{"$in": arr}}
+		}
+		return nil
+	case domain.FilterOpNotIn:
+		if arr, ok := value.([]interface{}); ok {
+			return bson.M{field: bson.M{"$nin": arr}}
+		}
+		return nil
+	case domain.FilterOpIsNull:
+		return bson.M{"$or": []bson.M{
+			{field: nil},
+			{field: bson.M{"$exists": false}},
+		}}
+	case domain.FilterOpIsNotNull:
+		return bson.M{field: bson.M{"$exists": true, "$ne": nil}}
+	default:
+		return bson.M{field: value}
+	}
+}
+
+// coerceFilterValue attempts to convert filter value to appropriate type
+func (r *ModelRepository) coerceFilterValue(value interface{}, fieldType domain.FieldType) interface{} {
+	if value == nil {
+		return nil
+	}
+
+	switch fieldType {
+	case domain.FieldTypeNumber:
+		if str, ok := value.(string); ok {
+			if i, err := parseInt(str); err == nil {
+				return i
+			}
+		}
+		if f, ok := value.(float64); ok {
+			return int64(f)
+		}
+	case domain.FieldTypeFloat:
+		if str, ok := value.(string); ok {
+			if f, err := parseFloat(str); err == nil {
+				return f
+			}
+		}
+	case domain.FieldTypeBool:
+		if str, ok := value.(string); ok {
+			return str == "true" || str == "1"
+		}
+	case domain.FieldTypeRef:
+		if str, ok := value.(string); ok {
+			if oid, err := primitive.ObjectIDFromHex(str); err == nil {
+				return oid
+			}
+		}
+	}
+
+	return value
+}
+
+func parseInt(s string) (int64, error) {
+	var i int64
+	_, err := fmt.Sscanf(s, "%d", &i)
+	return i, err
+}
+
+func parseFloat(s string) (float64, error) {
+	var f float64
+	_, err := fmt.Sscanf(s, "%f", &f)
+	return f, err
+}
