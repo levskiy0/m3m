@@ -376,11 +376,54 @@ window.__APP_CONFIG__ = {
 используй schadcn и стиль [ui-style.md](ui-style.md)
 
 
+---
 
 
+[types.go](internal/runtime/modules/types.go) - Неправильно!
 
+Не должно быть одной портяники! Нужно что бы каждый модуль возвращал что то типа -
 
+```
+// GetSchema implements JSSchemaProvider
+func (l *LoggerAPI) GetSchema() JSModuleSchema {
+	return JSModuleSchema{
+		Name:        "logger",
+		Description: "Logging utilities for debugging and monitoring",
+		Methods: []JSMethodSchema{
+			{
+				Name:        "info",
+				Description: "Log an info message",
+				Params: []JSParamSchema{
+					{Name: "message", Type: "string", Description: "Log message"},
+					{Name: "data", Type: "object", Description: "Additional data to log", Optional: true},
+				},
+			},
+			{
+				Name:        "error",
+				Description: "Log an error message",
+				Params: []JSParamSchema{
+					{Name: "message", Type: "string", Description: "Error message"},
+					{Name: "data", Type: "object", Description: "Additional data to log", Optional: true},
+				},
+			},
+			{
+				Name:        "debug",
+				Description: "Log a debug message",
+				Params: []JSParamSchema{
+					{Name: "message", Type: "string", Description: "Debug message"},
+					{Name: "data", Type: "object", Description: "Additional data to log", Optional: true},
+				},
+			},
+		},
+	}
+}
 
+```
+
+----
+
+Нужно больше тестов именно рантайма! Ни в одном `internal/runtime/modules` нет проверки как это выполняется в JS - а это самое важное!!!!!! Зато много беспонтовых и бесполезных тестов!!!
+Тесты должны показывать как модуль отработает в JS, как отработает непредвиденное значение, как модуль справится с ошибками.
 
 
 
