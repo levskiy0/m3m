@@ -296,8 +296,17 @@ func TestJS_Router_SequentialMultipleRequests(t *testing.T) {
 	ctx := &modules.RequestContext{Method: "GET", Path: "/sequential"}
 	resp, _ := routerModule.Handle("GET", "/sequential", ctx)
 	body := resp.Body.(map[string]interface{})
-	if body["count"].(float64) != 101 {
-		t.Errorf("Expected 101 requests, got %v", body["count"])
+	count := body["count"]
+	// Handle both int64 and float64 since goja can return either
+	var countVal float64
+	switch v := count.(type) {
+	case float64:
+		countVal = v
+	case int64:
+		countVal = float64(v)
+	}
+	if countVal != 101 {
+		t.Errorf("Expected 101 requests, got %v", count)
 	}
 }
 
