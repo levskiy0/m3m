@@ -14,7 +14,7 @@ func TestJS_Router_BasicRoutes(t *testing.T) {
 	routerModule := h.SetupRouter()
 
 	h.MustRun(t, `
-		router.get("/test", function(ctx) {
+		$router.get("/test", function(ctx) {
 			return {status: 200, body: "test response"};
 		});
 	`)
@@ -37,11 +37,11 @@ func TestJS_Router_PathParams(t *testing.T) {
 	routerModule := h.SetupRouter()
 
 	h.MustRun(t, `
-		router.get("/users/:id", function(ctx) {
+		$router.get("/users/:id", function(ctx) {
 			return {status: 200, body: {userId: ctx.params.id}};
 		});
 
-		router.get("/posts/:postId/comments/:commentId", function(ctx) {
+		$router.get("/posts/:postId/comments/:commentId", function(ctx) {
 			return {
 				status: 200,
 				body: {postId: ctx.params.postId, commentId: ctx.params.commentId}
@@ -75,7 +75,7 @@ func TestJS_Router_QueryParams(t *testing.T) {
 	routerModule := h.SetupRouter()
 
 	h.MustRun(t, `
-		router.get("/search", function(ctx) {
+		$router.get("/search", function(ctx) {
 			return {
 				status: 200,
 				body: {
@@ -106,11 +106,11 @@ func TestJS_Router_PostBody(t *testing.T) {
 	routerModule := h.SetupRouter()
 
 	h.MustRun(t, `
-		router.post("/users", function(ctx) {
+		$router.post("/users", function(ctx) {
 			if (!ctx.body) {
-				return router.response(400, {error: "body required"});
+				return $router.response(400, {error: "body required"});
 			}
-			return router.response(201, {
+			return $router.response(201, {
 				created: true,
 				name: ctx.body.name,
 				email: ctx.body.email
@@ -141,7 +141,7 @@ func TestJS_Router_NotFound(t *testing.T) {
 	routerModule := h.SetupRouter()
 
 	h.MustRun(t, `
-		router.get("/exists", function(ctx) {
+		$router.get("/exists", function(ctx) {
 			return {status: 200, body: "ok"};
 		});
 	`)
@@ -161,7 +161,7 @@ func TestJS_Router_MethodNotAllowed(t *testing.T) {
 	routerModule := h.SetupRouter()
 
 	h.MustRun(t, `
-		router.get("/only-get", function(ctx) {
+		$router.get("/only-get", function(ctx) {
 			return {status: 200, body: "ok"};
 		});
 	`)
@@ -178,7 +178,7 @@ func TestJS_Router_HandlerThrows(t *testing.T) {
 	routerModule := h.SetupRouter()
 
 	h.MustRun(t, `
-		router.get("/crash", function(ctx) {
+		$router.get("/crash", function(ctx) {
 			throw new Error("Intentional crash");
 		});
 	`)
@@ -195,7 +195,7 @@ func TestJS_Router_HandlerReturnsUndefined(t *testing.T) {
 	routerModule := h.SetupRouter()
 
 	h.MustRun(t, `
-		router.get("/undefined", function(ctx) {
+		$router.get("/undefined", function(ctx) {
 			// no return
 		});
 	`)
@@ -214,7 +214,7 @@ func TestJS_Router_HandlerReturnsNull(t *testing.T) {
 	routerModule := h.SetupRouter()
 
 	h.MustRun(t, `
-		router.get("/null", function(ctx) {
+		$router.get("/null", function(ctx) {
 			return null;
 		});
 	`)
@@ -233,10 +233,10 @@ func TestJS_Router_InfiniteLoop(t *testing.T) {
 	routerModule := h.SetupRouter()
 
 	h.MustRun(t, `
-		router.get("/loop", function(ctx) {
+		$router.get("/loop", function(ctx) {
 			var count = 0;
 			while (count < 1000000) { count++; }
-			return router.response(200, {count: count});
+			return $router.response(200, {count: count});
 		});
 	`)
 
@@ -267,9 +267,9 @@ func TestJS_Router_SequentialMultipleRequests(t *testing.T) {
 
 	h.MustRun(t, `
 		var requestCount = 0;
-		router.get("/sequential", function(ctx) {
+		$router.get("/sequential", function(ctx) {
 			requestCount++;
-			return router.response(200, {
+			return $router.response(200, {
 				id: ctx.query.id || "unknown",
 				count: requestCount
 			});
@@ -315,12 +315,12 @@ func TestJS_Router_Headers(t *testing.T) {
 	routerModule := h.SetupRouter()
 
 	h.MustRun(t, `
-		router.get("/auth", function(ctx) {
+		$router.get("/auth", function(ctx) {
 			var auth = ctx.headers["Authorization"];
 			if (!auth) {
-				return router.response(401, {error: "No auth header"});
+				return $router.response(401, {error: "No auth header"});
 			}
-			return router.response(200, {auth: auth});
+			return $router.response(200, {auth: auth});
 		});
 	`)
 
@@ -346,8 +346,8 @@ func TestJS_Router_ResponseHelper(t *testing.T) {
 	routerModule := h.SetupRouter()
 
 	h.MustRun(t, `
-		router.get("/helper", function(ctx) {
-			return router.response(201, {message: "created"});
+		$router.get("/helper", function(ctx) {
+			return $router.response(201, {message: "created"});
 		});
 	`)
 
@@ -366,17 +366,17 @@ func TestJS_Router_AllMethods(t *testing.T) {
 	routerModule := h.SetupRouter()
 
 	h.MustRun(t, `
-		router.get("/resource", function(ctx) {
-			return router.response(200, {method: "GET"});
+		$router.get("/resource", function(ctx) {
+			return $router.response(200, {method: "GET"});
 		});
-		router.post("/resource", function(ctx) {
-			return router.response(201, {method: "POST"});
+		$router.post("/resource", function(ctx) {
+			return $router.response(201, {method: "POST"});
 		});
-		router.put("/resource", function(ctx) {
-			return router.response(200, {method: "PUT"});
+		$router.put("/resource", function(ctx) {
+			return $router.response(200, {method: "PUT"});
 		});
-		router.delete("/resource", function(ctx) {
-			return router.response(204, {method: "DELETE"});
+		$router.delete("/resource", function(ctx) {
+			return $router.response(204, {method: "DELETE"});
 		});
 	`)
 

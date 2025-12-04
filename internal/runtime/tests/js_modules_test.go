@@ -312,22 +312,22 @@ func TestJS_Env_Has(t *testing.T) {
 func TestJS_Env_TypedGetters(t *testing.T) {
 	h := NewJSTestHelper(t)
 
-	result := h.MustRun(t, `$env.getInt("NUMBER_VAR", 0)`)
+	result := h.MustRun(t, `$$env.getInt("NUMBER_VAR", 0)`)
 	if result.ToInteger() != 42 {
 		t.Errorf("getInt should return 42, got %d", result.ToInteger())
 	}
 
-	result = h.MustRun(t, `$env.getInt("NOT_EXISTS", 99)`)
+	result = h.MustRun(t, `$$env.getInt("NOT_EXISTS", 99)`)
 	if result.ToInteger() != 99 {
 		t.Errorf("getInt should return default 99, got %d", result.ToInteger())
 	}
 
-	result = h.MustRun(t, `$env.getFloat("FLOAT_VAR", 0)`)
+	result = h.MustRun(t, `$$env.getFloat("FLOAT_VAR", 0)`)
 	if result.ToFloat() != 3.14 {
 		t.Errorf("getFloat should return 3.14, got %f", result.ToFloat())
 	}
 
-	result = h.MustRun(t, `$env.getBool("BOOL_VAR", false)`)
+	result = h.MustRun(t, `$$env.getBool("BOOL_VAR", false)`)
 	if !result.ToBoolean() {
 		t.Error("getBool should return true")
 	}
