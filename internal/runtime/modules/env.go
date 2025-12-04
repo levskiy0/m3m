@@ -2,6 +2,8 @@ package modules
 
 import (
 	"fmt"
+	"strconv"
+	"strings"
 )
 
 type EnvModule struct {
@@ -63,6 +65,11 @@ func (e *EnvModule) GetInt(key string, defaultValue int) int {
 		return int(v)
 	case float32:
 		return int(v)
+	case string:
+		if i, err := strconv.Atoi(strings.TrimSpace(v)); err == nil {
+			return i
+		}
+		return defaultValue
 	default:
 		return defaultValue
 	}
@@ -83,6 +90,11 @@ func (e *EnvModule) GetFloat(key string, defaultValue float64) float64 {
 		return float64(v)
 	case int64:
 		return float64(v)
+	case string:
+		if f, err := strconv.ParseFloat(strings.TrimSpace(v), 64); err == nil {
+			return f
+		}
+		return defaultValue
 	default:
 		return defaultValue
 	}
@@ -94,10 +106,21 @@ func (e *EnvModule) GetBool(key string, defaultValue bool) bool {
 	if !ok {
 		return defaultValue
 	}
-	if b, ok := val.(bool); ok {
-		return b
+	switch v := val.(type) {
+	case bool:
+		return v
+	case string:
+		s := strings.ToLower(strings.TrimSpace(v))
+		if s == "true" || s == "1" || s == "yes" || s == "on" {
+			return true
+		}
+		if s == "false" || s == "0" || s == "no" || s == "off" {
+			return false
+		}
+		return defaultValue
+	default:
+		return defaultValue
 	}
-	return defaultValue
 }
 
 // GetAll returns a copy of all environment variables

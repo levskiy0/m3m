@@ -24,6 +24,9 @@ func (c *CryptoModule) SHA256(data string) string {
 }
 
 func (c *CryptoModule) RandomBytes(length int) string {
+	if length <= 0 {
+		return ""
+	}
 	bytes := make([]byte, length)
 	rand.Read(bytes)
 	return hex.EncodeToString(bytes)
