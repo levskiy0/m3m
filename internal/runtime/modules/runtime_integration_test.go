@@ -193,6 +193,11 @@ func (h *TestHelper) ClearLogs() {
 	h.logs = []string{}
 }
 
+// newTestLogger creates a logger for testing that writes to stdout
+func newTestLogger() *LoggerModule {
+	return &LoggerModule{}
+}
+
 // ============== CRYPTO MODULE TESTS ==============
 
 func TestJS_Crypto_MD5(t *testing.T) {
