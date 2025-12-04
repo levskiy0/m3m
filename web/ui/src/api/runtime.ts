@@ -37,7 +37,7 @@ export const runtimeApi = {
   },
 
   getTypes: async (): Promise<string> => {
-    return api.get<string>('/runtime/types');
+    return api.getText('/api/runtime/types');
   },
 
   listPlugins: async (): Promise<Plugin[]> => {

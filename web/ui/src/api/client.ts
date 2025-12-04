@@ -67,6 +67,31 @@ export class ApiClient {
     return this.request<T>(endpoint, { method: 'GET' });
   }
 
+  async getText(endpoint: string): Promise<string> {
+    const token = getToken();
+
+    const headers: HeadersInit = {};
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    const response = await fetch(`${this.baseURL}${endpoint}`, {
+      method: 'GET',
+      headers,
+    });
+
+    if (!response.ok) {
+      if (response.status === 401) {
+        removeToken();
+        window.location.href = '/login';
+        throw new Error('Unauthorized');
+      }
+      throw new Error('Request failed');
+    }
+
+    return response.text();
+  }
+
   async post<T>(endpoint: string, data?: unknown): Promise<T> {
     return this.request<T>(endpoint, {
       method: 'POST',
