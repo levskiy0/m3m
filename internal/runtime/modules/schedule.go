@@ -99,6 +99,20 @@ func (s *ScheduleModule) IsStarted() bool {
 	return s.started
 }
 
+// Name returns the module name for JavaScript
+func (s *ScheduleModule) Name() string {
+	return "schedule"
+}
+
+// Register registers the module into the JavaScript VM
+func (s *ScheduleModule) Register(vm interface{}) {
+	vm.(*goja.Runtime).Set(s.Name(), map[string]interface{}{
+		"daily":  s.Daily,
+		"hourly": s.Hourly,
+		"cron":   s.Cron,
+	})
+}
+
 // GetSchema implements JSSchemaProvider
 func (s *ScheduleModule) GetSchema() JSModuleSchema {
 	return JSModuleSchema{

@@ -19,6 +19,18 @@ func NewDelayedModule(poolSize int) *DelayedModule {
 	}
 }
 
+// Name returns the module name for JavaScript
+func (d *DelayedModule) Name() string {
+	return "delayed"
+}
+
+// Register registers the module into the JavaScript VM
+func (d *DelayedModule) Register(vm interface{}) {
+	vm.(*goja.Runtime).Set(d.Name(), map[string]interface{}{
+		"run": d.Run,
+	})
+}
+
 func (d *DelayedModule) Run(handler goja.Callable) {
 	go func() {
 		// Acquire semaphore

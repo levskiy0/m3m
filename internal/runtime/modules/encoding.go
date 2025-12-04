@@ -4,12 +4,31 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"net/url"
+
+	"github.com/dop251/goja"
 )
 
 type EncodingModule struct{}
 
 func NewEncodingModule() *EncodingModule {
 	return &EncodingModule{}
+}
+
+// Name returns the module name for JavaScript
+func (e *EncodingModule) Name() string {
+	return "encoding"
+}
+
+// Register registers the module into the JavaScript VM
+func (e *EncodingModule) Register(vm interface{}) {
+	vm.(*goja.Runtime).Set(e.Name(), map[string]interface{}{
+		"base64Encode":  e.Base64Encode,
+		"base64Decode":  e.Base64Decode,
+		"jsonParse":     e.JSONParse,
+		"jsonStringify": e.JSONStringify,
+		"urlEncode":     e.URLEncode,
+		"urlDecode":     e.URLDecode,
+	})
 }
 
 func (e *EncodingModule) Base64Encode(data string) string {

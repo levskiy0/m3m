@@ -52,6 +52,24 @@ func (r *RouterModule) SetVM(vm *goja.Runtime) {
 	r.vm = vm
 }
 
+// Name returns the module name for JavaScript
+func (r *RouterModule) Name() string {
+	return "router"
+}
+
+// Register registers the module into the JavaScript VM
+func (r *RouterModule) Register(vm interface{}) {
+	v := vm.(*goja.Runtime)
+	r.SetVM(v)
+	v.Set(r.Name(), map[string]interface{}{
+		"get":      r.Get,
+		"post":     r.Post,
+		"put":      r.Put,
+		"delete":   r.Delete,
+		"response": r.Response,
+	})
+}
+
 func (r *RouterModule) addRoute(method, path string, handler goja.Callable) {
 	r.mu.Lock()
 	defer r.mu.Unlock()

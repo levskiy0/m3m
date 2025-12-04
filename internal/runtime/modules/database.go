@@ -3,6 +3,7 @@ package modules
 import (
 	"context"
 
+	"github.com/dop251/goja"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 
 	"m3m/internal/domain"
@@ -19,6 +20,18 @@ func NewDatabaseModule(modelService *service.ModelService, projectID primitive.O
 		modelService: modelService,
 		projectID:    projectID,
 	}
+}
+
+// Name returns the module name for JavaScript
+func (d *DatabaseModule) Name() string {
+	return "database"
+}
+
+// Register registers the module into the JavaScript VM
+func (d *DatabaseModule) Register(vm interface{}) {
+	vm.(*goja.Runtime).Set(d.Name(), map[string]interface{}{
+		"collection": d.Collection,
+	})
 }
 
 type CollectionWrapper struct {

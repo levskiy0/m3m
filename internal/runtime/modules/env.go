@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+
+	"github.com/dop251/goja"
 )
 
 type EnvModule struct {
@@ -15,6 +17,25 @@ func NewEnvModule(vars map[string]interface{}) *EnvModule {
 		vars = make(map[string]interface{})
 	}
 	return &EnvModule{vars: vars}
+}
+
+// Name returns the module name for JavaScript
+func (e *EnvModule) Name() string {
+	return "env"
+}
+
+// Register registers the module into the JavaScript VM
+func (e *EnvModule) Register(vm interface{}) {
+	vm.(*goja.Runtime).Set(e.Name(), map[string]interface{}{
+		"get":       e.Get,
+		"has":       e.Has,
+		"keys":      e.Keys,
+		"getString": e.GetString,
+		"getInt":    e.GetInt,
+		"getFloat":  e.GetFloat,
+		"getBool":   e.GetBool,
+		"getAll":    e.GetAll,
+	})
 }
 
 // Get returns the value for the given key, or nil if not found

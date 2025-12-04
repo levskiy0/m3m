@@ -364,157 +364,47 @@ func (m *Manager) registerModules(
 ) error {
 	projectIDStr := projectID.Hex()
 
-	// Service lifecycle
-	vm.Set("service", serviceModule.GetJSObject())
+	// Pre-initialized modules (passed as arguments)
+	serviceModule.Register(vm)
+	loggerModule.Register(vm) // Also registers console
+	routerModule.Register(vm)
+	schedulerModule.Register(vm)
 
-	// Logger
-	vm.Set("logger", map[string]interface{}{
-		"debug": loggerModule.Debug,
-		"info":  loggerModule.Info,
-		"warn":  loggerModule.Warn,
-		"error": loggerModule.Error,
-	})
-
-	// Router
-	vm.Set("router", map[string]interface{}{
-		"get":      routerModule.Get,
-		"post":     routerModule.Post,
-		"put":      routerModule.Put,
-		"delete":   routerModule.Delete,
-		"response": routerModule.Response,
-	})
-
-	// Schedule
-	vm.Set("schedule", map[string]interface{}{
-		"daily":  schedulerModule.Daily,
-		"hourly": schedulerModule.Hourly,
-		"cron":   schedulerModule.Cron,
-	})
-
-	// Environment
+	// Environment-dependent modules
 	envModule := modules.NewEnvModule(envMap)
-	vm.Set("env", map[string]interface{}{
-		"get":       envModule.Get,
-		"has":       envModule.Has,
-		"keys":      envModule.Keys,
-		"getString": envModule.GetString,
-		"getInt":    envModule.GetInt,
-		"getFloat":  envModule.GetFloat,
-		"getBool":   envModule.GetBool,
-		"getAll":    envModule.GetAll,
-	})
+	envModule.Register(vm)
 
-	// SMTP
 	smtpModule := modules.NewSMTPModule(envModule)
-	vm.Set("smtp", map[string]interface{}{
-		"send":     smtpModule.Send,
-		"sendHTML": smtpModule.SendHTML,
-	})
+	smtpModule.Register(vm)
 
-	// Storage
+	// Storage-dependent modules
 	storageModule := modules.NewStorageModule(m.storageService, projectIDStr)
-	vm.Set("storage", map[string]interface{}{
-		"read":   storageModule.Read,
-		"write":  storageModule.Write,
-		"exists": storageModule.Exists,
-		"delete": storageModule.Delete,
-		"list":   storageModule.List,
-		"mkdir":  storageModule.MkDir,
-	})
+	storageModule.Register(vm)
 
-	// Image
 	imageModule := modules.NewImageModule(m.storageService, projectIDStr)
-	vm.Set("image", map[string]interface{}{
-		"info":            imageModule.Info,
-		"resize":          imageModule.Resize,
-		"resizeKeepRatio": imageModule.ResizeKeepRatio,
-		"crop":            imageModule.Crop,
-		"thumbnail":       imageModule.Thumbnail,
-		"readAsBase64":    imageModule.ReadAsBase64,
-	})
+	imageModule.Register(vm)
 
-	// Draw (Canvas)
 	drawModule := modules.NewDrawModule(m.storageService, projectIDStr)
-	vm.Set("draw", map[string]interface{}{
-		"createCanvas": drawModule.CreateCanvas,
-		"loadImage":    drawModule.LoadImage,
-	})
+	drawModule.Register(vm)
 
-	// Database
+	// Service-dependent modules
 	databaseModule := modules.NewDatabaseModule(m.modelService, projectID)
-	vm.Set("database", map[string]interface{}{
-		"collection": databaseModule.Collection,
-	})
+	databaseModule.Register(vm)
 
-	// Goals
 	goalsModule := modules.NewGoalsModule(m.goalService, projectID)
-	vm.Set("goals", map[string]interface{}{
-		"increment": goalsModule.Increment,
-		"getValue":  goalsModule.GetValue,
-		"getStats":  goalsModule.GetStats,
-		"list":      goalsModule.List,
-		"get":       goalsModule.Get,
-	})
+	goalsModule.Register(vm)
 
-	// HTTP
+	// Stateless modules
 	httpModule := modules.NewHTTPModule(m.config.Runtime.Timeout)
-	vm.Set("http", map[string]interface{}{
-		"get":    httpModule.Get,
-		"post":   httpModule.Post,
-		"put":    httpModule.Put,
-		"delete": httpModule.Delete,
-	})
+	httpModule.Register(vm)
 
-	// Crypto
-	cryptoModule := modules.NewCryptoModule()
-	vm.Set("crypto", map[string]interface{}{
-		"md5":         cryptoModule.MD5,
-		"sha256":      cryptoModule.SHA256,
-		"randomBytes": cryptoModule.RandomBytes,
-	})
+	modules.NewCryptoModule().Register(vm)
+	modules.NewEncodingModule().Register(vm)
+	modules.NewUtilsModule().Register(vm)
+	modules.NewValidatorModule().Register(vm)
 
-	// Encoding
-	encodingModule := modules.NewEncodingModule()
-	vm.Set("encoding", map[string]interface{}{
-		"base64Encode":  encodingModule.Base64Encode,
-		"base64Decode":  encodingModule.Base64Decode,
-		"jsonParse":     encodingModule.JSONParse,
-		"jsonStringify": encodingModule.JSONStringify,
-		"urlEncode":     encodingModule.URLEncode,
-		"urlDecode":     encodingModule.URLDecode,
-	})
-
-	// Utils
-	utilsModule := modules.NewUtilsModule()
-	vm.Set("utils", map[string]interface{}{
-		"sleep":        utilsModule.Sleep,
-		"random":       utilsModule.Random,
-		"randomInt":    utilsModule.RandomInt,
-		"uuid":         utilsModule.UUID,
-		"slugify":      utilsModule.Slugify,
-		"truncate":     utilsModule.Truncate,
-		"capitalize":   utilsModule.Capitalize,
-		"regexMatch":   utilsModule.RegexMatch,
-		"regexReplace": utilsModule.RegexReplace,
-		"formatDate":   utilsModule.FormatDate,
-		"parseDate":    utilsModule.ParseDate,
-		"timestamp":    utilsModule.Timestamp,
-	})
-
-	// Delayed
 	delayedModule := modules.NewDelayedModule(m.config.Runtime.WorkerPoolSize)
-	vm.Set("delayed", map[string]interface{}{
-		"run": delayedModule.Run,
-	})
-
-	// Console (alias for logger)
-	vm.Set("console", map[string]interface{}{
-		"log":   loggerModule.Info,
-		"info":  loggerModule.Info,
-		"warn":  loggerModule.Warn,
-		"error": loggerModule.Error,
-		"debug": loggerModule.Debug,
-	})
+	delayedModule.Register(vm)
 
 	return nil
 }

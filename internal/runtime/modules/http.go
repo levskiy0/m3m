@@ -6,10 +6,27 @@ import (
 	"io"
 	"net/http"
 	"time"
+
+	"github.com/dop251/goja"
 )
 
 type HTTPModule struct {
 	client *http.Client
+}
+
+// Name returns the module name for JavaScript
+func (h *HTTPModule) Name() string {
+	return "http"
+}
+
+// Register registers the module into the JavaScript VM
+func (h *HTTPModule) Register(vm interface{}) {
+	vm.(*goja.Runtime).Set(h.Name(), map[string]interface{}{
+		"get":    h.Get,
+		"post":   h.Post,
+		"put":    h.Put,
+		"delete": h.Delete,
+	})
 }
 
 type HTTPResponse struct {

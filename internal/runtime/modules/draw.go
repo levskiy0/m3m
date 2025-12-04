@@ -9,6 +9,7 @@ import (
 	"image/png"
 	"strings"
 
+	"github.com/dop251/goja"
 	"github.com/fogleman/gg"
 
 	"m3m/internal/service"
@@ -35,6 +36,19 @@ func NewDrawModule(storage *service.StorageService, projectID string) *DrawModul
 		storage:   storage,
 		projectID: projectID,
 	}
+}
+
+// Name returns the module name for JavaScript
+func (d *DrawModule) Name() string {
+	return "draw"
+}
+
+// Register registers the module into the JavaScript VM
+func (d *DrawModule) Register(vm interface{}) {
+	vm.(*goja.Runtime).Set(d.Name(), map[string]interface{}{
+		"createCanvas": d.CreateCanvas,
+		"loadImage":    d.LoadImage,
+	})
 }
 
 // CreateCanvas creates a new canvas with the specified dimensions

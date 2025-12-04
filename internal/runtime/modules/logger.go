@@ -5,6 +5,8 @@ import (
 	"os"
 	"sync"
 	"time"
+
+	"github.com/dop251/goja"
 )
 
 type LoggerModule struct {
@@ -19,6 +21,32 @@ func NewLoggerModule(logPath string) *LoggerModule {
 		return &LoggerModule{file: os.Stdout}
 	}
 	return &LoggerModule{file: file}
+}
+
+// Name returns the module name for JavaScript
+func (l *LoggerModule) Name() string {
+	return "logger"
+}
+
+// Register registers the module into the JavaScript VM
+func (l *LoggerModule) Register(vm interface{}) {
+	v := vm.(*goja.Runtime)
+	methods := map[string]interface{}{
+		"debug": l.Debug,
+		"info":  l.Info,
+		"warn":  l.Warn,
+		"error": l.Error,
+	}
+	v.Set(l.Name(), methods)
+
+	// Also register console as an alias
+	v.Set("console", map[string]interface{}{
+		"log":   l.Info,
+		"info":  l.Info,
+		"warn":  l.Warn,
+		"error": l.Error,
+		"debug": l.Debug,
+	})
 }
 
 func (l *LoggerModule) log(level string, args ...interface{}) {

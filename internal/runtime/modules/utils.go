@@ -7,6 +7,7 @@ import (
 	"time"
 	"unicode"
 
+	"github.com/dop251/goja"
 	"github.com/google/uuid"
 )
 
@@ -14,6 +15,29 @@ type UtilsModule struct{}
 
 func NewUtilsModule() *UtilsModule {
 	return &UtilsModule{}
+}
+
+// Name returns the module name for JavaScript
+func (u *UtilsModule) Name() string {
+	return "utils"
+}
+
+// Register registers the module into the JavaScript VM
+func (u *UtilsModule) Register(vm interface{}) {
+	vm.(*goja.Runtime).Set(u.Name(), map[string]interface{}{
+		"sleep":        u.Sleep,
+		"random":       u.Random,
+		"randomInt":    u.RandomInt,
+		"uuid":         u.UUID,
+		"slugify":      u.Slugify,
+		"truncate":     u.Truncate,
+		"capitalize":   u.Capitalize,
+		"regexMatch":   u.RegexMatch,
+		"regexReplace": u.RegexReplace,
+		"formatDate":   u.FormatDate,
+		"parseDate":    u.ParseDate,
+		"timestamp":    u.Timestamp,
+	})
 }
 
 func (u *UtilsModule) Sleep(ms int) {

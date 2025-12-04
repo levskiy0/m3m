@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/dop251/goja"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 
 	"m3m/internal/domain"
@@ -36,6 +37,22 @@ func NewGoalsModule(goalService *service.GoalService, projectID primitive.Object
 		goalService: goalService,
 		projectID:   projectID,
 	}
+}
+
+// Name returns the module name for JavaScript
+func (g *GoalsModule) Name() string {
+	return "goals"
+}
+
+// Register registers the module into the JavaScript VM
+func (g *GoalsModule) Register(vm interface{}) {
+	vm.(*goja.Runtime).Set(g.Name(), map[string]interface{}{
+		"increment": g.Increment,
+		"getValue":  g.GetValue,
+		"getStats":  g.GetStats,
+		"list":      g.List,
+		"get":       g.Get,
+	})
 }
 
 // Increment increments a goal counter by the specified value (default 1)

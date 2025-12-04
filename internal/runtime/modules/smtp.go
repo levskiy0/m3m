@@ -5,10 +5,25 @@ import (
 	"fmt"
 	"net/smtp"
 	"strings"
+
+	"github.com/dop251/goja"
 )
 
 type SMTPModule struct {
 	envModule *EnvModule
+}
+
+// Name returns the module name for JavaScript
+func (m *SMTPModule) Name() string {
+	return "smtp"
+}
+
+// Register registers the module into the JavaScript VM
+func (m *SMTPModule) Register(vm interface{}) {
+	vm.(*goja.Runtime).Set(m.Name(), map[string]interface{}{
+		"send":     m.Send,
+		"sendHTML": m.SendHTML,
+	})
 }
 
 type EmailOptions struct {

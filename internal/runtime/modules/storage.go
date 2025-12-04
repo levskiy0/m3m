@@ -2,6 +2,8 @@ package modules
 
 import (
 	"m3m/internal/service"
+
+	"github.com/dop251/goja"
 )
 
 type StorageModule struct {
@@ -14,6 +16,23 @@ func NewStorageModule(storage *service.StorageService, projectID string) *Storag
 		storage:   storage,
 		projectID: projectID,
 	}
+}
+
+// Name returns the module name for JavaScript
+func (s *StorageModule) Name() string {
+	return "storage"
+}
+
+// Register registers the module into the JavaScript VM
+func (s *StorageModule) Register(vm interface{}) {
+	vm.(*goja.Runtime).Set(s.Name(), map[string]interface{}{
+		"read":   s.Read,
+		"write":  s.Write,
+		"exists": s.Exists,
+		"delete": s.Delete,
+		"list":   s.List,
+		"mkdir":  s.MkDir,
+	})
 }
 
 func (s *StorageModule) Read(path string) string {

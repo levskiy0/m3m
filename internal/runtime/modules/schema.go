@@ -41,6 +41,15 @@ type JSSchemaProvider interface {
 	GetSchema() JSModuleSchema
 }
 
+// JSModule interface for self-registering modules
+type JSModule interface {
+	JSSchemaProvider
+	// Name returns the module name as it appears in JavaScript (e.g., "validator", "crypto")
+	Name() string
+	// Register registers the module's methods into the JavaScript VM
+	Register(vm interface{})
+}
+
 // GenerateTypeScript generates TypeScript declaration from schema
 func (s *JSModuleSchema) GenerateTypeScript() string {
 	var sb strings.Builder

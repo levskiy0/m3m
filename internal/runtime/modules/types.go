@@ -15,6 +15,7 @@ func GetAllSchemas() []JSModuleSchema {
 		GetCryptoSchema(),
 		GetEncodingSchema(),
 		GetUtilsSchema(),
+		GetValidatorSchema(),
 		GetDelayedSchema(),
 		GetServiceSchema(),
 		GetImageSchema(),

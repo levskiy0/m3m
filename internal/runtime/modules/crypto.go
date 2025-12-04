@@ -5,12 +5,28 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
+
+	"github.com/dop251/goja"
 )
 
 type CryptoModule struct{}
 
 func NewCryptoModule() *CryptoModule {
 	return &CryptoModule{}
+}
+
+// Name returns the module name for JavaScript
+func (c *CryptoModule) Name() string {
+	return "crypto"
+}
+
+// Register registers the module into the JavaScript VM
+func (c *CryptoModule) Register(vm interface{}) {
+	vm.(*goja.Runtime).Set(c.Name(), map[string]interface{}{
+		"md5":         c.MD5,
+		"sha256":      c.SHA256,
+		"randomBytes": c.RandomBytes,
+	})
 }
 
 func (c *CryptoModule) MD5(data string) string {

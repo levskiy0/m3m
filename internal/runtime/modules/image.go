@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/dop251/goja"
 	"golang.org/x/image/draw"
 
 	"m3m/internal/service"
@@ -30,6 +31,23 @@ func NewImageModule(storage *service.StorageService, projectID string) *ImageMod
 		storage:   storage,
 		projectID: projectID,
 	}
+}
+
+// Name returns the module name for JavaScript
+func (m *ImageModule) Name() string {
+	return "image"
+}
+
+// Register registers the module into the JavaScript VM
+func (m *ImageModule) Register(vm interface{}) {
+	vm.(*goja.Runtime).Set(m.Name(), map[string]interface{}{
+		"info":            m.Info,
+		"resize":          m.Resize,
+		"resizeKeepRatio": m.ResizeKeepRatio,
+		"crop":            m.Crop,
+		"thumbnail":       m.Thumbnail,
+		"readAsBase64":    m.ReadAsBase64,
+	})
 }
 
 // Info returns information about an image (width, height, format)

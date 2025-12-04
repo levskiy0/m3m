@@ -156,6 +156,49 @@ func (h *JSTestHelper) registerModules(vm *goja.Runtime) {
 		"put":    httpModule.Put,
 		"delete": httpModule.Delete,
 	})
+
+	// Validator
+	validatorModule := modules.NewValidatorModule()
+	vm.Set("validator", map[string]interface{}{
+		"struct":         validatorModule.Struct,
+		"var":            validatorModule.Var,
+		"isValid":        validatorModule.IsValid,
+		"isEmail":        validatorModule.IsEmail,
+		"isURL":          validatorModule.IsURL,
+		"isUUID":         validatorModule.IsUUID,
+		"isUUIDv4":       validatorModule.IsUUIDv4,
+		"isNumeric":      validatorModule.IsNumeric,
+		"isAlpha":        validatorModule.IsAlpha,
+		"isAlphanumeric": validatorModule.IsAlphanumeric,
+		"isJSON":         validatorModule.IsJSON,
+		"isBase64":       validatorModule.IsBase64,
+		"isIP":           validatorModule.IsIP,
+		"isIPv4":         validatorModule.IsIPv4,
+		"isIPv6":         validatorModule.IsIPv6,
+		"isCIDR":         validatorModule.IsCIDR,
+		"isMAC":          validatorModule.IsMAC,
+		"isHexColor":     validatorModule.IsHexColor,
+		"isRGBColor":     validatorModule.IsRGBColor,
+		"isRGBAColor":    validatorModule.IsRGBAColor,
+		"isLatitude":     validatorModule.IsLatitude,
+		"isLongitude":    validatorModule.IsLongitude,
+		"isCreditCard":   validatorModule.IsCreditCard,
+		"isISBN":         validatorModule.IsISBN,
+		"contains":       validatorModule.Contains,
+		"startsWith":     validatorModule.StartsWith,
+		"endsWith":       validatorModule.EndsWith,
+		"minLength":      validatorModule.MinLength,
+		"maxLength":      validatorModule.MaxLength,
+		"length":         validatorModule.Length,
+		"lengthBetween":  validatorModule.LengthBetween,
+		"min":            validatorModule.Min,
+		"max":            validatorModule.Max,
+		"between":        validatorModule.Between,
+		"matches":        validatorModule.Matches,
+		"oneOf":          validatorModule.OneOf,
+		"notEmpty":       validatorModule.NotEmpty,
+		"required":       validatorModule.Required,
+	})
 }
 
 // Run executes JS code and returns the result
