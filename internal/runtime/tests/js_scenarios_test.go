@@ -1135,8 +1135,8 @@ func TestJS_Scenario_HTTPAggregator(t *testing.T) {
 
 		$router.get("/aggregate", function(ctx) {
 			// Make requests to external API
-			var usersResp = http.get(API_BASE + "/users");
-			var postsResp = http.get(API_BASE + "/posts");
+			var usersResp = $http.get(API_BASE + "/users");
+			var postsResp = $http.get(API_BASE + "/posts");
 
 			if (usersResp.status !== 200 || postsResp.status !== 200) {
 				return $router.response(502, {error: "Failed to fetch data from upstream"});
@@ -1162,8 +1162,8 @@ func TestJS_Scenario_HTTPAggregator(t *testing.T) {
 		$router.get("/users/:id/posts", function(ctx) {
 			var userId = parseInt(ctx.params.id);
 
-			var usersResp = http.get(API_BASE + "/users");
-			var postsResp = http.get(API_BASE + "/posts");
+			var usersResp = $http.get(API_BASE + "/users");
+			var postsResp = $http.get(API_BASE + "/posts");
 
 			if (usersResp.status !== 200) {
 				return $router.response(502, {error: "Failed to fetch users"});
