@@ -14,29 +14,29 @@ import (
 )
 
 // ============== SCENARIO 1: URL SHORTENER SERVICE ==============
-// Сервис сокращения ссылок с хранением в памяти
+// URL shortener service with in-memory storage
 
 func TestJS_Scenario_URLShortener(t *testing.T) {
 	h := NewJSTestHelper(t)
 	routerModule := h.SetupRouter()
 
-	// Создаём сервис сокращения ссылок
+	// Create URL shortener service
 	h.MustRun(t, `
 		var links = {};
 
-		// Создание короткой ссылки
+		// Create short link
 		router.post("/shorten", function(ctx) {
 			if (!ctx.body || !ctx.body.url) {
 				return router.response(400, {error: "URL is required"});
 			}
 
 			var url = ctx.body.url;
-			// Валидация URL
+			// URL validation
 			if (!url.startsWith("http://") && !url.startsWith("https://")) {
 				return router.response(400, {error: "Invalid URL format"});
 			}
 
-			// Генерируем короткий код
+			// Generate short code
 			var shortCode = crypto.md5(url + utils.timestamp()).substring(0, 8);
 			links[shortCode] = {
 				url: url,
@@ -50,7 +50,7 @@ func TestJS_Scenario_URLShortener(t *testing.T) {
 			});
 		});
 
-		// Редирект по короткой ссылке
+		// Redirect by short link
 		router.get("/r/:code", function(ctx) {
 			var code = ctx.params.code;
 			var link = links[code];
@@ -66,7 +66,7 @@ func TestJS_Scenario_URLShortener(t *testing.T) {
 			});
 		});
 
-		// Статистика ссылки
+		// Link statistics
 		router.get("/stats/:code", function(ctx) {
 			var link = links[ctx.params.code];
 			if (!link) {
@@ -80,7 +80,7 @@ func TestJS_Scenario_URLShortener(t *testing.T) {
 		});
 	`)
 
-	// Тест 1: Создание короткой ссылки
+	// Test 1: Create short link
 	ctx := &modules.RequestContext{
 		Method: "POST",
 		Path:   "/shorten",
