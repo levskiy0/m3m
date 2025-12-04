@@ -95,7 +95,7 @@ func (r *PipelineRepository) FindBranchesByProject(ctx context.Context, projectI
 	}
 	defer cursor.Close(ctx)
 
-	var branches []*domain.Branch
+	branches := make([]*domain.Branch, 0)
 	if err := cursor.All(ctx, &branches); err != nil {
 		return nil, err
 	}
@@ -164,7 +164,7 @@ func (r *PipelineRepository) FindReleasesByProject(ctx context.Context, projectI
 	}
 	defer cursor.Close(ctx)
 
-	var releases []*domain.Release
+	releases := make([]*domain.Release, 0)
 	if err := cursor.All(ctx, &releases); err != nil {
 		return nil, err
 	}

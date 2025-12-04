@@ -83,7 +83,7 @@ func (r *GoalRepository) FindGlobalGoals(ctx context.Context) ([]*domain.Goal, e
 	}
 	defer cursor.Close(ctx)
 
-	var goals []*domain.Goal
+	goals := make([]*domain.Goal, 0)
 	if err := cursor.All(ctx, &goals); err != nil {
 		return nil, err
 	}
@@ -97,7 +97,7 @@ func (r *GoalRepository) FindByProject(ctx context.Context, projectID primitive.
 	}
 	defer cursor.Close(ctx)
 
-	var goals []*domain.Goal
+	goals := make([]*domain.Goal, 0)
 	if err := cursor.All(ctx, &goals); err != nil {
 		return nil, err
 	}
@@ -178,7 +178,7 @@ func (r *GoalRepository) GetStats(ctx context.Context, query *domain.GoalStatsQu
 	}
 	defer cursor.Close(ctx)
 
-	var stats []*domain.GoalStat
+	stats := make([]*domain.GoalStat, 0)
 	if err := cursor.All(ctx, &stats); err != nil {
 		return nil, err
 	}
