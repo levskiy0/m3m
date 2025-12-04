@@ -303,7 +303,14 @@ func (m *Manager) registerModules(
 	// Environment
 	envModule := modules.NewEnvModule(envMap)
 	vm.Set("env", map[string]interface{}{
-		"get": envModule.Get,
+		"get":       envModule.Get,
+		"has":       envModule.Has,
+		"keys":      envModule.Keys,
+		"getString": envModule.GetString,
+		"getInt":    envModule.GetInt,
+		"getFloat":  envModule.GetFloat,
+		"getBool":   envModule.GetBool,
+		"getAll":    envModule.GetAll,
 	})
 
 	// SMTP
@@ -345,6 +352,10 @@ func (m *Manager) registerModules(
 	goalsModule := modules.NewGoalsModule(m.goalService, projectID)
 	vm.Set("goals", map[string]interface{}{
 		"increment": goalsModule.Increment,
+		"getValue":  goalsModule.GetValue,
+		"getStats":  goalsModule.GetStats,
+		"list":      goalsModule.List,
+		"get":       goalsModule.Get,
 	})
 
 	// HTTP

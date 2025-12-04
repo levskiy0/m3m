@@ -26,7 +26,8 @@
       "Bash(pkill:*)",
       "Bash(lsof:*)",
       "Bash(xargs kill -9)",
-      "Bash(wc:*)"
+      "Bash(wc:*)",
+      "Bash(go get:*)"
     ],
     "deny": [],
     "ask": []

@@ -55,7 +55,29 @@ declare const schedule: {
 
 // Environment module
 declare const env: {
+    /** Get a value by key, returns undefined if not found */
     get(key: string): any;
+
+    /** Check if a key exists in the environment */
+    has(key: string): boolean;
+
+    /** Get all environment variable keys */
+    keys(): string[];
+
+    /** Get a string value with default fallback */
+    getString(key: string, defaultValue: string): string;
+
+    /** Get an integer value with default fallback */
+    getInt(key: string, defaultValue: number): number;
+
+    /** Get a float value with default fallback */
+    getFloat(key: string, defaultValue: number): number;
+
+    /** Get a boolean value with default fallback */
+    getBool(key: string, defaultValue: boolean): boolean;
+
+    /** Get all environment variables as a map */
+    getAll(): { [key: string]: any };
 };
 
 // SMTP module
@@ -136,8 +158,35 @@ declare const database: {
 };
 
 // Goals module
+interface GoalInfo {
+    id: string;
+    name: string;
+    slug: string;
+    type: 'counter' | 'daily_counter';
+    description: string;
+    color: string;
+}
+
+interface GoalStat {
+    date: string;
+    value: number;
+}
+
 declare const goals: {
+    /** Increment a goal counter by the specified value (default 1) */
     increment(slug: string, value?: number): boolean;
+
+    /** Get the current value of a goal (total for counter, today's value for daily_counter) */
+    getValue(slug: string): number;
+
+    /** Get statistics for a goal over a period of days (default 7) */
+    getStats(slug: string, days?: number): GoalStat[];
+
+    /** List all goals accessible by this project */
+    list(): GoalInfo[];
+
+    /** Get information about a specific goal by slug */
+    get(slug: string): GoalInfo | null;
 };
 
 // HTTP module
