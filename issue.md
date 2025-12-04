@@ -235,18 +235,6 @@ Root пользователь имеет доступ ко всем проект
 Собственно говоря это как раз таки `GOJA` запуск.
 
 `Runtiume API` - Это подключаемые модули:
-- `delayed`
-  - Выполнение задачи в горутине (размер пула настраивается в `config.yaml`)
-- `router`
-  - Можно сделать свой роутер аля `/bot-{id}/{route-name}`
-  ```
-    router.get('/health/:test', function(ctx) => {
-      return router.response(200, { ok: true })
-    })
-  ```
-- `schedule`
-  - Настройка задач на очередь
-  - `schedule.daily(() => { ... })`
 - `storage`
   - Доступ к файлам
 - `image`
@@ -305,6 +293,18 @@ Root пользователь имеет доступ ко всем проект
 		return err
 	} 
   ```
+- `delayed`
+    - Выполнение задачи в горутине (размер пула настраивается в `config.yaml`)
+- `router`
+    - Можно сделать свой роутер аля `/bot-{id}/{route-name}`
+  ```
+    router.get('/health/:test', function(ctx) => {
+      return router.response(200, { ok: true })
+    })
+  ```
+- `schedule`
+    - Настройка задач на очередь
+    - `schedule.daily(() => { ... })`
 - `и тд`
 
 Сервер должен формировать в разрезе существующих `Runtiume API` подсказки для `Monaco Editor`. 
