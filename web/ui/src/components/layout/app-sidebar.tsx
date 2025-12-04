@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link, useLocation, useParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import {
   ChevronRight,
   FolderCode,
@@ -40,7 +40,6 @@ import {
   SidebarContent,
   SidebarFooter,
   SidebarGroup,
-  SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
@@ -49,6 +48,7 @@ import {
   SidebarMenuSubButton,
   SidebarMenuSubItem,
   SidebarRail,
+  useSidebar,
 } from '@/components/ui/sidebar';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
@@ -71,15 +71,16 @@ function getInitials(name: string): string {
 
 export function AppSidebar() {
   const location = useLocation();
+  const navigate = useNavigate();
   const { projectId } = useParams();
   const { user, logout } = useAuth();
+  const { isMobile } = useSidebar();
 
   const { data: projects = [] } = useQuery({
     queryKey: ['projects'],
     queryFn: projectsApi.list,
   });
 
-  const [openProjects, setOpenProjects] = useState(true);
   const [openSettings, setOpenSettings] = useState(false);
 
   const currentProject = projects?.find((p) => p.id === projectId);
@@ -104,27 +105,92 @@ export function AppSidebar() {
     if (location.pathname.includes('/settings')) {
       setOpenSettings(true);
     }
-    if (location.pathname.includes('/projects')) {
-      setOpenProjects(true);
-    }
   }, [location.pathname]);
+
+  const handleProjectSelect = (id: string) => {
+    navigate(`/projects/${id}`);
+  };
+
+  const handleNewProject = () => {
+    navigate('/projects', { state: { openCreate: true } });
+  };
 
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton size="lg" asChild>
-              <Link to="/projects">
-                <div className="bg-primary text-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg">
-                  <FolderCode className="size-4" />
-                </div>
-                <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-semibold">M3M</span>
-                  <span className="truncate text-xs">Mini Services</span>
-                </div>
-              </Link>
-            </SidebarMenuButton>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <SidebarMenuButton
+                  size="lg"
+                  className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
+                >
+                  {currentProject ? (
+                    <>
+                      <div
+                        className="flex aspect-square size-8 items-center justify-center rounded-lg"
+                        style={{ backgroundColor: currentProject.color || '#6b7280' }}
+                      >
+                        <FolderCode className="size-4 text-white" />
+                      </div>
+                      <div className="grid flex-1 text-left text-sm leading-tight">
+                        <span className="truncate font-semibold">{currentProject.name}</span>
+                        <span className="truncate text-xs text-muted-foreground">
+                          {currentProject.status === 'running' ? 'Running' : 'Stopped'}
+                        </span>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="bg-primary text-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg">
+                        <FolderCode className="size-4" />
+                      </div>
+                      <div className="grid flex-1 text-left text-sm leading-tight">
+                        <span className="truncate font-semibold">M3M</span>
+                        <span className="truncate text-xs">Select project</span>
+                      </div>
+                    </>
+                  )}
+                  <ChevronsUpDown className="ml-auto" />
+                </SidebarMenuButton>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                className="w-(--radix-dropdown-menu-trigger-width) min-w-56 rounded-lg"
+                align="start"
+                side={isMobile ? 'bottom' : 'right'}
+                sideOffset={4}
+              >
+                <DropdownMenuLabel className="text-muted-foreground text-xs">
+                  Projects
+                </DropdownMenuLabel>
+                {projects?.map((project) => (
+                  <DropdownMenuItem
+                    key={project.id}
+                    onClick={() => handleProjectSelect(project.id)}
+                    className="gap-2 p-2"
+                  >
+                    <div
+                      className="flex size-6 items-center justify-center rounded-md"
+                      style={{ backgroundColor: project.color || '#6b7280' }}
+                    >
+                      <FolderCode className="size-3.5 shrink-0 text-white" />
+                    </div>
+                    <span className="flex-1">{project.name}</span>
+                    {project.status === 'running' && (
+                      <span className="size-2 rounded-full bg-green-500" />
+                    )}
+                  </DropdownMenuItem>
+                ))}
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleNewProject} className="gap-2 p-2">
+                  <div className="flex size-6 items-center justify-center rounded-md border bg-transparent">
+                    <Plus className="size-4" />
+                  </div>
+                  <span className="text-muted-foreground font-medium">New Project</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarHeader>
@@ -133,13 +199,6 @@ export function AppSidebar() {
         {/* Current Project Navigation */}
         {currentProject && projectNavItems.length > 0 && (
           <SidebarGroup>
-            <SidebarGroupLabel>
-              <span
-                className="mr-2 inline-block size-2 rounded-full"
-                style={{ backgroundColor: currentProject.color || '#6b7280' }}
-              />
-              {currentProject.name}
-            </SidebarGroupLabel>
             <SidebarMenu>
               {projectNavItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
@@ -158,56 +217,6 @@ export function AppSidebar() {
             </SidebarMenu>
           </SidebarGroup>
         )}
-
-        {/* Projects */}
-        <SidebarGroup>
-          <Collapsible open={openProjects} onOpenChange={setOpenProjects}>
-            <SidebarMenuItem>
-              <CollapsibleTrigger asChild>
-                <SidebarMenuButton tooltip="Projects">
-                  <FolderCode />
-                  <span>Projects</span>
-                  <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
-                </SidebarMenuButton>
-              </CollapsibleTrigger>
-              <CollapsibleContent>
-                <SidebarMenuSub>
-                  {projects?.map((project) => (
-                    <SidebarMenuSubItem key={project.id}>
-                      <SidebarMenuSubButton
-                        asChild
-                        isActive={projectId === project.id}
-                      >
-                        <Link to={`/projects/${project.id}`}>
-                          <span
-                            className="mr-2 inline-block size-2 rounded-full"
-                            style={{ backgroundColor: project.color || '#6b7280' }}
-                          />
-                          <span>{project.name}</span>
-                          {project.status === 'running' && (
-                            <span className="ml-auto size-2 rounded-full bg-green-500" />
-                          )}
-                        </Link>
-                      </SidebarMenuSubButton>
-                    </SidebarMenuSubItem>
-                  ))}
-                  <SidebarMenuSubItem>
-                    <SidebarMenuSubButton asChild>
-                      <Link
-                        to="/projects"
-                        className="text-muted-foreground"
-                        state={{ openCreate: true }}
-                      >
-                        <Plus className="size-4" />
-                        <span>New Project</span>
-                      </Link>
-                    </SidebarMenuSubButton>
-                  </SidebarMenuSubItem>
-                </SidebarMenuSub>
-              </CollapsibleContent>
-            </SidebarMenuItem>
-          </Collapsible>
-        </SidebarGroup>
 
         {/* Global Goals */}
         <SidebarGroup>
