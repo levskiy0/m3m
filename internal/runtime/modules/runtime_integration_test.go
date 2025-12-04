@@ -1,8 +1,16 @@
 package modules
 
 import (
+	"enco
+	"fmt"
+n"
+	"fmt"
+	
+	"net/http"
+	"net/http/httptest"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -68,10 +76,16 @@ func toString(v interface{}) string {
 	switch val := v.(type) {
 	case string:
 		return val
-	case int, int64, float64:
-		return goja.Undefined().String()
+	case int:
+		return fmt.Sprintf("%d", val)
+	case int64:
+		return fmt.Sprintf("%d", val)
+	case float64:
+		return fmt.Sprintf("%v", val)
+	case bool:
+		return fmt.Sprintf("%v", val)
 	default:
-		return goja.Undefined().String()
+		return fmt.Sprintf("%v", val)
 	}
 }
 
@@ -945,5 +959,852 @@ func TestJS_ServicePattern(t *testing.T) {
 	body = resp.Body.(map[string]interface{})
 	if body["md5"] != "098f6bcd4621d373cade4e832627b4f6" {
 		t.Errorf("MD5 hash incorrect: %v", body["md5"])
+	}
+}
+
+// ============== HTTP MODULE JS TESTS ==============
+
+func TestJS_HTTP_Get(t *testing.T) {
+	// Create test server
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "GET" {
+			t.Errorf("Expected GET, got %s", r.Method)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"message": "hello"}`))
+	}))
+	defer server.Close()
+
+	h := NewTestHelper(t)
+
+	// Register HTTP module
+	httpModule := NewHTTPModule(30 * time.Second)
+	h.VM.Set("http", map[string]interface{}{
+		"get":    httpModule.Get,
+		"post":   httpModule.Post,
+		"put":    httpModule.Put,
+		"delete": httpModule.Delete,
+	})
+
+	// Test GET request from JS
+	code := fmt.Sprintf(`
+		var resp = http.get("%s");
+		JSON.stringify({
+			status: resp.status,
+			body: resp.body
+		});
+	`, server.URL)
+
+	result := h.MustRun(t, code)
+	if !strings.Contains(result.String(), `"status":200`) {
+		t.Errorf("Expected status 200, got %s", result.String())
+	}
+	if !strings.Contains(result.String(), `"message":"hello"`) {
+		t.Errorf("Expected hello message, got %s", result.String())
+	}
+}
+
+func TestJS_HTTP_Post_WithBody(t *testing.T) {
+	var receivedBody string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body, _ := io.ReadAll(r.Body)
+		receivedBody = string(body)
+		w.WriteHeader(http.StatusCreated)
+		w.Write([]byte(`{"id": 123}`))
+	}))
+	defer server.Close()
+
+	h := NewTestHelper(t)
+	httpModule := NewHTTPModule(30 * time.Second)
+	h.VM.Set("http", map[string]interface{}{
+		"get":    httpModule.Get,
+		"post":   httpModule.Post,
+		"put":    httpModule.Put,
+		"delete": httpModule.Delete,
+	})
+
+	code := fmt.Sprintf(`
+		var resp = http.post("%s", {name: "test", value: 42});
+		resp.status;
+	`, server.URL)
+
+	result := h.MustRun(t, code)
+	if result.ToInteger() != 201 {
+		t.Errorf("Expected status 201, got %d", result.ToInteger())
+	}
+
+	if !strings.Contains(receivedBody, `"name":"test"`) {
+		t.Errorf("Body not serialized correctly: %s", receivedBody)
+	}
+}
+
+func TestJS_HTTP_Timeout(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		time.Sleep(200 * time.Millisecond)
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	h := NewTestHelper(t)
+	httpModule := NewHTTPModule(30 * time.Second)
+	h.VM.Set("http", map[string]interface{}{
+		"get":    httpModule.Get,
+		"post":   httpModule.Post,
+		"put":    httpModule.Put,
+		"delete": httpModule.Delete,
+	})
+
+	// Test timeout - should fail with status 0
+	code := fmt.Sprintf(`
+		var resp = http.get("%s", {timeout: 50});
+		resp.status;
+	`, server.URL)
+
+	result := h.MustRun(t, code)
+	if result.ToInteger() != 0 {
+		t.Errorf("Expected status 0 on timeout, got %d", result.ToInteger())
+	}
+}
+
+func TestJS_HTTP_InvalidURL(t *testing.T) {
+	h := NewTestHelper(t)
+	httpModule := NewHTTPModule(30 * time.Second)
+	h.VM.Set("http", map[string]interface{}{
+		"get":    httpModule.Get,
+		"post":   httpModule.Post,
+		"put":    httpModule.Put,
+		"delete": httpModule.Delete,
+	})
+
+	// Invalid URL should return status 0
+	result := h.MustRun(t, `
+		var resp = http.get("://invalid");
+		resp.status;
+	`)
+
+	if result.ToInteger() != 0 {
+		t.Errorf("Expected status 0 for invalid URL, got %d", result.ToInteger())
+	}
+}
+
+func TestJS_HTTP_ConnectionRefused(t *testing.T) {
+	h := NewTestHelper(t)
+	httpModule := NewHTTPModule(1 * time.Second)
+	h.VM.Set("http", map[string]interface{}{
+		"get":    httpModule.Get,
+		"post":   httpModule.Post,
+		"put":    httpModule.Put,
+		"delete": httpModule.Delete,
+	})
+
+	// Connection refused should return status 0
+	result := h.MustRun(t, `
+		var resp = http.get("http://127.0.0.1:59999");
+		resp.status;
+	`)
+
+	if result.ToInteger() != 0 {
+		t.Errorf("Expected status 0 for connection refused, got %d", result.ToInteger())
+	}
+}
+
+// ============== UNEXPECTED INPUT TESTS ==============
+
+func TestJS_Crypto_UnexpectedTypes(t *testing.T) {
+	h := NewTestHelper(t)
+
+	tests := []struct {
+		name string
+		code string
+	}{
+		{"number to md5", `crypto.md5(12345)`},
+		{"boolean to md5", `crypto.md5(true)`},
+		{"null to md5", `crypto.md5(null)`},
+		{"undefined to md5", `crypto.md5(undefined)`},
+		{"object to md5", `crypto.md5({foo: "bar"})`},
+		{"array to md5", `crypto.md5([1, 2, 3])`},
+		{"empty call", `crypto.md5()`},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := h.Run(tt.code)
+			// Should not crash - either return result or error
+			if err != nil {
+				t.Logf("Got error (acceptable): %v", err)
+				return
+			}
+			// Should return some string (hash)
+			if result.String() == "" && tt.name != "empty call" {
+				t.Logf("Got empty result (acceptable for edge case)")
+			}
+		})
+	}
+}
+
+func TestJS_Encoding_UnexpectedTypes(t *testing.T) {
+	h := NewTestHelper(t)
+
+	tests := []struct {
+		name string
+		code string
+	}{
+		{"number to base64", `encoding.base64Encode(12345)`},
+		{"boolean to base64", `encoding.base64Encode(false)`},
+		{"null to base64", `encoding.base64Encode(null)`},
+		{"undefined to base64", `encoding.base64Encode(undefined)`},
+		{"decode invalid", `encoding.base64Decode("!!invalid!!")`},
+		{"parse invalid json", `encoding.jsonParse("not json {")`},
+		{"stringify circular", `var obj = {}; obj.self = obj; encoding.jsonStringify(obj)`},
+		{"url encode number", `encoding.urlEncode(12345)`},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := h.Run(tt.code)
+			// Should not crash
+			if err != nil {
+				t.Logf("Got error (may be acceptable): %v", err)
+				return
+			}
+			t.Logf("Got result: %v", result.Export())
+		})
+	}
+}
+
+func TestJS_Utils_UnexpectedTypes(t *testing.T) {
+	h := NewTestHelper(t)
+
+	tests := []struct {
+		name string
+		code string
+	}{
+		{"sleep negative", `utils.sleep(-100); "ok"`},
+		{"randomInt swapped", `utils.randomInt(100, 0)`},
+		{"randomInt same", `utils.randomInt(5, 5)`},
+		{"truncate negative length", `utils.truncate("hello", -5)`},
+		{"slugify empty", `utils.slugify("")`},
+		{"regex invalid pattern", `utils.regexMatch("test", "[invalid")`},
+		{"formatDate invalid", `utils.formatDate("not a number", "YYYY-MM-DD")`},
+		{"parseDate invalid", `utils.parseDate("invalid", "YYYY-MM-DD")`},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := h.Run(tt.code)
+			// Should not crash
+			if err != nil {
+				t.Logf("Got error (may be acceptable): %v", err)
+				return
+			}
+			t.Logf("Got result: %v", result.Export())
+		})
+	}
+}
+
+// ============== FATAL ERROR AND PANIC RECOVERY TESTS ==============
+
+func TestJS_Router_HandlerThrows(t *testing.T) {
+	h := NewTestHelper(t)
+
+	routerModule := NewRouterModule()
+	routerModule.SetVM(h.VM)
+	h.VM.Set("router", map[string]interface{}{
+		"get":      routerModule.Get,
+		"post":     routerModule.Post,
+		"put":      routerModule.Put,
+		"delete":   routerModule.Delete,
+		"response": routerModule.Response,
+	})
+
+	// Register handler that throws
+	h.MustRun(t, `
+		router.get("/crash", function(ctx) {
+			throw new Error("Intentional crash");
+		});
+	`)
+
+	// Should return error, not crash
+	ctx := &RequestContext{Method: "GET", Path: "/crash"}
+	_, err := routerModule.Handle("GET", "/crash", ctx)
+	if err == nil {
+		t.Error("Expected error when handler throws")
+	}
+}
+
+func TestJS_Router_HandlerReturnsUndefined(t *testing.T) {
+	h := NewTestHelper(t)
+
+	routerModule := NewRouterModule()
+	routerModule.SetVM(h.VM)
+	h.VM.Set("router", map[string]interface{}{
+		"get":      routerModule.Get,
+		"post":     routerModule.Post,
+		"put":      routerModule.Put,
+		"delete":   routerModule.Delete,
+		"response": routerModule.Response,
+	})
+
+	// Handler returns nothing (undefined)
+	h.MustRun(t, `
+		router.get("/undefined", function(ctx) {
+			// no return
+		});
+	`)
+
+	ctx := &RequestContext{Method: "GET", Path: "/undefined"}
+	resp, err := routerModule.Handle("GET", "/undefined", ctx)
+	// Should handle gracefully
+	if err != nil {
+		t.Logf("Got error (acceptable): %v", err)
+		return
+	}
+	t.Logf("Got response: %+v", resp)
+}
+
+func TestJS_Router_HandlerReturnsNull(t *testing.T) {
+	h := NewTestHelper(t)
+
+	routerModule := NewRouterModule()
+	routerModule.SetVM(h.VM)
+	h.VM.Set("router", map[string]interface{}{
+		"get":      routerModule.Get,
+		"post":     routerModule.Post,
+		"put":      routerModule.Put,
+		"delete":   routerModule.Delete,
+		"response": routerModule.Response,
+	})
+
+	// Handler returns null
+	h.MustRun(t, `
+		router.get("/null", function(ctx) {
+			return null;
+		});
+	`)
+
+	ctx := &RequestContext{Method: "GET", Path: "/null"}
+	resp, err := routerModule.Handle("GET", "/null", ctx)
+	if err != nil {
+		t.Logf("Got error (acceptable): %v", err)
+		return
+	}
+	t.Logf("Got response: %+v", resp)
+}
+
+func TestJS_Router_InfiniteLoop(t *testing.T) {
+	// Test that infinite loops don't hang forever (with timeout)
+	h := NewTestHelper(t)
+
+	routerModule := NewRouterModule()
+	routerModule.SetVM(h.VM)
+	h.VM.Set("router", map[string]interface{}{
+		"get":      routerModule.Get,
+		"response": routerModule.Response,
+	})
+
+	// Register handler with potential infinite loop (limited by counter)
+	h.MustRun(t, `
+		router.get("/loop", function(ctx) {
+			var count = 0;
+			while (count < 1000000) { count++; }
+			return router.response(200, {count: count});
+		});
+	`)
+
+	// Should complete (with high count)
+	ctx := &RequestContext{Method: "GET", Path: "/loop"}
+	done := make(chan bool, 1)
+
+	go func() {
+		resp, _ := routerModule.Handle("GET", "/loop", ctx)
+		if resp != nil {
+			done <- true
+		}
+	}()
+
+	select {
+	case <-done:
+		// OK - completed
+	case <-time.After(5 * time.Second):
+		t.Error("Handler took too long - possible infinite loop issue")
+	}
+}
+
+func TestJS_Delayed_PanicRecovery(t *testing.T) {
+	h := NewTestHelper(t)
+
+	delayedModule := NewDelayedModule(5)
+	h.VM.Set("delayed", map[string]interface{}{
+		"run": delayedModule.Run,
+	})
+
+	var normalExecuted atomic.Bool
+
+	// Set up tracking
+	h.VM.Set("setExecuted", func() {
+		normalExecuted.Store(true)
+	})
+
+	// Run task that panics
+	h.MustRun(t, `
+		delayed.run(function() {
+			throw new Error("Crash in delayed task");
+		});
+	`)
+
+	// Wait a bit
+	time.Sleep(50 * time.Millisecond)
+
+	// Run normal task - should still work
+	h.MustRun(t, `
+		delayed.run(function() {
+			setExecuted();
+		});
+	`)
+
+	time.Sleep(100 * time.Millisecond)
+
+	if !normalExecuted.Load() {
+		t.Error("Normal task should execute after panic in another task")
+	}
+}
+
+func TestJS_Schedule_InvalidCron(t *testing.T) {
+	h := NewTestHelper(t)
+
+	logger := newTestLogger()
+	scheduleModule := NewScheduleModule(logger)
+	h.VM.Set("schedule", map[string]interface{}{
+		"cron":   scheduleModule.Cron,
+		"daily":  scheduleModule.Daily,
+		"hourly": scheduleModule.Hourly,
+	})
+
+	// Invalid cron expression should not crash
+	_, err := h.Run(`
+		schedule.cron("invalid cron expression", function() {
+			console.log("should not run");
+		});
+		"ok";
+	`)
+
+	if err != nil {
+		t.Errorf("Should not error, got: %v", err)
+	}
+
+	// No jobs should be added
+	if len(scheduleModule.jobs) != 0 {
+		t.Errorf("Expected 0 jobs for invalid cron, got %d", len(scheduleModule.jobs))
+	}
+}
+
+// ============== TYPE COERCION TESTS ==============
+
+func TestJS_TypeCoercion(t *testing.T) {
+	h := NewTestHelper(t)
+
+	tests := []struct {
+		name     string
+		code     string
+		validate func(result goja.Value) error
+	}{
+		{
+			"crypto md5 of number becomes string",
+			`crypto.md5(123)`,
+			func(r goja.Value) error {
+				if len(r.String()) != 32 {
+					return fmt.Errorf("expected 32 char hash, got %d", len(r.String()))
+				}
+				return nil
+			},
+		},
+		{
+			"utils randomInt returns integer",
+			`utils.randomInt(0, 10)`,
+			func(r goja.Value) error {
+				val := r.ToInteger()
+				if val < 0 || val >= 10 {
+					return fmt.Errorf("expected 0-9, got %d", val)
+				}
+				return nil
+			},
+		},
+		{
+			"utils timestamp returns number",
+			`utils.timestamp()`,
+			func(r goja.Value) error {
+				val := r.ToInteger()
+				// Should be after year 2020
+				if val < 1577836800000 {
+					return fmt.Errorf("timestamp too small: %d", val)
+				}
+				return nil
+			},
+		},
+		{
+			"env.get returns correct type",
+			`typeof env.get("TEST_VAR")`,
+			func(r goja.Value) error {
+				if r.String() != "string" {
+					return fmt.Errorf("expected string type, got %s", r.String())
+				}
+				return nil
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := h.MustRun(t, tt.code)
+			if err := tt.validate(result); err != nil {
+				t.Error(err)
+			}
+		})
+	}
+}
+
+// ============== CONCURRENT ACCESS TESTS ==============
+
+func TestJS_ConcurrentRouterAccess(t *testing.T) {
+	h := NewTestHelper(t)
+
+	routerModule := NewRouterModule()
+	routerModule.SetVM(h.VM)
+	h.VM.Set("router", map[string]interface{}{
+		"get":      routerModule.Get,
+		"response": routerModule.Response,
+	})
+
+	h.MustRun(t, `
+		router.get("/concurrent", function(ctx) {
+			return router.response(200, {thread: ctx.query.id || "unknown"});
+		});
+	`)
+
+	var wg sync.WaitGroup
+	errors := make(chan error, 100)
+
+	// Simulate concurrent requests
+	for i := 0; i < 100; i++ {
+		wg.Add(1)
+		go func(id int) {
+			defer wg.Done()
+			ctx := &RequestContext{
+				Method: "GET",
+				Path:   "/concurrent",
+				Query:  map[string]string{"id": fmt.Sprintf("%d", id)},
+			}
+			_, err := routerModule.Handle("GET", "/concurrent", ctx)
+			if err != nil {
+				errors <- err
+			}
+		}(i)
+	}
+
+	wg.Wait()
+	close(errors)
+
+	for err := range errors {
+		t.Errorf("Concurrent request failed: %v", err)
+	}
+}
+
+func TestJS_ConcurrentDelayedTasks(t *testing.T) {
+	delayedModule := NewDelayedModule(10)
+
+	var counter atomic.Int32
+	var wg sync.WaitGroup
+
+	vm := goja.New()
+	handler := vm.ToValue(func(call goja.FunctionCall) goja.Value {
+		counter.Add(1)
+		return goja.Undefined()
+	})
+
+	callable, ok := goja.AssertFunction(handler)
+	if !ok {
+		t.Fatal("Failed to create callable")
+	}
+
+	// Run many tasks concurrently
+	taskCount := 50
+	for i := 0; i < taskCount; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			delayedModule.Run(callable)
+		}()
+	}
+
+	wg.Wait()
+	time.Sleep(500 * time.Millisecond)
+
+	if counter.Load() != int32(taskCount) {
+		t.Errorf("Expected %d completed tasks, got %d", taskCount, counter.Load())
+	}
+}
+
+// ============== EDGE CASE TESTS ==============
+
+func TestJS_EdgeCases_EmptyStrings(t *testing.T) {
+	h := NewTestHelper(t)
+
+	tests := []struct {
+		name string
+		code string
+	}{
+		{"crypto md5 empty", `crypto.md5("")`},
+		{"crypto sha256 empty", `crypto.sha256("")`},
+		{"encoding base64 empty", `encoding.base64Encode("")`},
+		{"encoding base64 decode empty", `encoding.base64Decode("")`},
+		{"utils slugify empty", `utils.slugify("")`},
+		{"utils truncate empty", `utils.truncate("", 10)`},
+		{"utils capitalize empty", `utils.capitalize("")`},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := h.Run(tt.code)
+			if err != nil {
+				t.Errorf("Should handle empty string: %v", err)
+				return
+			}
+			t.Logf("Result: %v", result.Export())
+		})
+	}
+}
+
+func TestJS_EdgeCases_LargeInputs(t *testing.T) {
+	h := NewTestHelper(t)
+
+	// Create large string in JS
+	code := `
+		var large = "";
+		for (var i = 0; i < 10000; i++) {
+			large += "x";
+		}
+		crypto.md5(large);
+	`
+
+	result := h.MustRun(t, code)
+	if len(result.String()) != 32 {
+		t.Errorf("Expected 32 char hash, got %d", len(result.String()))
+	}
+}
+
+func TestJS_EdgeCases_UnicodeHandling(t *testing.T) {
+	h := NewTestHelper(t)
+
+	tests := []struct {
+		name string
+		code string
+	}{
+		{"crypto md5 unicode", `crypto.md5("привет мир")`},
+		{"crypto sha256 emoji", `crypto.sha256("Hello 🌍")`},
+		{"encoding base64 unicode", `encoding.base64Encode("日本語")`},
+		{"utils slugify unicode", `utils.slugify("Привет World")`},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := h.Run(tt.code)
+			if err != nil {
+				t.Errorf("Should handle unicode: %v", err)
+				return
+			}
+			t.Logf("Result: %v", result.Export())
+		})
+	}
+}
+
+func TestJS_EdgeCases_SpecialCharacters(t *testing.T) {
+	h := NewTestHelper(t)
+
+	// Test that special characters don't break anything
+	tests := []struct {
+		name string
+		code string
+	}{
+		{"null bytes", `crypto.md5("hello\x00world")`},
+		{"newlines", `crypto.md5("line1\nline2\rline3")`},
+		{"tabs", `crypto.md5("col1\tcol2\tcol3")`},
+		{"quotes", `crypto.md5("\"quoted\" and 'single'")`},
+		{"backslashes", `crypto.md5("path\\to\\file")`},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := h.Run(tt.code)
+			if err != nil {
+				t.Errorf("Should handle special chars: %v", err)
+				return
+			}
+			if len(result.String()) != 32 {
+				t.Errorf("Expected 32 char hash, got %d", len(result.String()))
+			}
+		})
+	}
+}
+
+// ============== REAL WORLD SCENARIO TESTS ==============
+
+func TestJS_Scenario_APIAuthentication(t *testing.T) {
+	h := NewTestHelper(t)
+
+	routerModule := NewRouterModule()
+	routerModule.SetVM(h.VM)
+	h.VM.Set("router", map[string]interface{}{
+		"get":      routerModule.Get,
+		"post":     routerModule.Post,
+		"response": routerModule.Response,
+	})
+
+	// Simulate API with authentication
+	h.MustRun(t, `
+		var API_KEY = env.get("TEST_VAR");
+
+		router.get("/api/protected", function(ctx) {
+			var authHeader = ctx.headers["Authorization"];
+			if (!authHeader || authHeader !== "Bearer " + API_KEY) {
+				return router.response(401, {error: "Unauthorized"});
+			}
+			return router.response(200, {data: "secret"});
+		});
+	`)
+
+	// Test without auth
+	ctx := &RequestContext{Method: "GET", Path: "/api/protected", Headers: map[string]string{}}
+	resp, err := routerModule.Handle("GET", "/api/protected", ctx)
+	if err != nil {
+		t.Fatalf("Request failed: %v", err)
+	}
+	if resp.Status != 401 {
+		t.Errorf("Expected 401, got %d", resp.Status)
+	}
+
+	// Test with correct auth
+	ctx = &RequestContext{
+		Method:  "GET",
+		Path:    "/api/protected",
+		Headers: map[string]string{"Authorization": "Bearer test_value"},
+	}
+	resp, err = routerModule.Handle("GET", "/api/protected", ctx)
+	if err != nil {
+		t.Fatalf("Request failed: %v", err)
+	}
+	if resp.Status != 200 {
+		t.Errorf("Expected 200, got %d", resp.Status)
+	}
+}
+
+func TestJS_Scenario_DataTransformation(t *testing.T) {
+	h := NewTestHelper(t)
+
+	// Complex data transformation pipeline
+	code := `
+		// Input data
+		var rawData = [
+			{name: "John Doe", email: "john@test.com", age: 25},
+			{name: "Jane Smith", email: "jane@test.com", age: 30},
+			{name: "Bob Johnson", email: "bob@test.com", age: 35}
+		];
+
+		// Transform
+		var result = [];
+		for (var i = 0; i < rawData.length; i++) {
+			var item = rawData[i];
+			result.push({
+				id: crypto.md5(item.email).substring(0, 8),
+				slug: utils.slugify(item.name),
+				emailHash: crypto.sha256(item.email),
+				ageGroup: item.age < 30 ? "young" : "adult",
+				createdAt: utils.timestamp()
+			});
+		}
+
+		encoding.jsonStringify(result);
+	`
+
+	result := h.MustRun(t, code)
+	var parsed []interface{}
+	if err := json.Unmarshal([]byte(result.String()), &parsed); err != nil {
+		t.Fatalf("Failed to parse result: %v", err)
+	}
+
+	if len(parsed) != 3 {
+		t.Errorf("Expected 3 items, got %d", len(parsed))
+	}
+
+	first := parsed[0].(map[string]interface{})
+	if first["slug"] != "john-doe" {
+		t.Errorf("Expected slug 'john-doe', got %v", first["slug"])
+	}
+}
+
+func TestJS_Scenario_ErrorHandlingInService(t *testing.T) {
+	h := NewTestHelper(t)
+
+	routerModule := NewRouterModule()
+	routerModule.SetVM(h.VM)
+	h.VM.Set("router", map[string]interface{}{
+		"get":      routerModule.Get,
+		"post":     routerModule.Post,
+		"response": routerModule.Response,
+	})
+
+	// Service with proper error handling
+	h.MustRun(t, `
+		router.post("/api/process", function(ctx) {
+			try {
+				if (!ctx.body) {
+					return router.response(400, {error: "Body required"});
+				}
+				if (!ctx.body.data) {
+					return router.response(400, {error: "data field required"});
+				}
+
+				var data = ctx.body.data;
+				if (typeof data !== "string") {
+					return router.response(400, {error: "data must be string"});
+				}
+
+				var result = {
+					original: data,
+					hash: crypto.md5(data),
+					length: data.length,
+					processed: true
+				};
+
+				return router.response(200, result);
+			} catch (e) {
+				return router.response(500, {error: "Internal error: " + e.message});
+			}
+		});
+	`)
+
+	// Test various error cases
+	testCases := []struct {
+		name           string
+		body           interface{}
+		expectedStatus int
+	}{
+		{"no body", nil, 400},
+		{"empty body", map[string]interface{}{}, 400},
+		{"wrong type", map[string]interface{}{"data": 123}, 400},
+		{"valid", map[string]interface{}{"data": "test"}, 200},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := &RequestContext{Method: "POST", Path: "/api/process", Body: tc.body}
+			resp, err := routerModule.Handle("POST", "/api/process", ctx)
+			if err != nil {
+				t.Fatalf("Request failed: %v", err)
+			}
+			if resp.Status != tc.expectedStatus {
+				t.Errorf("Expected status %d, got %d", tc.expectedStatus, resp.Status)
+			}
+		})
 	}
 }
