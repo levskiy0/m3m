@@ -11,6 +11,21 @@ import (
 	"m3m/internal/runtime/modules"
 )
 
+// toFloat64 converts various numeric types to float64
+// Goja can return int64 or float64 depending on the value
+func toFloat64(v interface{}) float64 {
+	switch n := v.(type) {
+	case float64:
+		return n
+	case int64:
+		return float64(n)
+	case int:
+		return float64(n)
+	default:
+		return 0
+	}
+}
+
 // ============== SCENARIO 1: URL SHORTENER SERVICE ==============
 // URL shortener service with in-memory storage
 
@@ -112,7 +127,7 @@ func TestJS_Scenario_URLShortener(t *testing.T) {
 		t.Errorf("Expected 200, got %d", resp.Status)
 	}
 	body = resp.Body.(map[string]interface{})
-	if body["clicks"].(float64) != 1 {
+	if toFloat64(body["clicks"]) != 1 {
 		t.Errorf("Expected 1 click, got %v", body["clicks"])
 	}
 
@@ -242,7 +257,7 @@ func TestJS_Scenario_WebhookProcessor(t *testing.T) {
 	ctx = &modules.RequestContext{Method: "GET", Path: "/events"}
 	resp, _ = routerModule.Handle("GET", "/events", ctx)
 	body := resp.Body.(map[string]interface{})
-	if body["count"].(float64) != 1 {
+	if toFloat64(body["count"]) != 1 {
 		t.Errorf("Expected 1 event, got %v", body["count"])
 	}
 }
@@ -613,7 +628,7 @@ func TestJS_Scenario_DataPipeline(t *testing.T) {
 	}
 
 	body := resp.Body.(map[string]interface{})
-	if body["resultCount"].(float64) != 2 {
+	if toFloat64(body["resultCount"]) != 2 {
 		t.Errorf("Expected 2 results after filter, got %v", body["resultCount"])
 	}
 
@@ -704,7 +719,7 @@ func TestJS_Scenario_HealthCheck(t *testing.T) {
 	ctx = &modules.RequestContext{Method: "GET", Path: "/health"}
 	resp, _ = routerModule.Handle("GET", "/health", ctx)
 	body = resp.Body.(map[string]interface{})
-	if body["requestCount"].(float64) < 2 {
+	if toFloat64(body["requestCount"]) < 2 {
 		t.Error("Request count should increase")
 	}
 }
@@ -914,10 +929,10 @@ func TestJS_Scenario_AnalyticsTracker(t *testing.T) {
 	}
 
 	body := resp.Body.(map[string]interface{})
-	if body["totalEvents"].(float64) != 1 {
+	if toFloat64(body["totalEvents"]) != 1 {
 		t.Errorf("Expected 1 event, got %v", body["totalEvents"])
 	}
-	if body["totalPageViews"].(float64) != 5 {
+	if toFloat64(body["totalPageViews"]) != 5 {
 		t.Errorf("Expected 5 page views, got %v", body["totalPageViews"])
 	}
 
@@ -1188,10 +1203,10 @@ func TestJS_Scenario_HTTPAggregator(t *testing.T) {
 
 	body := resp.Body.(map[string]interface{})
 	summary := body["summary"].(map[string]interface{})
-	if summary["userCount"].(float64) != 2 {
+	if toFloat64(summary["userCount"]) != 2 {
 		t.Errorf("Expected 2 users, got %v", summary["userCount"])
 	}
-	if summary["postCount"].(float64) != 2 {
+	if toFloat64(summary["postCount"]) != 2 {
 		t.Errorf("Expected 2 posts, got %v", summary["postCount"])
 	}
 

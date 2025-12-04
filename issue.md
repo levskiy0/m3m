@@ -435,9 +435,11 @@ func (l *LoggerAPI) GetSchema() JSModuleSchema {
 
 ---
 
-runtime api - validator
+Добавить мощный валидатор - runtime api - validator
 
+---
 
+Есть ли способ грузить runtime api вот так `import 'validator'`
 
 
 
