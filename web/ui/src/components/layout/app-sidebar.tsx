@@ -82,7 +82,7 @@ export function AppSidebar() {
   const [openProjects, setOpenProjects] = useState(true);
   const [openSettings, setOpenSettings] = useState(false);
 
-  const currentProject = projects.find((p) => p.id === projectId);
+  const currentProject = projects?.find((p) => p.id === projectId);
 
   // Navigation items for current project
   const projectNavItems: NavItem[] = currentProject
@@ -172,7 +172,7 @@ export function AppSidebar() {
               </CollapsibleTrigger>
               <CollapsibleContent>
                 <SidebarMenuSub>
-                  {projects.map((project) => (
+                  {projects?.map((project) => (
                     <SidebarMenuSubItem key={project.id}>
                       <SidebarMenuSubButton
                         asChild

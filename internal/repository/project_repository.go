@@ -74,7 +74,7 @@ func (r *ProjectRepository) FindAll(ctx context.Context) ([]*domain.Project, err
 	}
 	defer cursor.Close(ctx)
 
-	var projects []*domain.Project
+	projects := make([]*domain.Project, 0)
 	if err := cursor.All(ctx, &projects); err != nil {
 		return nil, err
 	}
@@ -88,7 +88,7 @@ func (r *ProjectRepository) FindByOwner(ctx context.Context, ownerID primitive.O
 	}
 	defer cursor.Close(ctx)
 
-	var projects []*domain.Project
+	projects := make([]*domain.Project, 0)
 	if err := cursor.All(ctx, &projects); err != nil {
 		return nil, err
 	}
@@ -107,7 +107,7 @@ func (r *ProjectRepository) FindByMember(ctx context.Context, userID primitive.O
 	}
 	defer cursor.Close(ctx)
 
-	var projects []*domain.Project
+	projects := make([]*domain.Project, 0)
 	if err := cursor.All(ctx, &projects); err != nil {
 		return nil, err
 	}
@@ -184,7 +184,7 @@ func (r *ProjectRepository) FindByStatus(ctx context.Context, status domain.Proj
 	}
 	defer cursor.Close(ctx)
 
-	var projects []*domain.Project
+	projects := make([]*domain.Project, 0)
 	if err := cursor.All(ctx, &projects); err != nil {
 		return nil, err
 	}
