@@ -6,3 +6,6 @@ storage
 internal/app/dist
 server
 issue.md
+
+web/dist
+web/node_modules
