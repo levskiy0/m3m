@@ -52,6 +52,7 @@ func (h *RuntimeHandler) Register(r *gin.RouterGroup, authMiddleware *middleware
 		runtime.POST("/stop", h.Stop)
 		runtime.POST("/restart", h.Restart)
 		runtime.GET("/status", h.Status)
+		runtime.GET("/monitor", h.Monitor)
 		runtime.GET("/logs", h.Logs)
 		runtime.GET("/logs/download", h.DownloadLogs)
 	}
@@ -215,8 +216,8 @@ func (h *RuntimeHandler) Status(c *gin.Context) {
 	}
 
 	var startedAt *string
-	if runtime, ok := h.runtimeManager.GetRuntime(projectID); ok {
-		t := runtime.StartedAt.Format("2006-01-02 15:04:05")
+	if rt, ok := h.runtimeManager.GetRuntime(projectID); ok {
+		t := rt.StartedAt.Format("2006-01-02 15:04:05")
 		startedAt = &t
 	}
 
@@ -224,6 +225,21 @@ func (h *RuntimeHandler) Status(c *gin.Context) {
 		"status":     status,
 		"started_at": startedAt,
 	})
+}
+
+func (h *RuntimeHandler) Monitor(c *gin.Context) {
+	projectID, ok := h.checkAccess(c)
+	if !ok {
+		return
+	}
+
+	stats, err := h.runtimeManager.GetStats(projectID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, stats)
 }
 
 func (h *RuntimeHandler) Logs(c *gin.Context) {

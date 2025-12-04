@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"runtime"
 	"sync"
 	"time"
 
@@ -256,10 +257,100 @@ func (m *Manager) GetRunningProjects() []primitive.ObjectID {
 	defer m.mu.RUnlock()
 
 	ids := make([]primitive.ObjectID, 0, len(m.runtimes))
-	for _, runtime := range m.runtimes {
-		ids = append(ids, runtime.ProjectID)
+	for _, rt := range m.runtimes {
+		ids = append(ids, rt.ProjectID)
 	}
 	return ids
+}
+
+// RuntimeStats contains statistics about a running runtime
+type RuntimeStats struct {
+	ProjectID       string         `json:"project_id"`
+	Status          string         `json:"status"`
+	StartedAt       time.Time      `json:"started_at"`
+	UptimeSeconds   int64          `json:"uptime_seconds"`
+	UptimeFormatted string         `json:"uptime_formatted"`
+	RoutesCount     int            `json:"routes_count"`
+	RoutesByMethod  map[string]int `json:"routes_by_method"`
+	ScheduledJobs   int            `json:"scheduled_jobs"`
+	SchedulerActive bool           `json:"scheduler_active"`
+	Memory          MemoryStats    `json:"memory"`
+}
+
+// MemoryStats contains memory statistics
+type MemoryStats struct {
+	Alloc      uint64 `json:"alloc"`       // bytes allocated and still in use
+	TotalAlloc uint64 `json:"total_alloc"` // bytes allocated (even if freed)
+	Sys        uint64 `json:"sys"`         // bytes obtained from system
+	NumGC      uint32 `json:"num_gc"`      // number of completed GC cycles
+}
+
+// GetStats returns statistics for a running project
+func (m *Manager) GetStats(projectID primitive.ObjectID) (*RuntimeStats, error) {
+	m.mu.RLock()
+	rt, ok := m.runtimes[projectID.Hex()]
+	m.mu.RUnlock()
+
+	if !ok {
+		return nil, fmt.Errorf("project not running")
+	}
+
+	uptime := time.Since(rt.StartedAt)
+
+	// Get memory stats (process-wide, not per-VM)
+	var memStats runtime.MemStats
+	runtime.ReadMemStats(&memStats)
+
+	stats := &RuntimeStats{
+		ProjectID:       projectID.Hex(),
+		Status:          "running",
+		StartedAt:       rt.StartedAt,
+		UptimeSeconds:   int64(uptime.Seconds()),
+		UptimeFormatted: formatDuration(uptime),
+		RoutesCount:     0,
+		RoutesByMethod:  make(map[string]int),
+		ScheduledJobs:   0,
+		SchedulerActive: false,
+		Memory: MemoryStats{
+			Alloc:      memStats.Alloc,
+			TotalAlloc: memStats.TotalAlloc,
+			Sys:        memStats.Sys,
+			NumGC:      memStats.NumGC,
+		},
+	}
+
+	// Get router stats
+	if rt.Router != nil {
+		stats.RoutesCount = rt.Router.RoutesCount()
+		stats.RoutesByMethod = rt.Router.RoutesByMethod()
+	}
+
+	// Get scheduler stats
+	if rt.Scheduler != nil {
+		stats.ScheduledJobs = rt.Scheduler.JobsCount()
+		stats.SchedulerActive = rt.Scheduler.IsStarted()
+	}
+
+	return stats, nil
+}
+
+// formatDuration formats duration as human-readable string
+func formatDuration(d time.Duration) string {
+	days := int(d.Hours()) / 24
+	hours := int(d.Hours()) % 24
+	minutes := int(d.Minutes()) % 60
+	seconds := int(d.Seconds()) % 60
+
+	if days > 0 {
+		return fmt.Sprintf("%dd %dh %dm %ds", days, hours, minutes, seconds)
+	}
+	if hours > 0 {
+		return fmt.Sprintf("%dh %dm %ds", hours, minutes, seconds)
+	}
+	if minutes > 0 {
+		return fmt.Sprintf("%dm %ds", minutes, seconds)
+	}
+	return fmt.Sprintf("%ds", seconds)
 }
 
 func (m *Manager) registerModules(

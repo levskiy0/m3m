@@ -213,6 +213,32 @@ func (r *RouterModule) HasRoutes() bool {
 	return false
 }
 
+// RoutesCount returns the total number of registered routes
+func (r *RouterModule) RoutesCount() int {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	count := 0
+	for _, handlers := range r.routes {
+		count += len(handlers)
+	}
+	return count
+}
+
+// RoutesByMethod returns the count of routes per HTTP method
+func (r *RouterModule) RoutesByMethod() map[string]int {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	result := make(map[string]int)
+	for method, handlers := range r.routes {
+		if len(handlers) > 0 {
+			result[method] = len(handlers)
+		}
+	}
+	return result
+}
+
 // GetSchema implements JSSchemaProvider
 func (r *RouterModule) GetSchema() JSModuleSchema {
 	return JSModuleSchema{

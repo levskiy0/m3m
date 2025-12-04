@@ -85,6 +85,20 @@ func (s *ScheduleModule) Stop() {
 	}
 }
 
+// JobsCount returns the number of scheduled jobs
+func (s *ScheduleModule) JobsCount() int {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return len(s.jobs)
+}
+
+// IsStarted returns whether the scheduler is running
+func (s *ScheduleModule) IsStarted() bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.started
+}
+
 // GetSchema implements JSSchemaProvider
 func (s *ScheduleModule) GetSchema() JSModuleSchema {
 	return JSModuleSchema{
