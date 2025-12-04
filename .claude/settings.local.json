@@ -27,7 +27,8 @@
       "Bash(lsof:*)",
       "Bash(xargs kill -9)",
       "Bash(wc:*)",
-      "Bash(go get:*)"
+      "Bash(go get:*)",
+      "Bash(make dev:*)"
     ],
     "deny": [],
     "ask": []

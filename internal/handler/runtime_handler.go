@@ -45,7 +45,7 @@ func NewRuntimeHandler(
 
 func (h *RuntimeHandler) Register(r *gin.RouterGroup, authMiddleware *middleware.AuthMiddleware) {
 	// Runtime management
-	runtime := r.Group("/projects/:projectId")
+	runtime := r.Group("/projects/:id")
 	runtime.Use(authMiddleware.Authenticate())
 	{
 		runtime.POST("/start", h.Start)
@@ -68,7 +68,7 @@ func (h *RuntimeHandler) Register(r *gin.RouterGroup, authMiddleware *middleware
 }
 
 func (h *RuntimeHandler) checkAccess(c *gin.Context) (primitive.ObjectID, bool) {
-	projectID, err := primitive.ObjectIDFromHex(c.Param("projectId"))
+	projectID, err := primitive.ObjectIDFromHex(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid project id"})
 		return primitive.NilObjectID, false

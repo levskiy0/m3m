@@ -24,7 +24,7 @@ func NewEnvironmentHandler(envService *service.EnvironmentService, projectServic
 }
 
 func (h *EnvironmentHandler) Register(r *gin.RouterGroup, authMiddleware *middleware.AuthMiddleware) {
-	env := r.Group("/projects/:projectId/env")
+	env := r.Group("/projects/:id/env")
 	env.Use(authMiddleware.Authenticate())
 	{
 		env.GET("", h.List)
@@ -35,7 +35,7 @@ func (h *EnvironmentHandler) Register(r *gin.RouterGroup, authMiddleware *middle
 }
 
 func (h *EnvironmentHandler) checkAccess(c *gin.Context) (primitive.ObjectID, bool) {
-	projectID, err := primitive.ObjectIDFromHex(c.Param("projectId"))
+	projectID, err := primitive.ObjectIDFromHex(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid project id"})
 		return primitive.NilObjectID, false

@@ -37,7 +37,7 @@ func (h *GoalHandler) Register(r *gin.RouterGroup, authMiddleware *middleware.Au
 	}
 
 	// Project goals
-	projectGoals := r.Group("/projects/:projectId/goals")
+	projectGoals := r.Group("/projects/:id/goals")
 	projectGoals.Use(authMiddleware.Authenticate())
 	{
 		projectGoals.GET("", h.ListProject)
@@ -145,7 +145,7 @@ func (h *GoalHandler) GetStats(c *gin.Context) {
 // Project goals
 
 func (h *GoalHandler) ListProject(c *gin.Context) {
-	projectID, err := primitive.ObjectIDFromHex(c.Param("projectId"))
+	projectID, err := primitive.ObjectIDFromHex(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid project id"})
 		return
@@ -167,7 +167,7 @@ func (h *GoalHandler) ListProject(c *gin.Context) {
 }
 
 func (h *GoalHandler) CreateProject(c *gin.Context) {
-	projectID, err := primitive.ObjectIDFromHex(c.Param("projectId"))
+	projectID, err := primitive.ObjectIDFromHex(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid project id"})
 		return
@@ -195,7 +195,7 @@ func (h *GoalHandler) CreateProject(c *gin.Context) {
 }
 
 func (h *GoalHandler) UpdateProject(c *gin.Context) {
-	projectID, err := primitive.ObjectIDFromHex(c.Param("projectId"))
+	projectID, err := primitive.ObjectIDFromHex(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid project id"})
 		return
@@ -229,7 +229,7 @@ func (h *GoalHandler) UpdateProject(c *gin.Context) {
 }
 
 func (h *GoalHandler) DeleteProject(c *gin.Context) {
-	projectID, err := primitive.ObjectIDFromHex(c.Param("projectId"))
+	projectID, err := primitive.ObjectIDFromHex(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid project id"})
 		return

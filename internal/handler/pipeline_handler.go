@@ -24,7 +24,7 @@ func NewPipelineHandler(pipelineService *service.PipelineService, projectService
 }
 
 func (h *PipelineHandler) Register(r *gin.RouterGroup, authMiddleware *middleware.AuthMiddleware) {
-	pipeline := r.Group("/projects/:projectId/pipeline")
+	pipeline := r.Group("/projects/:id/pipeline")
 	pipeline.Use(authMiddleware.Authenticate())
 	{
 		// Branches
@@ -44,7 +44,7 @@ func (h *PipelineHandler) Register(r *gin.RouterGroup, authMiddleware *middlewar
 }
 
 func (h *PipelineHandler) checkAccess(c *gin.Context) (primitive.ObjectID, bool) {
-	projectID, err := primitive.ObjectIDFromHex(c.Param("projectId"))
+	projectID, err := primitive.ObjectIDFromHex(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid project id"})
 		return primitive.NilObjectID, false

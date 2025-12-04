@@ -25,7 +25,7 @@ func NewModelHandler(modelService *service.ModelService, projectService *service
 }
 
 func (h *ModelHandler) Register(r *gin.RouterGroup, authMiddleware *middleware.AuthMiddleware) {
-	models := r.Group("/projects/:projectId/models")
+	models := r.Group("/projects/:id/models")
 	models.Use(authMiddleware.Authenticate())
 	{
 		models.GET("", h.List)
@@ -45,7 +45,7 @@ func (h *ModelHandler) Register(r *gin.RouterGroup, authMiddleware *middleware.A
 }
 
 func (h *ModelHandler) checkAccess(c *gin.Context) (primitive.ObjectID, bool) {
-	projectID, err := primitive.ObjectIDFromHex(c.Param("projectId"))
+	projectID, err := primitive.ObjectIDFromHex(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid project id"})
 		return primitive.NilObjectID, false

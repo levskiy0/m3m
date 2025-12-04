@@ -29,7 +29,7 @@ func (h *StorageHandler) Register(r *gin.RouterGroup, authMiddleware *middleware
 	// Public route for file access
 	r.GET("/storage/public/:token/:filename", h.PublicDownload)
 
-	storage := r.Group("/projects/:projectId/storage")
+	storage := r.Group("/projects/:id/storage")
 	storage.Use(authMiddleware.Authenticate())
 	{
 		storage.GET("", h.List)
@@ -46,7 +46,7 @@ func (h *StorageHandler) Register(r *gin.RouterGroup, authMiddleware *middleware
 }
 
 func (h *StorageHandler) checkAccess(c *gin.Context) (string, bool) {
-	projectID, err := primitive.ObjectIDFromHex(c.Param("projectId"))
+	projectID, err := primitive.ObjectIDFromHex(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid project id"})
 		return "", false
