@@ -334,6 +334,43 @@ service.shotdown(() => {
 
 ## UI
 
+должен компилироваться в бинарь. Доступен по `http://{port:host}/`
+
+В фронт нужно прокидывать адрес фронта из `server.uri`
+
+`./ui/static.go`
+
+``` 
+//go:embed dist/*
+var staticFS embed.FS
+
+func getIndexHTML(cfg *config.Config) ([]byte, error) {
+	indexBytes, err := staticFS.ReadFile("dist/index.html")
+	if err != nil {
+		return nil, err
+	}
+
+	configScript := `<script>
+window.__APP_CONFIG__ = {
+    apiURL: "` + cfg.Server.URI + `"
+};
+</script>`
+
+	htmlContent := string(indexBytes)
+	headEndIndex := strings.Index(htmlContent, "</head>")
+	if headEndIndex != -1 {
+		var buf bytes.Buffer
+		buf.WriteString(htmlContent[:headEndIndex])
+		buf.WriteString(configScript)
+		buf.WriteString(htmlContent[headEndIndex:])
+		return buf.Bytes(), nil
+	}
+
+	return indexBytes, nil
+}
+
+```
+
 используй schadcn и стиль [ui-style.md](ui-style.md)
 
 
