@@ -338,7 +338,9 @@ service.shotdown(() => {
 
 В фронт нужно прокидывать адрес фронта из `server.uri`
 
-`./ui/static.go`
+`./web/static.go`
+
+`./web/ui`
 
 ``` 
 //go:embed dist/*
