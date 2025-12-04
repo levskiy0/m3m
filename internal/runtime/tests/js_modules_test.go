@@ -279,12 +279,12 @@ func TestJS_Utils_Timestamp(t *testing.T) {
 func TestJS_Env_Get(t *testing.T) {
 	h := NewJSTestHelper(t)
 
-	result := h.MustRun(t, `env.get("TEST_VAR")`)
+	result := h.MustRun(t, `$env.get("TEST_VAR")`)
 	if result.String() != "test_value" {
 		t.Errorf("Expected 'test_value', got %s", result.String())
 	}
 
-	result = h.MustRun(t, `env.get("NOT_EXISTS")`)
+	result = h.MustRun(t, `$env.get("NOT_EXISTS")`)
 	if !goja.IsUndefined(result) && !goja.IsNull(result) && result.Export() != nil {
 		t.Errorf("Expected undefined/null for non-existing var, got %v", result.Export())
 	}
@@ -293,17 +293,17 @@ func TestJS_Env_Get(t *testing.T) {
 func TestJS_Env_Has(t *testing.T) {
 	h := NewJSTestHelper(t)
 
-	result := h.MustRun(t, `env.has("TEST_VAR")`)
+	result := h.MustRun(t, `$env.has("TEST_VAR")`)
 	if !result.ToBoolean() {
 		t.Error("has(TEST_VAR) should return true")
 	}
 
-	result = h.MustRun(t, `env.has("NOT_EXISTS")`)
+	result = h.MustRun(t, `$env.has("NOT_EXISTS")`)
 	if result.ToBoolean() {
 		t.Error("has(NOT_EXISTS) should return false")
 	}
 
-	result = h.MustRun(t, `env.has("EMPTY_VAR")`)
+	result = h.MustRun(t, `$env.has("EMPTY_VAR")`)
 	if !result.ToBoolean() {
 		t.Error("has(EMPTY_VAR) should return true")
 	}
@@ -312,22 +312,22 @@ func TestJS_Env_Has(t *testing.T) {
 func TestJS_Env_TypedGetters(t *testing.T) {
 	h := NewJSTestHelper(t)
 
-	result := h.MustRun(t, `env.getInt("NUMBER_VAR", 0)`)
+	result := h.MustRun(t, `$env.getInt("NUMBER_VAR", 0)`)
 	if result.ToInteger() != 42 {
 		t.Errorf("getInt should return 42, got %d", result.ToInteger())
 	}
 
-	result = h.MustRun(t, `env.getInt("NOT_EXISTS", 99)`)
+	result = h.MustRun(t, `$env.getInt("NOT_EXISTS", 99)`)
 	if result.ToInteger() != 99 {
 		t.Errorf("getInt should return default 99, got %d", result.ToInteger())
 	}
 
-	result = h.MustRun(t, `env.getFloat("FLOAT_VAR", 0)`)
+	result = h.MustRun(t, `$env.getFloat("FLOAT_VAR", 0)`)
 	if result.ToFloat() != 3.14 {
 		t.Errorf("getFloat should return 3.14, got %f", result.ToFloat())
 	}
 
-	result = h.MustRun(t, `env.getBool("BOOL_VAR", false)`)
+	result = h.MustRun(t, `$env.getBool("BOOL_VAR", false)`)
 	if !result.ToBoolean() {
 		t.Error("getBool should return true")
 	}
@@ -348,7 +348,7 @@ func TestJS_EdgeCases_EmptyStrings(t *testing.T) {
 		{"encoding base64 decode empty", `$encoding.base64Decode("")`},
 		{"utils slugify empty", `$utils.slugify("")`},
 		{"utils truncate empty", `$utils.truncate("", 10)`},
-		{"utils capitalize empty", `utils.capitalize("")`},
+		{"utils capitalize empty", `$utils.capitalize("")`},
 	}
 
 	for _, tt := range tests {
