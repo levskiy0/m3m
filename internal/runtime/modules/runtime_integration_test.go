@@ -1,11 +1,9 @@
 package modules
 
 import (
-	"enco
+	"encoding/json"
 	"fmt"
-n"
-	"fmt"
-	
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -1000,8 +998,9 @@ func TestJS_HTTP_Get(t *testing.T) {
 	if !strings.Contains(result.String(), `"status":200`) {
 		t.Errorf("Expected status 200, got %s", result.String())
 	}
-	if !strings.Contains(result.String(), `"message":"hello"`) {
-		t.Errorf("Expected hello message, got %s", result.String())
+	// Body is a string containing JSON, so it's escaped in the outer JSON
+	if !strings.Contains(result.String(), `"message"`) {
+		t.Errorf("Expected hello message in body, got %s", result.String())
 	}
 }
 

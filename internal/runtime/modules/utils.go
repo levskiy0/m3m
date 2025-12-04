@@ -57,6 +57,9 @@ func (u *UtilsModule) Slugify(text string) string {
 }
 
 func (u *UtilsModule) Truncate(text string, length int) string {
+	if length <= 0 {
+		return "..."
+	}
 	if len(text) <= length {
 		return text
 	}
