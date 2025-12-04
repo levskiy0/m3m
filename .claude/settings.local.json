@@ -25,7 +25,8 @@
       "Bash(curl:*)",
       "Bash(pkill:*)",
       "Bash(lsof:*)",
-      "Bash(xargs kill -9)"
+      "Bash(xargs kill -9)",
+      "Bash(wc:*)"
     ],
     "deny": [],
     "ask": []
