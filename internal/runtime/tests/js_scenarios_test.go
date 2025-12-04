@@ -100,14 +100,14 @@ func TestJS_Scenario_URLShortener(t *testing.T) {
 		t.Errorf("Expected 8 char code, got %d", len(shortCode))
 	}
 
-	// Тест 2: Редирект
+	// Test 2: Redirect
 	ctx = &modules.RequestContext{Method: "GET", Path: "/r/" + shortCode}
 	resp, _ = routerModule.Handle("GET", "/r/"+shortCode, ctx)
 	if resp.Status != 302 {
 		t.Errorf("Expected 302 redirect, got %d", resp.Status)
 	}
 
-	// Тест 3: Статистика
+	// Test 3: Statistics
 	ctx = &modules.RequestContext{Method: "GET", Path: "/stats/" + shortCode}
 	resp, _ = routerModule.Handle("GET", "/stats/"+shortCode, ctx)
 	if resp.Status != 200 {
@@ -118,7 +118,7 @@ func TestJS_Scenario_URLShortener(t *testing.T) {
 		t.Errorf("Expected 1 click, got %v", body["clicks"])
 	}
 
-	// Тест 4: Невалидный URL
+	// Test 4: Invalid URL
 	ctx = &modules.RequestContext{
 		Method: "POST",
 		Path:   "/shorten",
@@ -129,7 +129,7 @@ func TestJS_Scenario_URLShortener(t *testing.T) {
 		t.Errorf("Expected 400 for invalid URL, got %d", resp.Status)
 	}
 
-	// Тест 5: Несуществующий код
+	// Test 5: Non-existent code
 	ctx = &modules.RequestContext{Method: "GET", Path: "/r/notexist"}
 	resp, _ = routerModule.Handle("GET", "/r/notexist", ctx)
 	if resp.Status != 404 {
@@ -138,7 +138,7 @@ func TestJS_Scenario_URLShortener(t *testing.T) {
 }
 
 // ============== SCENARIO 2: WEBHOOK PROCESSOR ==============
-// Обработчик вебхуков с валидацией подписи
+// Webhook processor with signature validation
 
 func TestJS_Scenario_WebhookProcessor(t *testing.T) {
 	h := NewJSTestHelper(t)
@@ -149,13 +149,13 @@ func TestJS_Scenario_WebhookProcessor(t *testing.T) {
 		var processedEvents = [];
 
 		router.post("/webhook", function(ctx) {
-			// Проверяем подпись
+			// Verify signature
 			var signature = ctx.headers["X-Webhook-Signature"];
 			if (!signature) {
 				return router.response(401, {error: "Missing signature"});
 			}
 
-			// Вычисляем ожидаемую подпись
+			// Calculate expected signature
 			var payload = encoding.jsonStringify(ctx.body);
 			var expectedSig = crypto.sha256(payload + SECRET);
 
@@ -163,13 +163,13 @@ func TestJS_Scenario_WebhookProcessor(t *testing.T) {
 				return router.response(401, {error: "Invalid signature"});
 			}
 
-			// Обрабатываем событие
+			// Process event
 			var event = ctx.body;
 			if (!event.type || !event.data) {
 				return router.response(400, {error: "Invalid event format"});
 			}
 
-			// Сохраняем обработанное событие
+			// Save processed event
 			processedEvents.push({
 				id: utils.uuid(),
 				type: event.type,
@@ -191,14 +191,14 @@ func TestJS_Scenario_WebhookProcessor(t *testing.T) {
 		});
 	`)
 
-	// Тест 1: Отправка вебхука с правильной подписью
+	// Test 1: Send webhook with correct signature
 	payload := map[string]interface{}{
 		"type": "user.created",
 		"data": map[string]interface{}{"userId": "123", "email": "test@example.com"},
 	}
 	payloadJSON, _ := json.Marshal(payload)
 
-	// Вычисляем подпись
+	// Calculate signature
 	cryptoModule := modules.NewCryptoModule()
 	signature := cryptoModule.SHA256(string(payloadJSON) + "webhook_secret_key")
 
