@@ -244,11 +244,11 @@ func TestJS_Utils_Truncate(t *testing.T) {
 		code     string
 		expected string
 	}{
-		{"short text", `utils.truncate("hello", 10)`, "hello"},
-		{"exact length", `utils.truncate("hello", 5)`, "hello"},
-		{"truncated", `utils.truncate("hello world", 5)`, "hello..."},
-		{"zero length", `utils.truncate("hello", 0)`, "..."},
-		{"negative length", `utils.truncate("hello", -5)`, "..."},
+		{"short text", `$utils.truncate("hello", 10)`, "hello"},
+		{"exact length", `$utils.truncate("hello", 5)`, "hello"},
+		{"truncated", `$utils.truncate("hello world", 5)`, "hello..."},
+		{"zero length", `$utils.truncate("hello", 0)`, "..."},
+		{"negative length", `$utils.truncate("hello", -5)`, "..."},
 	}
 
 	for _, tt := range tests {
@@ -265,7 +265,7 @@ func TestJS_Utils_Timestamp(t *testing.T) {
 	h := NewJSTestHelper(t)
 
 	before := time.Now().UnixMilli()
-	result := h.MustRun(t, `utils.timestamp()`)
+	result := h.MustRun(t, `$utils.timestamp()`)
 	after := time.Now().UnixMilli()
 
 	ts := result.ToInteger()
@@ -347,7 +347,7 @@ func TestJS_EdgeCases_EmptyStrings(t *testing.T) {
 		{"encoding base64 empty", `$encoding.base64Encode("")`},
 		{"encoding base64 decode empty", `$encoding.base64Decode("")`},
 		{"utils slugify empty", `$utils.slugify("")`},
-		{"utils truncate empty", `utils.truncate("", 10)`},
+		{"utils truncate empty", `$utils.truncate("", 10)`},
 		{"utils capitalize empty", `utils.capitalize("")`},
 	}
 
