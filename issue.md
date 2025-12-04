@@ -332,7 +332,9 @@ service.shotdown(() => {
 
 ```
 
+## UI
 
+используй schadcn и стиль [ui-style.md](ui-style.md)
 
 
 
