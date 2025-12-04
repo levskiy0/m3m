@@ -21,7 +21,9 @@ export const storageApi = {
   },
 
   mkdir: async (projectId: string, data: CreateDirRequest): Promise<void> => {
-    return api.post(`/api/projects/${projectId}/storage/mkdir`, data);
+    // Backend expects {path: "full/path"}, so combine path and name
+    const fullPath = data.path ? `${data.path}/${data.name}` : data.name;
+    return api.post(`/api/projects/${projectId}/storage/mkdir`, { path: fullPath });
   },
 
   upload: async (projectId: string, path: string, file: File): Promise<StorageItem> => {

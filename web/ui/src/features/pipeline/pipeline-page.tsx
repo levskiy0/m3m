@@ -521,12 +521,12 @@ export function PipelinePage() {
             </Field>
             <Field>
               <FieldLabel>Tag</FieldLabel>
-              <Select value={releaseTag} onValueChange={setReleaseTag}>
+              <Select value={releaseTag || '__none__'} onValueChange={(v) => setReleaseTag(v === '__none__' ? '' : v)}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select tag (optional)" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">None</SelectItem>
+                  <SelectItem value="__none__">None</SelectItem>
                   {RELEASE_TAGS.map((tag) => (
                     <SelectItem key={tag.value} value={tag.value}>
                       {tag.label}

@@ -32,12 +32,14 @@ export function LogsPage() {
   const [autoScroll, setAutoScroll] = useState(true);
   const [levelFilter, setLevelFilter] = useState<LogLevel>('all');
 
-  const { data: logs = [], isLoading } = useQuery({
+  const { data: logsData, isLoading } = useQuery({
     queryKey: ['logs', projectId],
     queryFn: () => runtimeApi.logs(projectId!),
     enabled: !!projectId,
     refetchInterval: 3000, // Poll every 3 seconds
   });
+
+  const logs = Array.isArray(logsData) ? logsData : [];
 
   const filteredLogs = logs.filter((log) =>
     levelFilter === 'all' ? true : log.level === levelFilter
