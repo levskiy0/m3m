@@ -83,44 +83,16 @@ func toString(v interface{}) string {
 }
 
 func (h *JSTestHelper) registerModules(vm *goja.Runtime) {
-	// Crypto
-	cryptoModule := modules.NewCryptoModule()
-	vm.Set("crypto", map[string]interface{}{
-		"md5":         cryptoModule.MD5,
-		"sha256":      cryptoModule.SHA256,
-		"randomBytes": cryptoModule.RandomBytes,
-	})
+	// Stateless modules - use self-registration
+	modules.NewCryptoModule().Register(vm)
+	modules.NewEncodingModule().Register(vm)
+	modules.NewUtilsModule().Register(vm)
+	modules.NewValidatorModule().Register(vm)
+	modules.NewDelayedModule(5).Register(vm)
+	modules.NewHTTPModule(30 * time.Second).Register(vm)
 
-	// Encoding
-	encodingModule := modules.NewEncodingModule()
-	vm.Set("encoding", map[string]interface{}{
-		"base64Encode":  encodingModule.Base64Encode,
-		"base64Decode":  encodingModule.Base64Decode,
-		"jsonParse":     encodingModule.JSONParse,
-		"jsonStringify": encodingModule.JSONStringify,
-		"urlEncode":     encodingModule.URLEncode,
-		"urlDecode":     encodingModule.URLDecode,
-	})
-
-	// Utils
-	utilsModule := modules.NewUtilsModule()
-	vm.Set("utils", map[string]interface{}{
-		"sleep":        utilsModule.Sleep,
-		"random":       utilsModule.Random,
-		"randomInt":    utilsModule.RandomInt,
-		"uuid":         utilsModule.UUID,
-		"slugify":      utilsModule.Slugify,
-		"truncate":     utilsModule.Truncate,
-		"capitalize":   utilsModule.Capitalize,
-		"regexMatch":   utilsModule.RegexMatch,
-		"regexReplace": utilsModule.RegexReplace,
-		"formatDate":   utilsModule.FormatDate,
-		"parseDate":    utilsModule.ParseDate,
-		"timestamp":    utilsModule.Timestamp,
-	})
-
-	// Env (mock)
-	envModule := modules.NewEnvModule(map[string]interface{}{
+	// Env (mock) - use self-registration
+	modules.NewEnvModule(map[string]interface{}{
 		"TEST_VAR":   "test_value",
 		"API_KEY":    "secret123",
 		"NUMBER_VAR": "42",
@@ -130,75 +102,7 @@ func (h *JSTestHelper) registerModules(vm *goja.Runtime) {
 		"JSON_VAR":   `{"key": "value"}`,
 		"DB_HOST":    "localhost",
 		"DB_PORT":    "5432",
-	})
-	vm.Set("env", map[string]interface{}{
-		"get":       envModule.Get,
-		"has":       envModule.Has,
-		"keys":      envModule.Keys,
-		"getString": envModule.GetString,
-		"getInt":    envModule.GetInt,
-		"getFloat":  envModule.GetFloat,
-		"getBool":   envModule.GetBool,
-		"getAll":    envModule.GetAll,
-	})
-
-	// Delayed
-	delayedModule := modules.NewDelayedModule(5)
-	vm.Set("delayed", map[string]interface{}{
-		"run": delayedModule.Run,
-	})
-
-	// HTTP
-	httpModule := modules.NewHTTPModule(30 * time.Second)
-	vm.Set("http", map[string]interface{}{
-		"get":    httpModule.Get,
-		"post":   httpModule.Post,
-		"put":    httpModule.Put,
-		"delete": httpModule.Delete,
-	})
-
-	// Validator
-	validatorModule := modules.NewValidatorModule()
-	vm.Set("validator", map[string]interface{}{
-		"struct":         validatorModule.Struct,
-		"var":            validatorModule.Var,
-		"isValid":        validatorModule.IsValid,
-		"isEmail":        validatorModule.IsEmail,
-		"isURL":          validatorModule.IsURL,
-		"isUUID":         validatorModule.IsUUID,
-		"isUUIDv4":       validatorModule.IsUUIDv4,
-		"isNumeric":      validatorModule.IsNumeric,
-		"isAlpha":        validatorModule.IsAlpha,
-		"isAlphanumeric": validatorModule.IsAlphanumeric,
-		"isJSON":         validatorModule.IsJSON,
-		"isBase64":       validatorModule.IsBase64,
-		"isIP":           validatorModule.IsIP,
-		"isIPv4":         validatorModule.IsIPv4,
-		"isIPv6":         validatorModule.IsIPv6,
-		"isCIDR":         validatorModule.IsCIDR,
-		"isMAC":          validatorModule.IsMAC,
-		"isHexColor":     validatorModule.IsHexColor,
-		"isRGBColor":     validatorModule.IsRGBColor,
-		"isRGBAColor":    validatorModule.IsRGBAColor,
-		"isLatitude":     validatorModule.IsLatitude,
-		"isLongitude":    validatorModule.IsLongitude,
-		"isCreditCard":   validatorModule.IsCreditCard,
-		"isISBN":         validatorModule.IsISBN,
-		"contains":       validatorModule.Contains,
-		"startsWith":     validatorModule.StartsWith,
-		"endsWith":       validatorModule.EndsWith,
-		"minLength":      validatorModule.MinLength,
-		"maxLength":      validatorModule.MaxLength,
-		"length":         validatorModule.Length,
-		"lengthBetween":  validatorModule.LengthBetween,
-		"min":            validatorModule.Min,
-		"max":            validatorModule.Max,
-		"between":        validatorModule.Between,
-		"matches":        validatorModule.Matches,
-		"oneOf":          validatorModule.OneOf,
-		"notEmpty":       validatorModule.NotEmpty,
-		"required":       validatorModule.Required,
-	})
+	}).Register(vm)
 }
 
 // Run executes JS code and returns the result
