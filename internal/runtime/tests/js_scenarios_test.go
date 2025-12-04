@@ -3,10 +3,8 @@ package tests
 import (
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	"net/http/httptest"
-	"strings"
 	"testing"
 	"time"
 
@@ -216,7 +214,7 @@ func TestJS_Scenario_WebhookProcessor(t *testing.T) {
 		t.Errorf("Expected 200, got %d", resp.Status)
 	}
 
-	// Тест 2: Без подписи
+	// Test 2: Without signature
 	ctx = &modules.RequestContext{
 		Method:  "POST",
 		Path:    "/webhook",
@@ -228,7 +226,7 @@ func TestJS_Scenario_WebhookProcessor(t *testing.T) {
 		t.Errorf("Expected 401 without signature, got %d", resp.Status)
 	}
 
-	// Тест 3: Неверная подпись
+	// Test 3: Invalid signature
 	ctx = &modules.RequestContext{
 		Method:  "POST",
 		Path:    "/webhook",
@@ -240,7 +238,7 @@ func TestJS_Scenario_WebhookProcessor(t *testing.T) {
 		t.Errorf("Expected 401 for invalid signature, got %d", resp.Status)
 	}
 
-	// Тест 4: Проверяем что событие сохранилось
+	// Test 4: Verify event was saved
 	ctx = &modules.RequestContext{Method: "GET", Path: "/events"}
 	resp, _ = routerModule.Handle("GET", "/events", ctx)
 	body := resp.Body.(map[string]interface{})
@@ -250,7 +248,7 @@ func TestJS_Scenario_WebhookProcessor(t *testing.T) {
 }
 
 // ============== SCENARIO 3: API GATEWAY WITH RATE LIMITING ==============
-// API Gateway с ограничением запросов
+// API Gateway with rate limiting
 
 func TestJS_Scenario_APIGateway(t *testing.T) {
 	h := NewJSTestHelper(t)
@@ -296,7 +294,7 @@ func TestJS_Scenario_APIGateway(t *testing.T) {
 				});
 			}
 
-			// Обрабатываем запрос
+			// Process request
 			var resource = ctx.params.resource;
 			return router.response(200, {
 				resource: resource,
@@ -306,7 +304,7 @@ func TestJS_Scenario_APIGateway(t *testing.T) {
 		});
 	`)
 
-	// Тест: Отправляем запросы до лимита
+	// Test: Send requests up to limit
 	for i := 0; i < 5; i++ {
 		ctx := &modules.RequestContext{
 			Method:  "GET",
@@ -319,7 +317,7 @@ func TestJS_Scenario_APIGateway(t *testing.T) {
 		}
 	}
 
-	// Следующий запрос должен быть заблокирован
+	// Next request should be blocked
 	ctx := &modules.RequestContext{
 		Method:  "GET",
 		Path:    "/api/users",
@@ -330,7 +328,7 @@ func TestJS_Scenario_APIGateway(t *testing.T) {
 		t.Errorf("Expected 429 after limit, got %d", resp.Status)
 	}
 
-	// Другой клиент должен работать
+	// Different client should work
 	ctx = &modules.RequestContext{
 		Method:  "GET",
 		Path:    "/api/users",
@@ -343,7 +341,7 @@ func TestJS_Scenario_APIGateway(t *testing.T) {
 }
 
 // ============== SCENARIO 4: USER REGISTRATION SERVICE ==============
-// Сервис регистрации пользователей с валидацией
+// User registration service with validation
 
 func TestJS_Scenario_UserRegistration(t *testing.T) {
 	h := NewJSTestHelper(t)
@@ -366,7 +364,7 @@ func TestJS_Scenario_UserRegistration(t *testing.T) {
 				return router.response(400, {error: "Request body required"});
 			}
 
-			// Валидация полей
+			// Field validation
 			var errors = [];
 
 			if (!body.email) {
@@ -391,7 +389,7 @@ func TestJS_Scenario_UserRegistration(t *testing.T) {
 				return router.response(400, {errors: errors});
 			}
 
-			// Создаём пользователя
+			// Create user
 			var userId = utils.uuid();
 			var passwordHash = crypto.sha256(body.password);
 
@@ -426,7 +424,7 @@ func TestJS_Scenario_UserRegistration(t *testing.T) {
 				return router.response(401, {error: "Invalid credentials"});
 			}
 
-			// Генерируем токен
+			// Generate token
 			var token = crypto.randomBytes(32);
 			return router.response(200, {
 				token: token,
@@ -435,7 +433,7 @@ func TestJS_Scenario_UserRegistration(t *testing.T) {
 		});
 	`)
 
-	// Тест 1: Успешная регистрация
+	// Test 1: Successful registration
 	ctx := &modules.RequestContext{
 		Method: "POST",
 		Path:   "/register",
@@ -450,13 +448,13 @@ func TestJS_Scenario_UserRegistration(t *testing.T) {
 		t.Errorf("Expected 201, got %d", resp.Status)
 	}
 
-	// Тест 2: Дублирование email
+	// Test 2: Duplicate email
 	resp, _ = routerModule.Handle("POST", "/register", ctx)
 	if resp.Status != 400 {
 		t.Errorf("Expected 400 for duplicate email, got %d", resp.Status)
 	}
 
-	// Тест 3: Невалидный email
+	// Test 3: Invalid email
 	ctx = &modules.RequestContext{
 		Method: "POST",
 		Path:   "/register",
@@ -471,7 +469,7 @@ func TestJS_Scenario_UserRegistration(t *testing.T) {
 		t.Errorf("Expected 400 for invalid email, got %d", resp.Status)
 	}
 
-	// Тест 4: Короткий пароль
+	// Test 4: Short password
 	ctx = &modules.RequestContext{
 		Method: "POST",
 		Path:   "/register",
@@ -486,7 +484,7 @@ func TestJS_Scenario_UserRegistration(t *testing.T) {
 		t.Errorf("Expected 400 for short password, got %d", resp.Status)
 	}
 
-	// Тест 5: Успешный логин
+	// Test 5: Successful login
 	ctx = &modules.RequestContext{
 		Method: "POST",
 		Path:   "/login",
@@ -500,7 +498,7 @@ func TestJS_Scenario_UserRegistration(t *testing.T) {
 		t.Errorf("Expected 200 for login, got %d", resp.Status)
 	}
 
-	// Тест 6: Неверный пароль
+	// Test 6: Wrong password
 	ctx = &modules.RequestContext{
 		Method: "POST",
 		Path:   "/login",
@@ -516,7 +514,7 @@ func TestJS_Scenario_UserRegistration(t *testing.T) {
 }
 
 // ============== SCENARIO 5: DATA TRANSFORMATION PIPELINE ==============
-// Пайплайн преобразования данных
+// Data transformation pipeline
 
 func TestJS_Scenario_DataPipeline(t *testing.T) {
 	h := NewJSTestHelper(t)
@@ -587,7 +585,7 @@ func TestJS_Scenario_DataPipeline(t *testing.T) {
 		});
 	`)
 
-	// Тест: Сложный пайплайн трансформации
+	// Test: Complex transformation pipeline
 	ctx := &modules.RequestContext{
 		Method: "POST",
 		Path:   "/transform",
@@ -630,7 +628,7 @@ func TestJS_Scenario_DataPipeline(t *testing.T) {
 }
 
 // ============== SCENARIO 6: HEALTH CHECK SERVICE ==============
-// Сервис проверки здоровья системы
+// System health check service
 
 func TestJS_Scenario_HealthCheck(t *testing.T) {
 	h := NewJSTestHelper(t)
@@ -679,7 +677,7 @@ func TestJS_Scenario_HealthCheck(t *testing.T) {
 		});
 	`)
 
-	// Тест 1: Базовая проверка здоровья
+	// Test 1: Basic health check
 	ctx := &modules.RequestContext{Method: "GET", Path: "/health"}
 	resp, _ := routerModule.Handle("GET", "/health", ctx)
 	if resp.Status != 200 {
@@ -690,7 +688,7 @@ func TestJS_Scenario_HealthCheck(t *testing.T) {
 		t.Errorf("Expected healthy status")
 	}
 
-	// Тест 2: Детальная проверка
+	// Test 2: Detailed check
 	ctx = &modules.RequestContext{Method: "GET", Path: "/health/detailed"}
 	resp, _ = routerModule.Handle("GET", "/health/detailed", ctx)
 	if resp.Status != 200 {
@@ -702,7 +700,7 @@ func TestJS_Scenario_HealthCheck(t *testing.T) {
 		t.Error("Expected api check")
 	}
 
-	// Тест 3: Счётчик запросов увеличивается
+	// Test 3: Request counter increases
 	ctx = &modules.RequestContext{Method: "GET", Path: "/health"}
 	resp, _ = routerModule.Handle("GET", "/health", ctx)
 	body = resp.Body.(map[string]interface{})
@@ -712,7 +710,7 @@ func TestJS_Scenario_HealthCheck(t *testing.T) {
 }
 
 // ============== SCENARIO 7: CONTENT CACHE SERVICE ==============
-// Сервис кэширования контента с TTL
+// Content caching service with TTL
 
 func TestJS_Scenario_ContentCache(t *testing.T) {
 	h := NewJSTestHelper(t)
@@ -774,7 +772,7 @@ func TestJS_Scenario_ContentCache(t *testing.T) {
 		});
 	`)
 
-	// Тест 1: Сохранение в кэш
+	// Test 1: Save to cache
 	ctx := &modules.RequestContext{
 		Method: "POST",
 		Path:   "/cache",
@@ -789,28 +787,28 @@ func TestJS_Scenario_ContentCache(t *testing.T) {
 		t.Errorf("Expected 201, got %d", resp.Status)
 	}
 
-	// Тест 2: Получение из кэша
+	// Test 2: Get from cache
 	ctx = &modules.RequestContext{Method: "GET", Path: "/cache/user:123"}
 	resp, _ = routerModule.Handle("GET", "/cache/user:123", ctx)
 	if resp.Status != 200 {
 		t.Errorf("Expected 200, got %d", resp.Status)
 	}
 
-	// Тест 3: Несуществующий ключ
+	// Test 3: Non-existent key
 	ctx = &modules.RequestContext{Method: "GET", Path: "/cache/nonexistent"}
 	resp, _ = routerModule.Handle("GET", "/cache/nonexistent", ctx)
 	if resp.Status != 404 {
 		t.Errorf("Expected 404, got %d", resp.Status)
 	}
 
-	// Тест 4: Удаление
+	// Test 4: Delete
 	ctx = &modules.RequestContext{Method: "DELETE", Path: "/cache/user:123"}
 	resp, _ = routerModule.Handle("DELETE", "/cache/user:123", ctx)
 	if resp.Status != 204 {
 		t.Errorf("Expected 204, got %d", resp.Status)
 	}
 
-	// Тест 5: Проверяем что удалено
+	// Test 5: Verify deleted
 	ctx = &modules.RequestContext{Method: "GET", Path: "/cache/user:123"}
 	resp, _ = routerModule.Handle("GET", "/cache/user:123", ctx)
 	if resp.Status != 404 {
@@ -819,7 +817,7 @@ func TestJS_Scenario_ContentCache(t *testing.T) {
 }
 
 // ============== SCENARIO 8: ANALYTICS TRACKER ==============
-// Сервис отслеживания аналитики
+// Analytics tracking service
 
 func TestJS_Scenario_AnalyticsTracker(t *testing.T) {
 	h := NewJSTestHelper(t)
@@ -881,7 +879,7 @@ func TestJS_Scenario_AnalyticsTracker(t *testing.T) {
 		});
 	`)
 
-	// Отправляем события
+	// Send events
 	ctx := &modules.RequestContext{
 		Method: "POST",
 		Path:   "/track/event",
@@ -897,7 +895,7 @@ func TestJS_Scenario_AnalyticsTracker(t *testing.T) {
 		t.Errorf("Expected 201, got %d", resp.Status)
 	}
 
-	// Отправляем просмотры страниц
+	// Send page views
 	pages := []string{"/home", "/products", "/home", "/about", "/home"}
 	for _, page := range pages {
 		ctx = &modules.RequestContext{
@@ -908,7 +906,7 @@ func TestJS_Scenario_AnalyticsTracker(t *testing.T) {
 		routerModule.Handle("POST", "/track/pageview", ctx)
 	}
 
-	// Проверяем аналитику
+	// Check analytics
 	ctx = &modules.RequestContext{Method: "GET", Path: "/analytics/summary"}
 	resp, _ = routerModule.Handle("GET", "/analytics/summary", ctx)
 	if resp.Status != 200 {
@@ -933,7 +931,7 @@ func TestJS_Scenario_AnalyticsTracker(t *testing.T) {
 }
 
 // ============== SCENARIO 9: PAYMENT WEBHOOK HANDLER ==============
-// Обработчик платежных вебхуков
+// Payment webhook handler
 
 func TestJS_Scenario_PaymentWebhook(t *testing.T) {
 	h := NewJSTestHelper(t)
@@ -1022,7 +1020,7 @@ func TestJS_Scenario_PaymentWebhook(t *testing.T) {
 		});
 	`)
 
-	// Создаём платёж
+	// Create payment
 	ctx := &modules.RequestContext{
 		Method: "POST",
 		Path:   "/payment/webhook",
@@ -1040,7 +1038,7 @@ func TestJS_Scenario_PaymentWebhook(t *testing.T) {
 		t.Errorf("Expected 200, got %d", resp.Status)
 	}
 
-	// Завершаем платёж
+	// Complete payment
 	ctx = &modules.RequestContext{
 		Method: "POST",
 		Path:   "/payment/webhook",
@@ -1057,7 +1055,7 @@ func TestJS_Scenario_PaymentWebhook(t *testing.T) {
 		t.Errorf("Expected 200, got %d", resp.Status)
 	}
 
-	// Проверяем статус платежа
+	// Check payment status
 	ctx = &modules.RequestContext{Method: "GET", Path: "/payment/pay-001"}
 	resp, _ = routerModule.Handle("GET", "/payment/pay-001", ctx)
 	body := resp.Body.(map[string]interface{})
@@ -1065,7 +1063,7 @@ func TestJS_Scenario_PaymentWebhook(t *testing.T) {
 		t.Errorf("Expected completed status, got %v", body["status"])
 	}
 
-	// Проверяем статус заказа
+	// Check order status
 	ctx = &modules.RequestContext{Method: "GET", Path: "/order/order-001"}
 	resp, _ = routerModule.Handle("GET", "/order/order-001", ctx)
 	body = resp.Body.(map[string]interface{})
@@ -1073,7 +1071,7 @@ func TestJS_Scenario_PaymentWebhook(t *testing.T) {
 		t.Errorf("Expected paid status, got %v", body["status"])
 	}
 
-	// Неизвестный тип события
+	// Unknown event type
 	ctx = &modules.RequestContext{
 		Method: "POST",
 		Path:   "/payment/webhook",
@@ -1086,10 +1084,10 @@ func TestJS_Scenario_PaymentWebhook(t *testing.T) {
 }
 
 // ============== SCENARIO 10: HTTP PROXY/AGGREGATOR SERVICE ==============
-// Сервис агрегации данных из внешнего API
+// Data aggregation service from external API
 
 func TestJS_Scenario_HTTPAggregator(t *testing.T) {
-	// Создаём тестовый сервер
+	// Create test server
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case "/users":
@@ -1106,7 +1104,7 @@ func TestJS_Scenario_HTTPAggregator(t *testing.T) {
 
 	h := NewJSTestHelper(t)
 
-	// Регистрируем HTTP модуль
+	// Register HTTP module
 	httpModule := modules.NewHTTPModule(30 * time.Second)
 	h.VM.Set("http", map[string]interface{}{
 		"get":    httpModule.Get,
@@ -1121,7 +1119,7 @@ func TestJS_Scenario_HTTPAggregator(t *testing.T) {
 		var API_BASE = "%s";
 
 		router.get("/aggregate", function(ctx) {
-			// Делаем параллельные запросы к внешнему API
+			// Make requests to external API
 			var usersResp = http.get(API_BASE + "/users");
 			var postsResp = http.get(API_BASE + "/posts");
 
@@ -1132,7 +1130,7 @@ func TestJS_Scenario_HTTPAggregator(t *testing.T) {
 			var users = encoding.jsonParse(usersResp.body) || [];
 			var posts = encoding.jsonParse(postsResp.body) || [];
 
-			// Агрегируем данные
+			// Aggregate data
 			var result = {
 				users: users,
 				posts: posts,
@@ -1178,7 +1176,7 @@ func TestJS_Scenario_HTTPAggregator(t *testing.T) {
 
 	h.MustRun(t, code)
 
-	// Тест 1: Агрегация данных
+	// Test 1: Data aggregation
 	ctx := &modules.RequestContext{Method: "GET", Path: "/aggregate"}
 	resp, err := routerModule.Handle("GET", "/aggregate", ctx)
 	if err != nil {
@@ -1197,7 +1195,7 @@ func TestJS_Scenario_HTTPAggregator(t *testing.T) {
 		t.Errorf("Expected 2 posts, got %v", summary["postCount"])
 	}
 
-	// Тест 2: Получение пользователя с постами
+	// Test 2: Get user with posts
 	ctx = &modules.RequestContext{Method: "GET", Path: "/users/1/posts"}
 	resp, _ = routerModule.Handle("GET", "/users/1/posts", ctx)
 	if resp.Status != 200 {
@@ -1210,7 +1208,7 @@ func TestJS_Scenario_HTTPAggregator(t *testing.T) {
 		t.Errorf("Expected Alice, got %v", user["name"])
 	}
 
-	// Тест 3: Несуществующий пользователь
+	// Test 3: Non-existent user
 	ctx = &modules.RequestContext{Method: "GET", Path: "/users/999/posts"}
 	resp, _ = routerModule.Handle("GET", "/users/999/posts", ctx)
 	if resp.Status != 404 {
