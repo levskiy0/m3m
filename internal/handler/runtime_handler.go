@@ -276,7 +276,7 @@ func (h *RuntimeHandler) Logs(c *gin.Context) {
 	}
 	defer file.Close()
 
-	var logs []string
+	logs := make([]string, 0)
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
 		logs = append(logs, scanner.Text())

@@ -85,7 +85,7 @@ func (r *ModelRepository) FindByProject(ctx context.Context, projectID primitive
 	}
 	defer cursor.Close(ctx)
 
-	var models []*domain.Model
+	models := make([]*domain.Model, 0)
 	if err := cursor.All(ctx, &models); err != nil {
 		return nil, err
 	}
@@ -194,7 +194,7 @@ func (r *ModelRepository) FindData(ctx context.Context, model *domain.Model, que
 	}
 	defer cursor.Close(ctx)
 
-	var results []bson.M
+	results := make([]bson.M, 0)
 	if err := cursor.All(ctx, &results); err != nil {
 		return nil, 0, err
 	}
@@ -277,7 +277,7 @@ func (r *ModelRepository) FindDataAdvanced(ctx context.Context, model *domain.Mo
 	}
 	defer cursor.Close(ctx)
 
-	var results []bson.M
+	results := make([]bson.M, 0)
 	if err := cursor.All(ctx, &results); err != nil {
 		return nil, 0, err
 	}

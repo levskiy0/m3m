@@ -73,7 +73,7 @@ func (r *UserRepository) FindAll(ctx context.Context) ([]*domain.User, error) {
 	}
 	defer cursor.Close(ctx)
 
-	var users []*domain.User
+	users := make([]*domain.User, 0)
 	if err := cursor.All(ctx, &users); err != nil {
 		return nil, err
 	}

@@ -79,7 +79,7 @@ func (r *EnvironmentRepository) FindByProject(ctx context.Context, projectID pri
 	}
 	defer cursor.Close(ctx)
 
-	var envVars []*domain.EnvVar
+	envVars := make([]*domain.EnvVar, 0)
 	if err := cursor.All(ctx, &envVars); err != nil {
 		return nil, err
 	}

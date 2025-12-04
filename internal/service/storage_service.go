@@ -76,7 +76,7 @@ func (s *StorageService) List(projectID, relativePath string) ([]FileInfo, error
 		return nil, err
 	}
 
-	var files []FileInfo
+	files := make([]FileInfo, 0)
 	for _, entry := range entries {
 		info, err := entry.Info()
 		if err != nil {

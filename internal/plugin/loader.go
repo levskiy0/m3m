@@ -191,7 +191,7 @@ type PluginInfo struct {
 
 // GetPluginInfos returns information about all loaded plugins
 func (l *Loader) GetPluginInfos() []PluginInfo {
-	var infos []PluginInfo
+	infos := make([]PluginInfo, 0)
 	for _, p := range l.plugins {
 		infos = append(infos, PluginInfo{
 			Name:    p.Name(),
