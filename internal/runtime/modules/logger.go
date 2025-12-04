@@ -96,3 +96,38 @@ func (l *LoggerModule) GetSchema() JSModuleSchema {
 func GetLoggerSchema() JSModuleSchema {
 	return (&LoggerModule{}).GetSchema()
 }
+
+// GetConsoleSchema returns schema for console (alias for logger)
+func GetConsoleSchema() JSModuleSchema {
+	return JSModuleSchema{
+		Name:        "console",
+		Description: "Console output (alias for logger)",
+		Methods: []JSMethodSchema{
+			{
+				Name:        "log",
+				Description: "Log a message (alias for info)",
+				Params:      []JSParamSchema{{Name: "args", Type: "...any", Description: "Values to log"}},
+			},
+			{
+				Name:        "info",
+				Description: "Log an info message",
+				Params:      []JSParamSchema{{Name: "args", Type: "...any", Description: "Values to log"}},
+			},
+			{
+				Name:        "warn",
+				Description: "Log a warning message",
+				Params:      []JSParamSchema{{Name: "args", Type: "...any", Description: "Values to log"}},
+			},
+			{
+				Name:        "error",
+				Description: "Log an error message",
+				Params:      []JSParamSchema{{Name: "args", Type: "...any", Description: "Values to log"}},
+			},
+			{
+				Name:        "debug",
+				Description: "Log a debug message",
+				Params:      []JSParamSchema{{Name: "args", Type: "...any", Description: "Values to log"}},
+			},
+		},
+	}
+}
