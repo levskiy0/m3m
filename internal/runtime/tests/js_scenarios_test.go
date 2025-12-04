@@ -38,54 +38,54 @@ func TestJS_Scenario_URLShortener(t *testing.T) {
 		var links = {};
 
 		// Create short link
-		router.post("/shorten", function(ctx) {
+		$router.post("/shorten", function(ctx) {
 			if (!ctx.body || !ctx.body.url) {
-				return router.response(400, {error: "URL is required"});
+				return $router.response(400, {error: "URL is required"});
 			}
 
 			var url = ctx.body.url;
 			// URL validation
 			if (!url.startsWith("http://") && !url.startsWith("https://")) {
-				return router.response(400, {error: "Invalid URL format"});
+				return $router.response(400, {error: "Invalid URL format"});
 			}
 
 			// Generate short code
-			var shortCode = crypto.md5(url + utils.timestamp()).substring(0, 8);
+			var shortCode = $crypto.md5(url + $utils.timestamp()).substring(0, 8);
 			links[shortCode] = {
 				url: url,
-				created: utils.timestamp(),
+				created: $utils.timestamp(),
 				clicks: 0
 			};
 
-			return router.response(201, {
+			return $router.response(201, {
 				shortCode: shortCode,
 				shortUrl: "/r/" + shortCode
 			});
 		});
 
 		// Redirect by short link
-		router.get("/r/:code", function(ctx) {
+		$router.get("/r/:code", function(ctx) {
 			var code = ctx.params.code;
 			var link = links[code];
 
 			if (!link) {
-				return router.response(404, {error: "Link not found"});
+				return $router.response(404, {error: "Link not found"});
 			}
 
 			link.clicks++;
-			return router.response(302, {
+			return $router.response(302, {
 				redirect: link.url,
 				clicks: link.clicks
 			});
 		});
 
 		// Link statistics
-		router.get("/stats/:code", function(ctx) {
+		$router.get("/stats/:code", function(ctx) {
 			var link = links[ctx.params.code];
 			if (!link) {
-				return router.response(404, {error: "Link not found"});
+				return $router.response(404, {error: "Link not found"});
 			}
-			return router.response(200, {
+			return $router.response(200, {
 				url: link.url,
 				clicks: link.clicks,
 				created: link.created
@@ -161,43 +161,43 @@ func TestJS_Scenario_WebhookProcessor(t *testing.T) {
 		var SECRET = "webhook_secret_key";
 		var processedEvents = [];
 
-		router.post("/webhook", function(ctx) {
+		$router.post("/webhook", function(ctx) {
 			// Verify signature
 			var signature = ctx.headers["X-Webhook-Signature"];
 			if (!signature) {
-				return router.response(401, {error: "Missing signature"});
+				return $router.response(401, {error: "Missing signature"});
 			}
 
 			// Calculate expected signature
-			var payload = encoding.jsonStringify(ctx.body);
-			var expectedSig = crypto.sha256(payload + SECRET);
+			var payload = $encoding.jsonStringify(ctx.body);
+			var expectedSig = $crypto.sha256(payload + SECRET);
 
 			if (signature !== expectedSig) {
-				return router.response(401, {error: "Invalid signature"});
+				return $router.response(401, {error: "Invalid signature"});
 			}
 
 			// Process event
 			var event = ctx.body;
 			if (!event.type || !event.data) {
-				return router.response(400, {error: "Invalid event format"});
+				return $router.response(400, {error: "Invalid event format"});
 			}
 
 			// Save processed event
 			processedEvents.push({
-				id: utils.uuid(),
+				id: $utils.uuid(),
 				type: event.type,
 				data: event.data,
-				processedAt: utils.timestamp()
+				processedAt: $utils.timestamp()
 			});
 
-			return router.response(200, {
+			return $router.response(200, {
 				status: "processed",
 				eventId: processedEvents[processedEvents.length - 1].id
 			});
 		});
 
-		router.get("/events", function(ctx) {
-			return router.response(200, {
+		$router.get("/events", function(ctx) {
+			return $router.response(200, {
 				count: processedEvents.length,
 				events: processedEvents
 			});
@@ -275,7 +275,7 @@ func TestJS_Scenario_APIGateway(t *testing.T) {
 		var WINDOW = 60000; // 1 minute
 
 		function checkRateLimit(clientId) {
-			var now = utils.timestamp();
+			var now = $utils.timestamp();
 			var client = rateLimits[clientId];
 
 			if (!client || client.resetTime < now) {
@@ -298,12 +298,12 @@ func TestJS_Scenario_APIGateway(t *testing.T) {
 			return {allowed: true, remaining: LIMIT - client.count};
 		}
 
-		router.get("/api/:resource", function(ctx) {
+		$router.get("/api/:resource", function(ctx) {
 			var clientId = ctx.headers["X-Client-ID"] || "anonymous";
 			var rateCheck = checkRateLimit(clientId);
 
 			if (!rateCheck.allowed) {
-				return router.response(429, {
+				return $router.response(429, {
 					error: "Rate limit exceeded",
 					retryAfter: rateCheck.retryAfter
 				});
@@ -311,7 +311,7 @@ func TestJS_Scenario_APIGateway(t *testing.T) {
 
 			// Process request
 			var resource = ctx.params.resource;
-			return router.response(200, {
+			return $router.response(200, {
 				resource: resource,
 				data: "Sample data for " + resource,
 				rateLimitRemaining: rateCheck.remaining
@@ -373,10 +373,10 @@ func TestJS_Scenario_UserRegistration(t *testing.T) {
 			return password && password.length >= 8;
 		}
 
-		router.post("/register", function(ctx) {
+		$router.post("/register", function(ctx) {
 			var body = ctx.body;
 			if (!body) {
-				return router.response(400, {error: "Request body required"});
+				return $router.response(400, {error: "Request body required"});
 			}
 
 			// Field validation
@@ -401,47 +401,47 @@ func TestJS_Scenario_UserRegistration(t *testing.T) {
 			}
 
 			if (errors.length > 0) {
-				return router.response(400, {errors: errors});
+				return $router.response(400, {errors: errors});
 			}
 
 			// Create user
-			var userId = utils.uuid();
-			var passwordHash = crypto.sha256(body.password);
+			var userId = $utils.uuid();
+			var passwordHash = $crypto.sha256(body.password);
 
 			users[body.email] = {
 				id: userId,
 				email: body.email,
 				name: body.name,
 				passwordHash: passwordHash,
-				createdAt: utils.timestamp()
+				createdAt: $utils.timestamp()
 			};
 
-			return router.response(201, {
+			return $router.response(201, {
 				userId: userId,
 				email: body.email,
 				name: body.name
 			});
 		});
 
-		router.post("/login", function(ctx) {
+		$router.post("/login", function(ctx) {
 			var body = ctx.body;
 			if (!body || !body.email || !body.password) {
-				return router.response(400, {error: "Email and password required"});
+				return $router.response(400, {error: "Email and password required"});
 			}
 
 			var user = users[body.email];
 			if (!user) {
-				return router.response(401, {error: "Invalid credentials"});
+				return $router.response(401, {error: "Invalid credentials"});
 			}
 
-			var passwordHash = crypto.sha256(body.password);
+			var passwordHash = $crypto.sha256(body.password);
 			if (user.passwordHash !== passwordHash) {
-				return router.response(401, {error: "Invalid credentials"});
+				return $router.response(401, {error: "Invalid credentials"});
 			}
 
 			// Generate token
-			var token = crypto.randomBytes(32);
-			return router.response(200, {
+			var token = $crypto.randomBytes(32);
+			return $router.response(200, {
 				token: token,
 				userId: user.id
 			});
@@ -536,14 +536,14 @@ func TestJS_Scenario_DataPipeline(t *testing.T) {
 	routerModule := h.SetupRouter()
 
 	h.MustRun(t, `
-		router.post("/transform", function(ctx) {
+		$router.post("/transform", function(ctx) {
 			if (!ctx.body || !ctx.body.data) {
-				return router.response(400, {error: "Data array required"});
+				return $router.response(400, {error: "Data array required"});
 			}
 
 			var data = ctx.body.data;
 			if (!Array.isArray(data)) {
-				return router.response(400, {error: "Data must be an array"});
+				return $router.response(400, {error: "Data must be an array"});
 			}
 
 			var operations = ctx.body.operations || [];
@@ -569,10 +569,10 @@ func TestJS_Scenario_DataPipeline(t *testing.T) {
 								newItem[op.addField] = op.addValue;
 							}
 							if (op.slugifyField) {
-								newItem[op.slugifyField + "_slug"] = utils.slugify(item[op.slugifyField] || "");
+								newItem[op.slugifyField + "_slug"] = $utils.slugify(item[op.slugifyField] || "");
 							}
 							if (op.hashField) {
-								newItem[op.hashField + "_hash"] = crypto.md5(item[op.hashField] || "");
+								newItem[op.hashField + "_hash"] = $crypto.md5(item[op.hashField] || "");
 							}
 							return newItem;
 						});
@@ -592,7 +592,7 @@ func TestJS_Scenario_DataPipeline(t *testing.T) {
 				}
 			}
 
-			return router.response(200, {
+			return $router.response(200, {
 				originalCount: data.length,
 				resultCount: result.length,
 				data: result
@@ -650,30 +650,30 @@ func TestJS_Scenario_HealthCheck(t *testing.T) {
 	routerModule := h.SetupRouter()
 
 	h.MustRun(t, `
-		var startTime = utils.timestamp();
+		var startTime = $utils.timestamp();
 		var requestCount = 0;
 
-		router.get("/health", function(ctx) {
+		$router.get("/health", function(ctx) {
 			requestCount++;
 
-			var uptime = utils.timestamp() - startTime;
+			var uptime = $utils.timestamp() - startTime;
 
-			return router.response(200, {
+			return $router.response(200, {
 				status: "healthy",
 				uptime: uptime,
 				requestCount: requestCount,
-				timestamp: utils.timestamp(),
+				timestamp: $utils.timestamp(),
 				version: "1.0.0"
 			});
 		});
 
-		router.get("/health/detailed", function(ctx) {
+		$router.get("/health/detailed", function(ctx) {
 			requestCount++;
 
 			var checks = {
-				api: {status: "ok", latency: utils.randomInt(1, 10)},
-				memory: {status: "ok", used: utils.randomInt(50, 80) + "%"},
-				connections: {status: "ok", active: utils.randomInt(1, 100)}
+				api: {status: "ok", latency: $utils.randomInt(1, 10)},
+				memory: {status: "ok", used: $utils.randomInt(50, 80) + "%"},
+				connections: {status: "ok", active: $utils.randomInt(1, 100)}
 			};
 
 			var allHealthy = true;
@@ -684,10 +684,10 @@ func TestJS_Scenario_HealthCheck(t *testing.T) {
 				}
 			}
 
-			return router.response(allHealthy ? 200 : 503, {
+			return $router.response(allHealthy ? 200 : 503, {
 				status: allHealthy ? "healthy" : "degraded",
 				checks: checks,
-				timestamp: utils.timestamp()
+				timestamp: $utils.timestamp()
 			});
 		});
 	`)
@@ -735,9 +735,9 @@ func TestJS_Scenario_ContentCache(t *testing.T) {
 		var cache = {};
 		var DEFAULT_TTL = 60000; // 1 minute
 
-		router.post("/cache", function(ctx) {
+		$router.post("/cache", function(ctx) {
 			if (!ctx.body || !ctx.body.key || !ctx.body.value) {
-				return router.response(400, {error: "Key and value required"});
+				return $router.response(400, {error: "Key and value required"});
 			}
 
 			var key = ctx.body.key;
@@ -746,44 +746,44 @@ func TestJS_Scenario_ContentCache(t *testing.T) {
 
 			cache[key] = {
 				value: value,
-				expires: utils.timestamp() + ttl,
-				createdAt: utils.timestamp()
+				expires: $utils.timestamp() + ttl,
+				createdAt: $utils.timestamp()
 			};
 
-			return router.response(201, {
+			return $router.response(201, {
 				key: key,
 				expires: cache[key].expires
 			});
 		});
 
-		router.get("/cache/:key", function(ctx) {
+		$router.get("/cache/:key", function(ctx) {
 			var key = ctx.params.key;
 			var entry = cache[key];
 
 			if (!entry) {
-				return router.response(404, {error: "Key not found"});
+				return $router.response(404, {error: "Key not found"});
 			}
 
-			if (entry.expires < utils.timestamp()) {
+			if (entry.expires < $utils.timestamp()) {
 				delete cache[key];
-				return router.response(404, {error: "Key expired"});
+				return $router.response(404, {error: "Key expired"});
 			}
 
-			return router.response(200, {
+			return $router.response(200, {
 				key: key,
 				value: entry.value,
 				expires: entry.expires,
-				ttlRemaining: entry.expires - utils.timestamp()
+				ttlRemaining: entry.expires - $utils.timestamp()
 			});
 		});
 
-		router.delete("/cache/:key", function(ctx) {
+		$router.delete("/cache/:key", function(ctx) {
 			var key = ctx.params.key;
 			if (!cache[key]) {
-				return router.response(404, {error: "Key not found"});
+				return $router.response(404, {error: "Key not found"});
 			}
 			delete cache[key];
-			return router.response(204, {});
+			return $router.response(204, {});
 		});
 	`)
 
@@ -843,49 +843,49 @@ func TestJS_Scenario_AnalyticsTracker(t *testing.T) {
 		var pageViews = {};
 		var userSessions = {};
 
-		router.post("/track/event", function(ctx) {
+		$router.post("/track/event", function(ctx) {
 			var body = ctx.body;
 			if (!body || !body.name) {
-				return router.response(400, {error: "Event name required"});
+				return $router.response(400, {error: "Event name required"});
 			}
 
 			var event = {
-				id: utils.uuid(),
+				id: $utils.uuid(),
 				name: body.name,
 				properties: body.properties || {},
 				userId: body.userId || "anonymous",
-				timestamp: utils.timestamp(),
+				timestamp: $utils.timestamp(),
 				userAgent: ctx.headers["User-Agent"] || "unknown"
 			};
 
 			events.push(event);
 
-			return router.response(201, {eventId: event.id});
+			return $router.response(201, {eventId: event.id});
 		});
 
-		router.post("/track/pageview", function(ctx) {
+		$router.post("/track/pageview", function(ctx) {
 			var body = ctx.body;
 			if (!body || !body.path) {
-				return router.response(400, {error: "Path required"});
+				return $router.response(400, {error: "Path required"});
 			}
 
 			var path = body.path;
 			pageViews[path] = (pageViews[path] || 0) + 1;
 
-			return router.response(201, {
+			return $router.response(201, {
 				path: path,
 				totalViews: pageViews[path]
 			});
 		});
 
-		router.get("/analytics/summary", function(ctx) {
+		$router.get("/analytics/summary", function(ctx) {
 			var topPages = [];
 			for (var path in pageViews) {
 				topPages.push({path: path, views: pageViews[path]});
 			}
 			topPages.sort(function(a, b) { return b.views - a.views; });
 
-			return router.response(200, {
+			return $router.response(200, {
 				totalEvents: events.length,
 				totalPageViews: topPages.reduce(function(sum, p) { return sum + p.views; }, 0),
 				topPages: topPages.slice(0, 10),
@@ -959,10 +959,10 @@ func TestJS_Scenario_PaymentWebhook(t *testing.T) {
 			"order-002": {status: "pending", amount: 250}
 		};
 
-		router.post("/payment/webhook", function(ctx) {
+		$router.post("/payment/webhook", function(ctx) {
 			var body = ctx.body;
 			if (!body || !body.event) {
-				return router.response(400, {error: "Invalid webhook payload"});
+				return $router.response(400, {error: "Invalid webhook payload"});
 			}
 
 			var event = body.event;
@@ -974,16 +974,16 @@ func TestJS_Scenario_PaymentWebhook(t *testing.T) {
 						status: "pending",
 						amount: data.amount,
 						orderId: data.orderId,
-						createdAt: utils.timestamp()
+						createdAt: $utils.timestamp()
 					};
 					break;
 
 				case "payment.completed":
 					if (!payments[data.paymentId]) {
-						return router.response(404, {error: "Payment not found"});
+						return $router.response(404, {error: "Payment not found"});
 					}
 					payments[data.paymentId].status = "completed";
-					payments[data.paymentId].completedAt = utils.timestamp();
+					payments[data.paymentId].completedAt = $utils.timestamp();
 
 					// Update order
 					if (data.orderId && orders[data.orderId]) {
@@ -993,7 +993,7 @@ func TestJS_Scenario_PaymentWebhook(t *testing.T) {
 
 				case "payment.failed":
 					if (!payments[data.paymentId]) {
-						return router.response(404, {error: "Payment not found"});
+						return $router.response(404, {error: "Payment not found"});
 					}
 					payments[data.paymentId].status = "failed";
 					payments[data.paymentId].failReason = data.reason || "Unknown";
@@ -1001,37 +1001,37 @@ func TestJS_Scenario_PaymentWebhook(t *testing.T) {
 
 				case "payment.refunded":
 					if (!payments[data.paymentId]) {
-						return router.response(404, {error: "Payment not found"});
+						return $router.response(404, {error: "Payment not found"});
 					}
 					payments[data.paymentId].status = "refunded";
-					payments[data.paymentId].refundedAt = utils.timestamp();
+					payments[data.paymentId].refundedAt = $utils.timestamp();
 					break;
 
 				default:
-					return router.response(400, {error: "Unknown event type"});
+					return $router.response(400, {error: "Unknown event type"});
 			}
 
-			return router.response(200, {
+			return $router.response(200, {
 				received: true,
 				event: event,
-				timestamp: utils.timestamp()
+				timestamp: $utils.timestamp()
 			});
 		});
 
-		router.get("/payment/:id", function(ctx) {
+		$router.get("/payment/:id", function(ctx) {
 			var payment = payments[ctx.params.id];
 			if (!payment) {
-				return router.response(404, {error: "Payment not found"});
+				return $router.response(404, {error: "Payment not found"});
 			}
-			return router.response(200, payment);
+			return $router.response(200, payment);
 		});
 
-		router.get("/order/:id", function(ctx) {
+		$router.get("/order/:id", function(ctx) {
 			var order = orders[ctx.params.id];
 			if (!order) {
-				return router.response(404, {error: "Order not found"});
+				return $router.response(404, {error: "Order not found"});
 			}
-			return router.response(200, order);
+			return $router.response(200, order);
 		});
 	`)
 
@@ -1121,7 +1121,7 @@ func TestJS_Scenario_HTTPAggregator(t *testing.T) {
 
 	// Register HTTP module
 	httpModule := modules.NewHTTPModule(30 * time.Second)
-	h.VM.Set("http", map[string]interface{}{
+	h.VM.Set("$http", map[string]interface{}{
 		"get":    httpModule.Get,
 		"post":   httpModule.Post,
 		"put":    httpModule.Put,
@@ -1133,17 +1133,17 @@ func TestJS_Scenario_HTTPAggregator(t *testing.T) {
 	code := fmt.Sprintf(`
 		var API_BASE = "%s";
 
-		router.get("/aggregate", function(ctx) {
+		$router.get("/aggregate", function(ctx) {
 			// Make requests to external API
 			var usersResp = http.get(API_BASE + "/users");
 			var postsResp = http.get(API_BASE + "/posts");
 
 			if (usersResp.status !== 200 || postsResp.status !== 200) {
-				return router.response(502, {error: "Failed to fetch data from upstream"});
+				return $router.response(502, {error: "Failed to fetch data from upstream"});
 			}
 
-			var users = encoding.jsonParse(usersResp.body) || [];
-			var posts = encoding.jsonParse(postsResp.body) || [];
+			var users = $encoding.jsonParse(usersResp.body) || [];
+			var posts = $encoding.jsonParse(postsResp.body) || [];
 
 			// Aggregate data
 			var result = {
@@ -1152,24 +1152,24 @@ func TestJS_Scenario_HTTPAggregator(t *testing.T) {
 				summary: {
 					userCount: users.length,
 					postCount: posts.length,
-					fetchedAt: utils.timestamp()
+					fetchedAt: $utils.timestamp()
 				}
 			};
 
-			return router.response(200, result);
+			return $router.response(200, result);
 		});
 
-		router.get("/users/:id/posts", function(ctx) {
+		$router.get("/users/:id/posts", function(ctx) {
 			var userId = parseInt(ctx.params.id);
 
 			var usersResp = http.get(API_BASE + "/users");
 			var postsResp = http.get(API_BASE + "/posts");
 
 			if (usersResp.status !== 200) {
-				return router.response(502, {error: "Failed to fetch users"});
+				return $router.response(502, {error: "Failed to fetch users"});
 			}
 
-			var users = encoding.jsonParse(usersResp.body) || [];
+			var users = $encoding.jsonParse(usersResp.body) || [];
 			var user = null;
 			for (var i = 0; i < users.length; i++) {
 				if (users[i].id === userId) {
@@ -1179,12 +1179,12 @@ func TestJS_Scenario_HTTPAggregator(t *testing.T) {
 			}
 
 			if (!user) {
-				return router.response(404, {error: "User not found"});
+				return $router.response(404, {error: "User not found"});
 			}
 
-			return router.response(200, {
+			return $router.response(200, {
 				user: user,
-				posts: encoding.jsonParse(postsResp.body) || []
+				posts: $encoding.jsonParse(postsResp.body) || []
 			});
 		});
 	`, server.URL)
@@ -1265,13 +1265,13 @@ func TestJS_Error_HandlerWithTryCatch(t *testing.T) {
 	routerModule := h.SetupRouter()
 
 	h.MustRun(t, `
-		router.get("/safe", function(ctx) {
+		$router.get("/safe", function(ctx) {
 			try {
 				// Potentially failing code
 				var result = someUndefinedVar;
-				return router.response(200, {result: result});
+				return $router.response(200, {result: result});
 			} catch (e) {
-				return router.response(500, {error: e.message});
+				return $router.response(500, {error: e.message});
 			}
 		});
 	`)
