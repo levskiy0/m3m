@@ -244,6 +244,9 @@ Root пользователь имеет доступ ко всем проект
       return router.response(200, { ok: true })
     })
   ```
+- `schedule`
+  - Настройка задач на очередь
+  - `schedule.daily(() => { ... })`
 - `storage`
   - Доступ к файлам
 - `image`
