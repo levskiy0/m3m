@@ -149,7 +149,10 @@ func (h *ModelHandler) Update(c *gin.Context) {
 		if errors.As(err, &validationErr) {
 			c.JSON(http.StatusBadRequest, gin.H{
 				"error":   "validation failed",
-				
+				"details": validationErr.Errors,
+			})
+			return
+		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
