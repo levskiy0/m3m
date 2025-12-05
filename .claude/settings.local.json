@@ -30,7 +30,9 @@
       "Bash(go get:*)",
       "Bash(make dev:*)",
       "Bash(make web-build:*)",
-      "Bash(./node_modules/.bin/tsc:*)"
+      "Bash(./node_modules/.bin/tsc:*)",
+      "Bash(ls:*)",
+      "Bash(make build:*)"
     ],
     "deny": [],
     "ask": []

@@ -1,10 +1,22 @@
 import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, FolderOpen, Play, Square, MoreHorizontal, Settings } from 'lucide-react';
+import {
+  Plus,
+  FolderOpen,
+  Play,
+  Square,
+  MoreHorizontal,
+  Settings,
+  Activity,
+  Clock,
+  ExternalLink,
+  RotateCcw,
+} from 'lucide-react';
 import { toast } from 'sonner';
 
-import { projectsApi, runtimeApi } from '@/api';
+import { projectsApi, runtimeApi, pipelineApi } from '@/api';
+import { config } from '@/lib/config';
 import { useAuth } from '@/providers/auth-provider';
 import type { Project, CreateProjectRequest } from '@/types';
 import { Button } from '@/components/ui/button';
@@ -35,12 +47,28 @@ import { Field, FieldGroup, FieldLabel, FieldError } from '@/components/ui/field
 import { ColorPicker } from '@/components/shared/color-picker';
 import { StatusBadge } from '@/components/shared/status-badge';
 import { EmptyState } from '@/components/shared/empty-state';
+import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
 
 function slugify(text: string): string {
   return text
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-|-$/g, '');
+}
+
+function formatUptime(seconds: number): string {
+  const days = Math.floor(seconds / 86400);
+  const hours = Math.floor((seconds % 86400) / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+
+  if (days > 0) {
+    return `${days}d ${hours}h`;
+  }
+  if (hours > 0) {
+    return `${hours}h ${minutes}m`;
+  }
+  return `${minutes}m`;
 }
 
 export function ProjectsPage() {
@@ -86,23 +114,37 @@ export function ProjectsPage() {
 
   const startMutation = useMutation({
     mutationFn: (projectId: string) => runtimeApi.start(projectId),
-    onSuccess: () => {
+    onSuccess: (_, projectId) => {
       queryClient.invalidateQueries({ queryKey: ['projects'] });
-      toast.success('Project started');
+      queryClient.invalidateQueries({ queryKey: ['project-status', projectId] });
+      toast.success('Service started');
     },
     onError: (err) => {
-      toast.error(err instanceof Error ? err.message : 'Failed to start project');
+      toast.error(err instanceof Error ? err.message : 'Failed to start service');
     },
   });
 
   const stopMutation = useMutation({
     mutationFn: (projectId: string) => runtimeApi.stop(projectId),
-    onSuccess: () => {
+    onSuccess: (_, projectId) => {
       queryClient.invalidateQueries({ queryKey: ['projects'] });
-      toast.success('Project stopped');
+      queryClient.invalidateQueries({ queryKey: ['project-status', projectId] });
+      toast.success('Service stopped');
     },
     onError: (err) => {
-      toast.error(err instanceof Error ? err.message : 'Failed to stop project');
+      toast.error(err instanceof Error ? err.message : 'Failed to stop service');
+    },
+  });
+
+  const restartMutation = useMutation({
+    mutationFn: (projectId: string) => runtimeApi.restart(projectId),
+    onSuccess: (_, projectId) => {
+      queryClient.invalidateQueries({ queryKey: ['projects'] });
+      queryClient.invalidateQueries({ queryKey: ['project-status', projectId] });
+      toast.success('Service restarted');
+    },
+    onError: (err) => {
+      toast.error(err instanceof Error ? err.message : 'Failed to restart service');
     },
   });
 
@@ -134,26 +176,33 @@ export function ProjectsPage() {
 
   const canCreateProjects = user?.permissions?.createProjects || user?.isRoot;
 
+  // Count running and stopped
+  const runningCount = projects.filter((p) => p.status === 'running').length;
+  const stoppedCount = projects.filter((p) => p.status === 'stopped').length;
+
   if (isLoading) {
     return (
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {[1, 2, 3].map((i) => (
-          <Card key={i} className="animate-pulse">
-            <CardHeader>
-              <div className="h-5 w-24 bg-muted rounded" />
-              <div className="h-4 w-32 bg-muted rounded mt-2" />
-            </CardHeader>
-            <CardContent>
-              <div className="h-8 w-20 bg-muted rounded" />
-            </CardContent>
-          </Card>
-        ))}
+      <div className="space-y-6">
+        <div className="h-8 w-48 bg-muted rounded animate-pulse" />
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {[1, 2, 3].map((i) => (
+            <Card key={i} className="animate-pulse">
+              <CardHeader>
+                <div className="h-5 w-24 bg-muted rounded" />
+                <div className="h-4 w-32 bg-muted rounded mt-2" />
+              </CardHeader>
+              <CardContent>
+                <div className="h-8 w-20 bg-muted rounded" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Projects</h1>
@@ -161,12 +210,26 @@ export function ProjectsPage() {
             Manage your mini-services and workers
           </p>
         </div>
-        {canCreateProjects && (
-          <Button onClick={() => setCreateOpen(true)}>
-            <Plus className="mr-2 size-4" />
-            New Project
-          </Button>
-        )}
+        <div className="flex items-center gap-4">
+          {projects.length > 0 && (
+            <div className="flex items-center gap-3 text-sm text-muted-foreground">
+              <span className="flex items-center gap-1.5">
+                <span className="size-2 rounded-full bg-green-500 animate-pulse" />
+                {runningCount} running
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="size-2 rounded-full bg-gray-400" />
+                {stoppedCount} stopped
+              </span>
+            </div>
+          )}
+          {canCreateProjects && (
+            <Button onClick={() => setCreateOpen(true)}>
+              <Plus className="mr-2 size-4" />
+              New Project
+            </Button>
+          )}
+        </div>
       </div>
 
       {projects.length === 0 ? (
@@ -191,8 +254,8 @@ export function ProjectsPage() {
               project={project}
               onStart={() => startMutation.mutate(project.id)}
               onStop={() => stopMutation.mutate(project.id)}
-              isStarting={startMutation.isPending}
-              isStopping={stopMutation.isPending}
+              onRestart={() => restartMutation.mutate(project.id)}
+              isPending={startMutation.isPending || stopMutation.isPending || restartMutation.isPending}
             />
           ))}
         </div>
@@ -262,64 +325,115 @@ interface ProjectCardProps {
   project: Project;
   onStart: () => void;
   onStop: () => void;
-  isStarting: boolean;
-  isStopping: boolean;
+  onRestart: () => void;
+  isPending: boolean;
 }
 
 function ProjectCard({
   project,
   onStart,
   onStop,
-  isStarting,
-  isStopping,
+  onRestart,
+  isPending,
 }: ProjectCardProps) {
   const navigate = useNavigate();
+  const isRunning = project.status === 'running';
+
+  // Fetch runtime status for running projects
+  const { data: status } = useQuery({
+    queryKey: ['project-status', project.id],
+    queryFn: () => runtimeApi.status(project.id),
+    enabled: isRunning,
+    refetchInterval: isRunning ? 10000 : false,
+  });
+
+  // Fetch releases to show active version
+  const { data: releases = [] } = useQuery({
+    queryKey: ['project-releases', project.id],
+    queryFn: () => pipelineApi.listReleases(project.id),
+    staleTime: 60000, // Cache for 1 minute
+  });
+
+  const activeRelease = releases.find((r) => r.isActive);
+  const publicUrl = `${config.apiURL}/r/${project.slug}`;
 
   return (
     <Card
-      className="cursor-pointer transition-colors hover:bg-muted/50"
+      className={cn(
+        "cursor-pointer transition-all hover:shadow-md",
+        isRunning ? "border-green-500/30 hover:border-green-500/50" : "hover:bg-muted/50"
+      )}
       onClick={() => navigate(`/projects/${project.id}`)}
     >
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between">
-          <div className="flex items-center gap-2">
-            <span
-              className="size-3 rounded-full"
+          <div className="flex items-center gap-3">
+            <div
+              className="size-10 rounded-lg flex items-center justify-center shrink-0"
               style={{ backgroundColor: project.color || '#6b7280' }}
-            />
-            <CardTitle className="text-lg">{project.name}</CardTitle>
+            >
+              <Activity className="size-5 text-white" />
+            </div>
+            <div className="min-w-0">
+              <CardTitle className="text-lg truncate">{project.name}</CardTitle>
+              <CardDescription className="font-mono text-xs truncate">
+                {project.slug}
+              </CardDescription>
+            </div>
           </div>
           <DropdownMenu>
             <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-              <Button variant="ghost" size="icon" className="size-8">
+              <Button variant="ghost" size="icon" className="size-8 shrink-0">
                 <MoreHorizontal className="size-4" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              {project.status === 'running' ? (
-                <DropdownMenuItem
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onStop();
-                  }}
-                  disabled={isStopping}
-                >
-                  <Square className="mr-2 size-4" />
-                  Stop
-                </DropdownMenuItem>
+              {isRunning ? (
+                <>
+                  <DropdownMenuItem
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onRestart();
+                    }}
+                    disabled={isPending}
+                  >
+                    <RotateCcw className="mr-2 size-4" />
+                    Restart
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onStop();
+                    }}
+                    disabled={isPending}
+                    className="text-destructive"
+                  >
+                    <Square className="mr-2 size-4" />
+                    Stop
+                  </DropdownMenuItem>
+                </>
               ) : (
                 <DropdownMenuItem
                   onClick={(e) => {
                     e.stopPropagation();
                     onStart();
                   }}
-                  disabled={isStarting}
+                  disabled={isPending || releases.length === 0}
                 >
                   <Play className="mr-2 size-4" />
                   Start
                 </DropdownMenuItem>
               )}
               <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={(e) => {
+                  e.stopPropagation();
+                  window.open(publicUrl, '_blank');
+                }}
+              >
+                <ExternalLink className="mr-2 size-4" />
+                Open URL
+              </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={(e) => {
                   e.stopPropagation();
@@ -332,12 +446,31 @@ function ProjectCard({
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
-        <CardDescription className="font-mono text-xs">
-          {project.slug}
-        </CardDescription>
       </CardHeader>
-      <CardContent>
-        <StatusBadge status={project.status} />
+      <CardContent className="space-y-3">
+        <div className="flex items-center justify-between">
+          <StatusBadge status={project.status} />
+          {activeRelease && (
+            <Badge variant="outline" className="font-mono text-xs">
+              {activeRelease.version}
+            </Badge>
+          )}
+        </div>
+
+        {/* Runtime info for running projects */}
+        {isRunning && status?.uptime && (
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <Clock className="size-3" />
+            <span>Uptime: {formatUptime(status.uptime)}</span>
+          </div>
+        )}
+
+        {/* No releases warning */}
+        {releases.length === 0 && (
+          <p className="text-xs text-amber-500">
+            No releases - create one to start
+          </p>
+        )}
       </CardContent>
     </Card>
   );
