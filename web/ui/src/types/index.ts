@@ -345,6 +345,11 @@ export interface RuntimeStatus {
   activeRelease?: string;
 }
 
+export interface SparklineData {
+  memory: number[];   // MB values
+  requests: number[]; // Request counts per interval
+}
+
 export interface RuntimeStats {
   project_id: string;
   status: string;
@@ -361,6 +366,9 @@ export interface RuntimeStats {
     sys: number;
     num_gc: number;
   };
+  total_requests: number;
+  hits_by_path: Record<string, number>;
+  history?: SparklineData;
 }
 
 export interface LogEntry {

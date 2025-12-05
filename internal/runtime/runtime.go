@@ -19,14 +19,17 @@ import (
 
 // ProjectRuntime represents a running project instance
 type ProjectRuntime struct {
-	ProjectID primitive.ObjectID
-	VM        *goja.Runtime
-	Cancel    context.CancelFunc
-	Logger    *modules.LoggerModule
-	Router    *modules.RouterModule
-	Scheduler *modules.ScheduleModule
-	Service   *modules.ServiceModule
-	StartedAt time.Time
+	ProjectID     primitive.ObjectID
+	VM            *goja.Runtime
+	Cancel        context.CancelFunc
+	Logger        *modules.LoggerModule
+	Router        *modules.RouterModule
+	Scheduler     *modules.ScheduleModule
+	Service       *modules.ServiceModule
+	StartedAt     time.Time
+	Metrics       *MetricsHistory
+	metricsCancel context.CancelFunc
+	lastHitCount  int64
 }
 
 // Manager manages all project runtimes
@@ -111,17 +114,25 @@ func (m *Manager) Start(ctx context.Context, projectID primitive.ObjectID, code 
 		return fmt.Errorf("failed to register plugins: %w", err)
 	}
 
+	// Create metrics context
+	metricsCtx, metricsCancel := context.WithCancel(context.Background())
+
 	// Create runtime instance
 	runtime := &ProjectRuntime{
-		ProjectID: projectID,
-		VM:        vm,
-		Cancel:    cancel,
-		Logger:    loggerModule,
-		Router:    routerModule,
-		Scheduler: schedulerModule,
-		Service:   serviceModule,
-		StartedAt: time.Now(),
+		ProjectID:     projectID,
+		VM:            vm,
+		Cancel:        cancel,
+		Logger:        loggerModule,
+		Router:        routerModule,
+		Scheduler:     schedulerModule,
+		Service:       serviceModule,
+		StartedAt:     time.Now(),
+		Metrics:       NewMetricsHistory(),
+		metricsCancel: metricsCancel,
 	}
+
+	// Start metrics collection goroutine
+	go runtime.collectMetrics(metricsCtx)
 
 	// Execute code and lifecycle
 	go func() {
@@ -180,6 +191,10 @@ func (m *Manager) Start(ctx context.Context, projectID primitive.ObjectID, code 
 
 // stopRuntime stops a runtime without lock
 func (m *Manager) stopRuntime(runtime *ProjectRuntime) {
+	// Stop metrics collection first
+	if runtime.metricsCancel != nil {
+		runtime.metricsCancel()
+	}
 	if runtime.Service != nil {
 		runtime.Service.ExecuteShutdown()
 	}
@@ -190,6 +205,37 @@ func (m *Manager) stopRuntime(runtime *ProjectRuntime) {
 	if runtime.Logger != nil {
 		runtime.Logger.Close()
 	}
+}
+
+// collectMetrics runs in a goroutine and collects metrics periodically
+func (rt *ProjectRuntime) collectMetrics(ctx context.Context) {
+	// Collect initial snapshot
+	rt.collectSnapshot()
+
+	ticker := time.NewTicker(MetricsInterval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			rt.collectSnapshot()
+		}
+	}
+}
+
+// collectSnapshot collects a single metrics snapshot
+func (rt *ProjectRuntime) collectSnapshot() {
+	var requestsDelta int64
+	if rt.Router != nil {
+		currentHits := rt.Router.HitCount()
+		requestsDelta = currentHits - rt.lastHitCount
+		rt.lastHitCount = currentHits
+	}
+
+	snapshot := rt.Metrics.CollectSnapshot(requestsDelta)
+	rt.Metrics.AddSnapshot(snapshot)
 }
 
 // Stop stops a running project
@@ -265,16 +311,19 @@ func (m *Manager) GetRunningProjects() []primitive.ObjectID {
 
 // RuntimeStats contains statistics about a running runtime
 type RuntimeStats struct {
-	ProjectID       string         `json:"project_id"`
-	Status          string         `json:"status"`
-	StartedAt       time.Time      `json:"started_at"`
-	UptimeSeconds   int64          `json:"uptime_seconds"`
-	UptimeFormatted string         `json:"uptime_formatted"`
-	RoutesCount     int            `json:"routes_count"`
-	RoutesByMethod  map[string]int `json:"routes_by_method"`
-	ScheduledJobs   int            `json:"scheduled_jobs"`
-	SchedulerActive bool           `json:"scheduler_active"`
-	Memory          MemoryStats    `json:"memory"`
+	ProjectID       string           `json:"project_id"`
+	Status          string           `json:"status"`
+	StartedAt       time.Time        `json:"started_at"`
+	UptimeSeconds   int64            `json:"uptime_seconds"`
+	UptimeFormatted string           `json:"uptime_formatted"`
+	RoutesCount     int              `json:"routes_count"`
+	RoutesByMethod  map[string]int   `json:"routes_by_method"`
+	ScheduledJobs   int              `json:"scheduled_jobs"`
+	SchedulerActive bool             `json:"scheduler_active"`
+	Memory          MemoryStats      `json:"memory"`
+	TotalRequests   int64            `json:"total_requests"`
+	HitsByPath      map[string]int64 `json:"hits_by_path"`
+	History         *SparklineData   `json:"history,omitempty"`
 }
 
 // MemoryStats contains memory statistics
@@ -323,12 +372,20 @@ func (m *Manager) GetStats(projectID primitive.ObjectID) (*RuntimeStats, error) 
 	if rt.Router != nil {
 		stats.RoutesCount = rt.Router.RoutesCount()
 		stats.RoutesByMethod = rt.Router.RoutesByMethod()
+		stats.TotalRequests = rt.Router.HitCount()
+		stats.HitsByPath = rt.Router.HitsByPath()
 	}
 
 	// Get scheduler stats
 	if rt.Scheduler != nil {
 		stats.ScheduledJobs = rt.Scheduler.JobsCount()
 		stats.SchedulerActive = rt.Scheduler.IsStarted()
+	}
+
+	// Get metrics history for sparklines
+	if rt.Metrics != nil {
+		sparklineData := rt.Metrics.GetSparklineData()
+		stats.History = &sparklineData
 	}
 
 	return stats, nil

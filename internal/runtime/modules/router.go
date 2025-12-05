@@ -32,9 +32,12 @@ type routeHandler struct {
 }
 
 type RouterModule struct {
-	routes map[string][]routeHandler
-	mu     sync.RWMutex
-	vm     *goja.Runtime
+	routes     map[string][]routeHandler
+	mu         sync.RWMutex
+	vm         *goja.Runtime
+	hitCount   int64
+	hitsByPath map[string]int64
+	hitsMu     sync.RWMutex
 }
 
 func NewRouterModule() *RouterModule {
@@ -45,6 +48,7 @@ func NewRouterModule() *RouterModule {
 			"PUT":    {},
 			"DELETE": {},
 		},
+		hitsByPath: make(map[string]int64),
 	}
 }
 
@@ -142,6 +146,13 @@ func (r *RouterModule) Handle(method, path string, ctx *RequestContext) (*Respon
 		if matches == nil {
 			continue
 		}
+
+		// Track hit
+		r.hitsMu.Lock()
+		r.hitCount++
+		routeKey := method + " " + path
+		r.hitsByPath[routeKey]++
+		r.hitsMu.Unlock()
 
 		// Extract params
 		if ctx.Params == nil {
@@ -255,6 +266,34 @@ func (r *RouterModule) RoutesByMethod() map[string]int {
 		}
 	}
 	return result
+}
+
+// HitCount returns total request count
+func (r *RouterModule) HitCount() int64 {
+	r.hitsMu.RLock()
+	defer r.hitsMu.RUnlock()
+	return r.hitCount
+}
+
+// HitsByPath returns hits per route
+func (r *RouterModule) HitsByPath() map[string]int64 {
+	r.hitsMu.RLock()
+	defer r.hitsMu.RUnlock()
+	result := make(map[string]int64)
+	for k, v := range r.hitsByPath {
+		result[k] = v
+	}
+	return result
+}
+
+// ResetHits resets hit counters and returns the last values
+func (r *RouterModule) ResetHits() int64 {
+	r.hitsMu.Lock()
+	defer r.hitsMu.Unlock()
+	count := r.hitCount
+	r.hitCount = 0
+	r.hitsByPath = make(map[string]int64)
+	return count
 }
 
 // GetSchema implements JSSchemaProvider

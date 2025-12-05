@@ -52,6 +52,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { StatusBadge } from '@/components/shared/status-badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Sparkline } from '@/components/shared/sparkline';
 import {
   Select,
   SelectContent,
@@ -431,25 +432,41 @@ export function ProjectDashboard() {
 
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardDescription className="text-sm font-medium">Routes</CardDescription>
+                <CardDescription className="text-sm font-medium">Requests</CardDescription>
                 <Zap className="size-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">
-                  {isRunning && stats?.routes_count != null ? stats.routes_count : '--'}
+                <div className="flex items-end justify-between gap-4">
+                  <div>
+                    <div className="text-2xl font-bold">
+                      {isRunning && stats?.total_requests != null
+                        ? stats.total_requests.toLocaleString()
+                        : '--'}
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {isRunning && stats?.routes_count
+                        ? `${stats.routes_count} route${stats.routes_count !== 1 ? 's' : ''}`
+                        : 'No routes'}
+                    </p>
+                  </div>
+                  {stats?.history?.requests && stats.history.requests.length > 1 && (
+                    <Sparkline
+                      data={stats.history.requests}
+                      width={80}
+                      height={32}
+                      color="hsl(var(--primary))"
+                      strokeWidth={2}
+                      fillOpacity={0.15}
+                    />
+                  )}
                 </div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {isRunning && stats?.routes_by_method
-                    ? Object.entries(stats.routes_by_method).map(([m, c]) => `${m}: ${c}`).join(', ') || 'No routes'
-                    : 'No data'}
-                </p>
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardDescription className="text-sm font-medium">Scheduled Jobs</CardDescription>
-                <AlertTriangle className="size-4 text-muted-foreground" />
+                <Clock className="size-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
@@ -469,10 +486,24 @@ export function ProjectDashboard() {
                 <MemoryStick className="size-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">
-                  {isRunning && stats?.memory?.alloc != null ? formatBytes(stats.memory.alloc) : '--'}
+                <div className="flex items-end justify-between gap-4">
+                  <div>
+                    <div className="text-2xl font-bold">
+                      {isRunning && stats?.memory?.alloc != null ? formatBytes(stats.memory.alloc) : '--'}
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">Current usage</p>
+                  </div>
+                  {stats?.history?.memory && stats.history.memory.length > 1 && (
+                    <Sparkline
+                      data={stats.history.memory}
+                      width={80}
+                      height={32}
+                      color="hsl(var(--chart-2))"
+                      strokeWidth={2}
+                      fillOpacity={0.15}
+                    />
+                  )}
                 </div>
-                <p className="text-xs text-muted-foreground mt-1">Current usage</p>
               </CardContent>
             </Card>
           </div>

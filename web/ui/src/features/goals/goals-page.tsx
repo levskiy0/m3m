@@ -52,6 +52,7 @@ import { Field, FieldGroup, FieldLabel, FieldDescription } from '@/components/ui
 import { ColorPicker } from '@/components/shared/color-picker';
 import { ConfirmDialog } from '@/components/shared/confirm-dialog';
 import { EmptyState } from '@/components/shared/empty-state';
+import { Sparkline } from '@/components/shared/sparkline';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
@@ -458,28 +459,41 @@ function GoalCard({
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* Value and trend */}
-        <div className="flex items-end justify-between">
-          <div>
+        {/* Value, sparkline and trend */}
+        <div className="flex items-end justify-between gap-4">
+          <div className="flex-1">
             <p className="text-3xl font-bold">
               {formatNumber(stats?.value ?? 0)}
             </p>
-            <Badge variant="secondary" className="mt-1">
-              {goal.type === 'counter' ? 'Total Counter' : 'Daily Counter'}
-            </Badge>
-          </div>
-          {trend !== null && (
-            <div className={cn(
-              "flex items-center gap-1 text-sm font-medium",
-              trend > 0 ? "text-green-500" : trend < 0 ? "text-red-500" : "text-muted-foreground"
-            )}>
-              {trend > 0 ? (
-                <TrendingUp className="size-4" />
-              ) : trend < 0 ? (
-                <TrendingDown className="size-4" />
-              ) : null}
-              {trend > 0 ? '+' : ''}{trend.toFixed(1)}%
+            <div className="flex items-center gap-2 mt-1">
+              <Badge variant="secondary">
+                {goal.type === 'counter' ? 'Total Counter' : 'Daily Counter'}
+              </Badge>
+              {trend !== null && (
+                <div className={cn(
+                  "flex items-center gap-1 text-xs font-medium",
+                  trend > 0 ? "text-green-500" : trend < 0 ? "text-red-500" : "text-muted-foreground"
+                )}>
+                  {trend > 0 ? (
+                    <TrendingUp className="size-3" />
+                  ) : trend < 0 ? (
+                    <TrendingDown className="size-3" />
+                  ) : null}
+                  {trend > 0 ? '+' : ''}{trend.toFixed(0)}%
+                </div>
+              )}
             </div>
+          </div>
+          {/* 7-day sparkline for quick overview */}
+          {goal.type === 'daily_counter' && stats?.dailyStats && stats.dailyStats.length > 1 && (
+            <Sparkline
+              data={stats.dailyStats.slice(-7).map(d => d.value)}
+              width={80}
+              height={36}
+              color={goal.color || '#6b7280'}
+              strokeWidth={2}
+              fillOpacity={0.2}
+            />
           )}
         </div>
 
