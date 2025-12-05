@@ -302,6 +302,10 @@ service.shotdown(() => {
 
 ---
 
+telegram
+
+Хотя картинки есть в storage
+
 ```
 4:39:18 AM
 [warn]

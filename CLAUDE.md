@@ -77,11 +77,14 @@ Type definitions for Monaco IntelliSense are in `internal/runtime/modules/types.
 
 Located in `web/ui/`:
 - React 19 with TypeScript
-- Tailwind CSS v4 with @tailwindcss/vite
-- Radix UI primitives with shadcn/ui components
+- Tailwind CSS v3 with tailwindcss-animate
+- Radix UI primitives with shadcn/ui components (new-york style)
+- Routing: react-router-dom v7
+- State: zustand for global state, @tanstack/react-query for server state
+- Forms: react-hook-form with zod validation
 - Built assets are embedded into Go binary via `web/static.go`
 
-Uses shadcn/ui Field components (FieldGroup, Field, FieldLabel, FieldDescription, FieldSeparator) for form layouts.
+shadcn/ui Field components (FieldGroup, Field, FieldLabel, FieldDescription, FieldSeparator) are used for form layouts. Run `npm run lint` in `web/ui/` to check for issues.
 
 ### Key Domain Concepts
 
