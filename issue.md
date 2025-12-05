@@ -301,6 +301,20 @@ service.shotdown(() => {
 ------------------------
 
 
+Сделай в `runtime api` `storage` доступ к `tmp` (`/storage/{project-id}/tmp`)
+
+`$storage.tmp.list()` (по сути мы просто подставляем путь временного хранилища м прокидываем в уже существующие методы)
+
+---
+
+
+
+---
+
+Добавь новый `runtime api` через `plugins/telegram` / `$telegram` 
+
+
+
 
 
 
