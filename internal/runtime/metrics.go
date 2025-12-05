@@ -13,6 +13,130 @@ const (
 	MetricsHistorySize = 1440
 )
 
+// AggregationType defines how values are aggregated within an interval
+type AggregationType int
+
+const (
+	AggregateAvg  AggregationType = iota // Average of values in interval
+	AggregateSum                         // Sum of values in interval
+	AggregateMax                         // Max value in interval
+	AggregateLast                        // Last value in interval
+)
+
+// MetricState stores aggregated values for a single metric
+// Example: cpuMetric := NewMetricState(20, 5*time.Minute, AggregateAvg)
+type MetricState struct {
+	mu       sync.RWMutex
+	count    int             // number of data points to keep
+	interval time.Duration   // aggregation interval per point
+	aggType  AggregationType // how to aggregate values
+
+	values      []float64 // finalized aggregated values
+	currentSum  float64   // sum for current interval
+	currentMax  float64   // max for current interval
+	currentLast float64   // last value for current interval
+	currentCnt  int       // samples count in current interval
+	bucketStart time.Time // when current interval started
+}
+
+// NewMetricState creates a new MetricState for a single metric
+func NewMetricState(count int, interval time.Duration, aggType AggregationType) *MetricState {
+	return &MetricState{
+		count:    count,
+		interval: interval,
+		aggType:  aggType,
+		values:   make([]float64, 0, count),
+	}
+}
+
+// Push adds a new value to the metric
+func (m *MetricState) Push(value float64) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	now := time.Now()
+
+	// Check if we need to finalize current interval and start new one
+	if m.currentCnt > 0 && now.Sub(m.bucketStart) >= m.interval {
+		// Finalize current interval
+		var aggValue float64
+		switch m.aggType {
+		case AggregateAvg:
+			aggValue = m.currentSum / float64(m.currentCnt)
+		case AggregateSum:
+			aggValue = m.currentSum
+		case AggregateMax:
+			aggValue = m.currentMax
+		case AggregateLast:
+			aggValue = m.currentLast
+		}
+
+		m.values = append(m.values, aggValue)
+		if len(m.values) > m.count {
+			m.values = m.values[len(m.values)-m.count:]
+		}
+
+		// Reset for new interval
+		m.currentSum = 0
+		m.currentMax = 0
+		m.currentLast = 0
+		m.currentCnt = 0
+		m.bucketStart = now
+	}
+
+	// Start new interval if needed
+	if m.currentCnt == 0 {
+		m.bucketStart = now
+	}
+
+	// Add to current interval
+	m.currentSum += value
+	m.currentLast = value
+	if value > m.currentMax {
+		m.currentMax = value
+	}
+	m.currentCnt++
+}
+
+// GetData returns aggregated values for charts
+func (m *MetricState) GetData() []float64 {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	// Copy finalized values
+	result := make([]float64, len(m.values), len(m.values)+1)
+	copy(result, m.values)
+
+	// Add current interval if has data
+	if m.currentCnt > 0 {
+		var aggValue float64
+		switch m.aggType {
+		case AggregateAvg:
+			aggValue = m.currentSum / float64(m.currentCnt)
+		case AggregateSum:
+			aggValue = m.currentSum
+		case AggregateMax:
+			aggValue = m.currentMax
+		case AggregateLast:
+			aggValue = m.currentLast
+		}
+		result = append(result, aggValue)
+	}
+
+	return result
+}
+
+// Clear resets all data
+func (m *MetricState) Clear() {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.values = make([]float64, 0, m.count)
+	m.currentSum = 0
+	m.currentMax = 0
+	m.currentLast = 0
+	m.currentCnt = 0
+}
+
 // MetricsSnapshot represents a point-in-time metrics snapshot
 type MetricsSnapshot struct {
 	Timestamp   time.Time `json:"timestamp"`
@@ -32,12 +156,21 @@ type MetricsHistory struct {
 	// For CPU calculation
 	lastCPUTime   time.Time
 	lastCPUSample float64
+	// Aggregated metrics for charts (20 points, 5 min each)
+	memoryChart   *MetricState
+	requestsChart *MetricState
+	jobsChart     *MetricState
+	cpuChart      *MetricState
 }
 
 // NewMetricsHistory creates a new metrics history
 func NewMetricsHistory() *MetricsHistory {
 	return &MetricsHistory{
-		snapshots: make([]MetricsSnapshot, 0, MetricsHistorySize),
+		snapshots:     make([]MetricsSnapshot, 0, MetricsHistorySize),
+		memoryChart:   NewMetricState(20, 5*time.Minute, AggregateAvg),
+		requestsChart: NewMetricState(20, 5*time.Minute, AggregateSum),
+		jobsChart:     NewMetricState(20, 5*time.Minute, AggregateSum),
+		cpuChart:      NewMetricState(20, 5*time.Minute, AggregateAvg),
 	}
 }
 
@@ -51,6 +184,12 @@ func (h *MetricsHistory) AddSnapshot(snapshot MetricsSnapshot) {
 	if len(h.snapshots) > MetricsHistorySize {
 		h.snapshots = h.snapshots[len(h.snapshots)-MetricsHistorySize:]
 	}
+
+	// Push to individual chart metrics
+	h.memoryChart.Push(float64(snapshot.MemoryAlloc) / 1024 / 1024)
+	h.requestsChart.Push(float64(snapshot.Requests))
+	h.jobsChart.Push(float64(snapshot.Jobs))
+	h.cpuChart.Push(snapshot.CPUPercent)
 }
 
 // GetSnapshots returns all snapshots
@@ -85,6 +224,10 @@ func (h *MetricsHistory) Clear() {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	h.snapshots = make([]MetricsSnapshot, 0, MetricsHistorySize)
+	h.memoryChart.Clear()
+	h.requestsChart.Clear()
+	h.jobsChart.Clear()
+	h.cpuChart.Clear()
 }
 
 // CollectSnapshot collects current metrics and returns a snapshot
@@ -107,30 +250,19 @@ func (h *MetricsHistory) CollectSnapshot(requestsDelta, jobsDelta int64, cpuPerc
 
 // SparklineData returns simplified data for sparkline charts
 type SparklineData struct {
-	Memory   []float64 `json:"memory"`   // MB values
-	Requests []int64   `json:"requests"` // Request counts
-	Jobs     []int64   `json:"jobs"`     // Scheduled job execution counts
-	CPU      []float64 `json:"cpu"`      // CPU percent values
+	Memory   []float64 `json:"memory"`   // MB values (avg per interval)
+	Requests []float64 `json:"requests"` // Request counts (sum per interval)
+	Jobs     []float64 `json:"jobs"`     // Scheduled job counts (sum per interval)
+	CPU      []float64 `json:"cpu"`      // CPU percent values (avg per interval)
 }
 
-// GetSparklineData returns data formatted for sparkline charts
+// GetSparklineData returns aggregated data for sparkline charts
+// Returns max 20 data points with 5-minute aggregation intervals
 func (h *MetricsHistory) GetSparklineData() SparklineData {
-	h.mu.RLock()
-	defer h.mu.RUnlock()
-
-	data := SparklineData{
-		Memory:   make([]float64, len(h.snapshots)),
-		Requests: make([]int64, len(h.snapshots)),
-		Jobs:     make([]int64, len(h.snapshots)),
-		CPU:      make([]float64, len(h.snapshots)),
+	return SparklineData{
+		Memory:   h.memoryChart.GetData(),
+		Requests: h.requestsChart.GetData(),
+		Jobs:     h.jobsChart.GetData(),
+		CPU:      h.cpuChart.GetData(),
 	}
-
-	for i, s := range h.snapshots {
-		data.Memory[i] = float64(s.MemoryAlloc) / 1024 / 1024 // Convert to MB
-		data.Requests[i] = s.Requests
-		data.Jobs[i] = s.Jobs
-		data.CPU[i] = s.CPUPercent
-	}
-
-	return data
 }
