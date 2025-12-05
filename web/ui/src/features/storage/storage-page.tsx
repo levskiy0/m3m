@@ -204,7 +204,7 @@ export function StoragePage() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: () => storageApi.delete(projectId!, selectedItem!.path),
+    mutationFn: (path: string) => storageApi.delete(projectId!, path),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['storage', projectId] });
       setDeleteOpen(false);
@@ -1015,7 +1015,7 @@ export function StoragePage() {
           if (selectedPaths.size > 1 || (selectedPaths.size === 1 && !selectedItem)) {
             deleteSelectedMutation.mutate();
           } else if (selectedItem) {
-            deleteMutation.mutate();
+            deleteMutation.mutate(selectedItem.path);
           }
         }}
         isLoading={deleteMutation.isPending || deleteSelectedMutation.isPending}
