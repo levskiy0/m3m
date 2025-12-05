@@ -22,6 +22,15 @@ type Plugin interface {
 	// Version returns the plugin version
 	Version() string
 
+	// Description returns a short description of the plugin
+	Description() string
+
+	// Author returns the plugin author name
+	Author() string
+
+	// URL returns the plugin homepage or repository URL
+	URL() string
+
 	// Init initializes the plugin with configuration
 	Init(config map[string]interface{}) error
 
@@ -191,8 +200,11 @@ func (l *Loader) Shutdown() error {
 
 // PluginInfo represents information about a loaded plugin
 type PluginInfo struct {
-	Name    string `json:"name"`
-	Version string `json:"version"`
+	Name        string `json:"name"`
+	Version     string `json:"version"`
+	Description string `json:"description,omitempty"`
+	Author      string `json:"author,omitempty"`
+	URL         string `json:"url,omitempty"`
 }
 
 // GetPluginInfos returns information about all loaded plugins
@@ -200,8 +212,11 @@ func (l *Loader) GetPluginInfos() []PluginInfo {
 	infos := make([]PluginInfo, 0)
 	for _, p := range l.plugins {
 		infos = append(infos, PluginInfo{
-			Name:    p.Name(),
-			Version: p.Version(),
+			Name:        p.Name(),
+			Version:     p.Version(),
+			Description: p.Description(),
+			Author:      p.Author(),
+			URL:         p.URL(),
 		})
 	}
 	return infos

@@ -24,6 +24,21 @@ func (p *ExamplePlugin) Version() string {
 	return "1.0.0"
 }
 
+// Description returns a short description of the plugin
+func (p *ExamplePlugin) Description() string {
+	return "Example plugin demonstrating M3M plugin system"
+}
+
+// Author returns the plugin author name
+func (p *ExamplePlugin) Author() string {
+	return "M3M Team"
+}
+
+// URL returns the plugin homepage or repository URL
+func (p *ExamplePlugin) URL() string {
+	return "https://github.com/m3m/plugins/example"
+}
+
 // Init initializes the plugin with configuration
 func (p *ExamplePlugin) Init(config map[string]interface{}) error {
 	p.initialized = true

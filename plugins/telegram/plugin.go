@@ -52,6 +52,18 @@ func (p *TelegramPlugin) Version() string {
 	return "1.0.0"
 }
 
+func (p *TelegramPlugin) Description() string {
+	return "Telegram Bot API plugin for building Telegram bots"
+}
+
+func (p *TelegramPlugin) Author() string {
+	return "M3M Team"
+}
+
+func (p *TelegramPlugin) URL() string {
+	return "https://github.com/m3m/plugins/telegram"
+}
+
 func (p *TelegramPlugin) Init(config map[string]interface{}) error {
 	p.bots = make(map[string]*BotInstance)
 	p.initialized = true

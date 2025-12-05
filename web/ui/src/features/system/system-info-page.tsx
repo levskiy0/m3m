@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { Cpu, HardDrive, Package, Server, Activity } from 'lucide-react';
+import { Cpu, HardDrive, Package, Server, Activity, ExternalLink } from 'lucide-react';
 
 import { runtimeApi } from '@/api';
 import {
@@ -162,11 +162,28 @@ export function SystemInfoPage() {
                           {plugin.description}
                         </p>
                       )}
+                      {plugin.author && (
+                        <p className="text-xs text-muted-foreground">
+                          by {plugin.author}
+                        </p>
+                      )}
                     </div>
                   </div>
-                  {plugin.version && (
-                    <Badge variant="outline">{plugin.version}</Badge>
-                  )}
+                  <div className="flex items-center gap-2">
+                    {plugin.url && (
+                      <a
+                        href={plugin.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-muted-foreground hover:text-foreground transition-colors"
+                      >
+                        <ExternalLink className="h-4 w-4" />
+                      </a>
+                    )}
+                    {plugin.version && (
+                      <Badge variant="outline">{plugin.version}</Badge>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
