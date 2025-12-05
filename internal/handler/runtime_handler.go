@@ -2,6 +2,7 @@ package handler
 
 import (
 	"bufio"
+	"context"
 	"io"
 	"net/http"
 	"os"
@@ -145,8 +146,8 @@ func (h *RuntimeHandler) Start(c *gin.Context) {
 	// Clear old logs
 	h.storageService.ClearLogs(projectID.Hex())
 
-	// Start runtime
-	if err := h.runtimeManager.Start(c.Request.Context(), projectID, code); err != nil {
+	// Start runtime with background context (runtime should outlive HTTP request)
+	if err := h.runtimeManager.Start(context.Background(), projectID, code); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -234,8 +235,8 @@ func (h *RuntimeHandler) Restart(c *gin.Context) {
 	// Clear old logs
 	h.storageService.ClearLogs(projectID.Hex())
 
-	// Start runtime
-	if err := h.runtimeManager.Start(c.Request.Context(), projectID, code); err != nil {
+	// Start runtime with background context (runtime should outlive HTTP request)
+	if err := h.runtimeManager.Start(context.Background(), projectID, code); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
