@@ -346,10 +346,21 @@ export interface RuntimeStatus {
 }
 
 export interface RuntimeStats {
-  requests: number;
-  errors: number;
-  avgResponseTime: number;
-  memoryUsage: number;
+  project_id: string;
+  status: string;
+  started_at: string;
+  uptime_seconds: number;
+  uptime_formatted: string;
+  routes_count: number;
+  routes_by_method: Record<string, number>;
+  scheduled_jobs: number;
+  scheduler_active: boolean;
+  memory: {
+    alloc: number;
+    total_alloc: number;
+    sys: number;
+    num_gc: number;
+  };
 }
 
 export interface LogEntry {

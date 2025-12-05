@@ -80,24 +80,6 @@ const LOG_LEVEL_COLORS: Record<string, string> = {
   error: 'text-red-400',
 };
 
-function formatUptime(seconds: number): string {
-  const days = Math.floor(seconds / 86400);
-  const hours = Math.floor((seconds % 86400) / 3600);
-  const minutes = Math.floor((seconds % 3600) / 60);
-  const secs = seconds % 60;
-
-  if (days > 0) {
-    return `${days}d ${hours}h ${minutes}m`;
-  }
-  if (hours > 0) {
-    return `${hours}h ${minutes}m ${secs}s`;
-  }
-  if (minutes > 0) {
-    return `${minutes}m ${secs}s`;
-  }
-  return `${secs}s`;
-}
-
 function formatBytes(bytes: number): string {
   if (bytes === 0) return '0 B';
   const k = 1024;
@@ -134,13 +116,6 @@ export function ProjectDashboard() {
     queryKey: ['branches', projectId],
     queryFn: () => pipelineApi.listBranches(projectId!),
     enabled: !!projectId,
-  });
-
-  const { data: status } = useQuery({
-    queryKey: ['runtime-status', projectId],
-    queryFn: () => runtimeApi.status(projectId!),
-    enabled: !!projectId,
-    refetchInterval: project?.status === 'running' ? 3000 : false,
   });
 
   const { data: stats } = useQuery({
@@ -444,11 +419,11 @@ export function ProjectDashboard() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
-                  {isRunning && status?.uptime ? formatUptime(status.uptime) : '--'}
+                  {isRunning && stats?.uptime_formatted ? stats.uptime_formatted : '--'}
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">
-                  {status?.startedAt
-                    ? `Since ${new Date(status.startedAt).toLocaleString()}`
+                  {stats?.started_at
+                    ? `Since ${new Date(stats.started_at).toLocaleString()}`
                     : 'Service not running'}
                 </p>
               </CardContent>
@@ -456,16 +431,16 @@ export function ProjectDashboard() {
 
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardDescription className="text-sm font-medium">Requests</CardDescription>
+                <CardDescription className="text-sm font-medium">Routes</CardDescription>
                 <Zap className="size-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
-                  {isRunning && stats?.requests != null ? stats.requests.toLocaleString() : '--'}
+                  {isRunning && stats?.routes_count != null ? stats.routes_count : '--'}
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">
-                  {isRunning && stats?.avgResponseTime != null
-                    ? `Avg ${stats.avgResponseTime.toFixed(0)}ms response`
+                  {isRunning && stats?.routes_by_method
+                    ? Object.entries(stats.routes_by_method).map(([m, c]) => `${m}: ${c}`).join(', ') || 'No routes'
                     : 'No data'}
                 </p>
               </CardContent>
@@ -473,20 +448,17 @@ export function ProjectDashboard() {
 
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardDescription className="text-sm font-medium">Errors</CardDescription>
+                <CardDescription className="text-sm font-medium">Scheduled Jobs</CardDescription>
                 <AlertTriangle className="size-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className={cn(
-                  "text-2xl font-bold",
-                  isRunning && stats?.errors != null && stats.errors > 0 && "text-red-500"
-                )}>
-                  {isRunning && stats?.errors != null ? stats.errors.toLocaleString() : '--'}
+                <div className="text-2xl font-bold">
+                  {isRunning && stats?.scheduled_jobs != null ? stats.scheduled_jobs : '--'}
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">
-                  {isRunning && stats?.requests != null && stats.requests > 0
-                    ? `${(((stats.errors ?? 0) / stats.requests) * 100).toFixed(1)}% error rate`
-                    : 'No errors'}
+                  {isRunning && stats
+                    ? stats.scheduler_active ? 'Scheduler active' : 'Scheduler inactive'
+                    : 'No data'}
                 </p>
               </CardContent>
             </Card>
@@ -498,7 +470,7 @@ export function ProjectDashboard() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
-                  {isRunning && stats?.memoryUsage != null ? formatBytes(stats.memoryUsage) : '--'}
+                  {isRunning && stats?.memory?.alloc != null ? formatBytes(stats.memory.alloc) : '--'}
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">Current usage</p>
               </CardContent>
