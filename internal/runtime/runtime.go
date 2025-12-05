@@ -235,7 +235,17 @@ func (rt *ProjectRuntime) collectSnapshot() {
 		rt.lastHitCount = currentHits
 	}
 
-	snapshot := rt.Metrics.CollectSnapshot(requestsDelta)
+	var jobsDelta int64
+	if rt.Scheduler != nil {
+		currentJobs := rt.Scheduler.ExecutionCount()
+		jobsDelta = currentJobs - rt.lastJobCount
+		rt.lastJobCount = currentJobs
+	}
+
+	// CPU tracking is simplified - for proper tracking use gopsutil
+	var cpuPercent float64 = 0
+
+	snapshot := rt.Metrics.CollectSnapshot(requestsDelta, jobsDelta, cpuPercent)
 	rt.Metrics.AddSnapshot(snapshot)
 }
 
