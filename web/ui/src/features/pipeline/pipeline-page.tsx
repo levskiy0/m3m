@@ -466,13 +466,13 @@ export function PipelinePage() {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => {
+                        onClick={async () => {
                           if (hasChanges) {
-                            saveMutation.mutate();
+                            await saveMutation.mutateAsync();
                           }
                           startDebugMutation.mutate(currentBranch.name);
                         }}
-                        disabled={startDebugMutation.isPending || (isRunning && !isDebugMode)}
+                        disabled={saveMutation.isPending || startDebugMutation.isPending || (isRunning && !isDebugMode)}
                         className="border-amber-500/50 text-amber-600 hover:bg-amber-500/10"
                       >
                         <Bug className="mr-2 size-4" />
