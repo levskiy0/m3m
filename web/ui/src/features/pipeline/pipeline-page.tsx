@@ -67,7 +67,7 @@ export function PipelinePage() {
   const [releaseBranch, setReleaseBranch] = useState('');
   const [bumpType, setBumpType] = useState<'minor' | 'major'>('minor');
   const [releaseComment, setReleaseComment] = useState('');
-  const [releaseTag, setReleaseTag] = useState<string>('');
+  const [releaseTag, setReleaseTag] = useState<string>('develop');
 
   // Reset form
   const [resetTarget, setResetTarget] = useState<'branch' | 'release'>('release');
@@ -209,7 +209,7 @@ export function PipelinePage() {
     setReleaseBranch('');
     setBumpType('minor');
     setReleaseComment('');
-    setReleaseTag('');
+    setReleaseTag('develop');
   };
 
   const handleCreateBranch = () => {
@@ -222,10 +222,10 @@ export function PipelinePage() {
 
   const handleCreateRelease = () => {
     createReleaseMutation.mutate({
-      branch: releaseBranch,
-      bumpType,
+      branch_name: releaseBranch,
+      bump_type: bumpType,
       comment: releaseComment || undefined,
-      tag: releaseTag as any || undefined,
+      tag: releaseTag as 'stable' | 'hot-fix' | 'night-build' | 'develop',
     });
   };
 
@@ -521,12 +521,11 @@ export function PipelinePage() {
             </Field>
             <Field>
               <FieldLabel>Tag</FieldLabel>
-              <Select value={releaseTag || '__none__'} onValueChange={(v) => setReleaseTag(v === '__none__' ? '' : v)}>
+              <Select value={releaseTag} onValueChange={setReleaseTag}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Select tag (optional)" />
+                  <SelectValue placeholder="Select tag" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="__none__">None</SelectItem>
                   {RELEASE_TAGS.map((tag) => (
                     <SelectItem key={tag.value} value={tag.value}>
                       {tag.label}

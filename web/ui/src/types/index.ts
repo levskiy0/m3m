@@ -88,8 +88,7 @@ export interface UpdateBranchRequest {
 }
 
 export interface ResetBranchRequest {
-  targetType: 'branch' | 'release';
-  targetName: string;
+  target_version: string;
 }
 
 export interface Release {
@@ -106,10 +105,10 @@ export interface Release {
 export type ReleaseTag = 'stable' | 'hot-fix' | 'night-build' | 'develop';
 
 export interface CreateReleaseRequest {
-  branch: string;
-  bumpType: 'minor' | 'major';
+  branch_name: string;
+  bump_type: 'minor' | 'major';
   comment?: string;
-  tag?: ReleaseTag;
+  tag: ReleaseTag;
 }
 
 // Goal types
