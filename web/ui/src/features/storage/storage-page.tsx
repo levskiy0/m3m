@@ -11,6 +11,7 @@ import {
   Link,
   Folder,
   FolderOpen,
+  ArrowUp,
   File,
   FileText,
   FileCode,
@@ -703,7 +704,7 @@ export function StoragePage() {
                 <div className="flex items-center justify-center h-48">
                   <p className="text-muted-foreground">Loading...</p>
                 </div>
-              ) : sortedItems.length === 0 ? (
+              ) : sortedItems.length === 0 && !currentPath ? (
                 <div className="flex flex-col items-center justify-center h-48 text-center h-full">
                   <Folder className="size-12 text-muted-foreground/50 mb-4" />
                   <p className="text-muted-foreground mb-2">This folder is empty</p>
@@ -713,6 +714,21 @@ export function StoragePage() {
                 </div>
               ) : (
                 <div className="divide-y">
+                  {/* Go up row */}
+                  {currentPath && (
+                    <div
+                      className="flex items-center gap-3 p-3 hover:bg-muted/50 cursor-pointer select-none"
+                      onClick={() => {
+                        const parentPath = currentPath.split('/').slice(0, -1).join('/');
+                        setCurrentPath(parentPath);
+                        setSelectedPaths(new Set());
+                        setLastSelectedIndex(null);
+                      }}
+                    >
+                      <ArrowUp className="size-6 text-muted-foreground shrink-0" />
+                      <span className="text-muted-foreground">..</span>
+                    </div>
+                  )}
                   {sortedItems.map((item, index) => {
                     const isSelected = selectedPaths.has(item.path);
                     return (
