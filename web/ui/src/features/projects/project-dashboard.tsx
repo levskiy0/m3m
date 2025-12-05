@@ -28,14 +28,6 @@ import {
   Plus,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import {
-  AreaChart,
-  Area,
-  XAxis,
-  YAxis,
-  Tooltip as RechartsTooltip,
-  ResponsiveContainer,
-} from 'recharts';
 
 import { projectsApi, runtimeApi, pipelineApi, goalsApi } from '@/api';
 import { config } from '@/lib/config';
@@ -407,10 +399,6 @@ export function ProjectDashboard() {
               </Badge>
             )}
           </TabsTrigger>
-          <TabsTrigger value="stats" className="gap-2">
-            <Target className="size-4" />
-            Stats
-          </TabsTrigger>
         </TabsList>
 
         {/* Instance Tab */}
@@ -631,15 +619,13 @@ export function ProjectDashboard() {
             </Card>
           </div>
 
-          {/* Goals Section */}
+          {/* Widgets Section */}
           <div>
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold">Goals</h2>
-              <Button variant="outline" size="sm" asChild>
-                <Link to={`/projects/${projectId}/goals`}>
-                  <Plus className="mr-1.5 size-4" />
-                  Add Goal
-                </Link>
+              <h2 className="text-lg font-semibold">Widgets</h2>
+              <Button variant="outline" size="sm">
+                <Plus className="mr-1.5 size-4" />
+                Add Widget
               </Button>
             </div>
             {goals.length > 0 ? (
@@ -656,7 +642,7 @@ export function ProjectDashboard() {
                 <CardContent className="flex flex-col items-center justify-center py-8">
                   <Target className="size-10 text-muted-foreground mb-3" />
                   <p className="text-muted-foreground text-center text-sm">
-                    No goals configured. Create goals to track metrics.
+                    No widgets added. Add widgets to display goal metrics.
                   </p>
                 </CardContent>
               </Card>
@@ -750,47 +736,6 @@ export function ProjectDashboard() {
             </CardContent>
           </Card>
         </TabsContent>
-
-        {/* Stats Tab */}
-        <TabsContent value="stats" className="space-y-6">
-          {/* Goals Section */}
-          {goals.length > 0 ? (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h2 className="text-lg font-semibold">Goals & Metrics</h2>
-                <Button variant="outline" size="sm" asChild>
-                  <Link to={`/projects/${projectId}/goals`}>
-                    Manage Goals
-                    <ChevronRight className="ml-1 size-4" />
-                  </Link>
-                </Button>
-              </div>
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {goals.map((goal) => {
-                  const stat = goalStatsMap.get(goal.id);
-                  return (
-                    <GoalCard key={goal.id} goal={goal} stats={stat} />
-                  );
-                })}
-              </div>
-            </div>
-          ) : (
-            <Card>
-              <CardContent className="flex flex-col items-center justify-center py-12">
-                <Target className="size-12 text-muted-foreground mb-4" />
-                <h3 className="text-lg font-medium mb-2">No goals configured</h3>
-                <p className="text-muted-foreground text-center mb-4">
-                  Create goals to track metrics like page views, signups, and more.
-                </p>
-                <Button asChild>
-                  <Link to={`/projects/${projectId}/goals`}>
-                    Create Goals
-                  </Link>
-                </Button>
-              </CardContent>
-            </Card>
-          )}
-        </TabsContent>
       </Tabs>
     </div>
   );
@@ -852,78 +797,3 @@ function GoalWidget({ goal, stats }: { goal: Goal; stats?: GoalStats }) {
   );
 }
 
-// Goal Card Component with full chart (used in Stats tab)
-function GoalCard({ goal, stats }: { goal: Goal; stats?: GoalStats }) {
-  const chartData = stats?.dailyStats?.slice(-7).map((d) => ({
-    date: new Date(d.date).toLocaleDateString('en', { weekday: 'short' }),
-    value: d.value,
-  })) || [];
-
-  return (
-    <Card>
-      <CardHeader className="pb-2">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span
-              className="size-3 rounded-full"
-              style={{ backgroundColor: goal.color || '#6b7280' }}
-            />
-            <CardTitle className="text-sm font-medium">{goal.name}</CardTitle>
-          </div>
-          <Badge variant="secondary" className="text-xs">
-            {goal.type === 'counter' ? 'Counter' : 'Daily'}
-          </Badge>
-        </div>
-      </CardHeader>
-      <CardContent>
-        <div className="text-3xl font-bold mb-2">
-          {stats?.value?.toLocaleString() ?? 0}
-        </div>
-        {chartData.length > 0 && goal.type === 'daily_counter' && (
-          <div className="h-16 mt-2">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={chartData}>
-                <defs>
-                  <linearGradient id={`gradient-${goal.id}`} x1="0" y1="0" x2="0" y2="1">
-                    <stop
-                      offset="0%"
-                      stopColor={goal.color || '#6b7280'}
-                      stopOpacity={0.3}
-                    />
-                    <stop
-                      offset="100%"
-                      stopColor={goal.color || '#6b7280'}
-                      stopOpacity={0}
-                    />
-                  </linearGradient>
-                </defs>
-                <XAxis dataKey="date" hide />
-                <YAxis hide />
-                <RechartsTooltip
-                  contentStyle={{
-                    backgroundColor: 'hsl(var(--popover))',
-                    border: '1px solid hsl(var(--border))',
-                    borderRadius: '6px',
-                    fontSize: '12px',
-                  }}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="value"
-                  stroke={goal.color || '#6b7280'}
-                  fill={`url(#gradient-${goal.id})`}
-                  strokeWidth={2}
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        )}
-        {goal.description && (
-          <p className="text-xs text-muted-foreground mt-2 line-clamp-1">
-            {goal.description}
-          </p>
-        )}
-      </CardContent>
-    </Card>
-  );
-}
