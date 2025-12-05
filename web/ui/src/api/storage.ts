@@ -86,4 +86,14 @@ export const storageApi = {
   getThumbnail: async (projectId: string, path: string): Promise<Blob> => {
     return api.download(`/api/projects/${projectId}/storage/thumbnail/${path}`);
   },
+
+  move: async (projectId: string, sourcePath: string, targetDir: string): Promise<void> => {
+    // Move is rename with different directory
+    const fileName = sourcePath.split('/').pop() || '';
+    const newPath = targetDir ? `${targetDir}/${fileName}` : fileName;
+    return api.put(`/api/projects/${projectId}/storage/rename`, {
+      old_path: sourcePath,
+      new_path: newPath,
+    });
+  },
 };

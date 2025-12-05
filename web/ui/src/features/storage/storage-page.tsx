@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
@@ -10,6 +10,7 @@ import {
   Pencil,
   Link,
   Folder,
+  FolderOpen,
   File,
   FileText,
   FileCode,
@@ -23,6 +24,8 @@ import {
   ExternalLink,
   X,
   Save,
+  Move,
+  Check,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -96,6 +99,18 @@ export function StoragePage() {
   const [currentPath, setCurrentPath] = useState('');
   const [selectedItem, setSelectedItem] = useState<StorageItem | null>(null);
 
+  // Multi-select
+  const [selectedPaths, setSelectedPaths] = useState<Set<string>>(new Set());
+  const [lastSelectedIndex, setLastSelectedIndex] = useState<number | null>(null);
+
+  // Drag & drop
+  const [isDragging, setIsDragging] = useState(false);
+  const dragCounter = useRef(0);
+
+  // Move dialog
+  const [moveDialogOpen, setMoveDialogOpen] = useState(false);
+  const [moveTargetPath, setMoveTargetPath] = useState('');
+
   // Tabs
   const [tabs, setTabs] = useState<EditorTab[]>([]);
   const [activeTabId, setActiveTabId] = useState<string | null>(null);
@@ -116,6 +131,34 @@ export function StoragePage() {
     queryKey: ['storage', projectId, currentPath],
     queryFn: () => storageApi.list(projectId!, currentPath),
     enabled: !!projectId,
+  });
+
+  // Sorted items (folders first, then alphabetically)
+  const sortedItems = useMemo(() => {
+    return [...items].sort((a, b) => {
+      if (a.is_dir && !b.is_dir) return -1;
+      if (!a.is_dir && b.is_dir) return 1;
+      return a.name.localeCompare(b.name);
+    });
+  }, [items]);
+
+  // Get all folders for move dialog
+  const { data: allFolders = [] } = useQuery({
+    queryKey: ['storage-folders', projectId],
+    queryFn: async () => {
+      const getAllFolders = async (path: string): Promise<StorageItem[]> => {
+        const items = await storageApi.list(projectId!, path);
+        const folders = items.filter((i) => i.is_dir);
+        const subFolders: StorageItem[] = [];
+        for (const folder of folders) {
+          const sub = await getAllFolders(folder.path);
+          subFolders.push(...sub);
+        }
+        return [...folders, ...subFolders];
+      };
+      return getAllFolders('');
+    },
+    enabled: !!projectId && moveDialogOpen,
   });
 
   // Mutations
@@ -172,6 +215,43 @@ export function StoragePage() {
     },
   });
 
+  const deleteSelectedMutation = useMutation({
+    mutationFn: async () => {
+      const paths = Array.from(selectedPaths);
+      for (const path of paths) {
+        await storageApi.delete(projectId!, path);
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['storage', projectId] });
+      setDeleteOpen(false);
+      setSelectedPaths(new Set());
+      toast.success('Deleted successfully');
+    },
+    onError: (err) => {
+      toast.error(err instanceof Error ? err.message : 'Delete failed');
+    },
+  });
+
+  const moveMutation = useMutation({
+    mutationFn: async (targetDir: string) => {
+      const paths = Array.from(selectedPaths);
+      for (const path of paths) {
+        await storageApi.move(projectId!, path, targetDir);
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['storage', projectId] });
+      setMoveDialogOpen(false);
+      setSelectedPaths(new Set());
+      setMoveTargetPath('');
+      toast.success('Moved successfully');
+    },
+    onError: (err) => {
+      toast.error(err instanceof Error ? err.message : 'Move failed');
+    },
+  });
+
   const [savingTabId, setSavingTabId] = useState<string | null>(null);
 
   const handleSaveTab = async (tab: EditorTab) => {
@@ -223,8 +303,99 @@ export function StoragePage() {
   const handleItemClick = (item: StorageItem) => {
     if (item.is_dir) {
       setCurrentPath(item.path);
+      setSelectedPaths(new Set());
+      setLastSelectedIndex(null);
     }
   };
+
+  // Multi-select handler
+  const handleItemSelect = useCallback(
+    (item: StorageItem, index: number, e: React.MouseEvent) => {
+      const isMetaKey = e.metaKey || e.ctrlKey;
+      const isShiftKey = e.shiftKey;
+
+      if (isShiftKey && lastSelectedIndex !== null) {
+        // Shift-click: select range
+        const start = Math.min(lastSelectedIndex, index);
+        const end = Math.max(lastSelectedIndex, index);
+        const newSelection = new Set(selectedPaths);
+        for (let i = start; i <= end; i++) {
+          newSelection.add(sortedItems[i].path);
+        }
+        setSelectedPaths(newSelection);
+      } else if (isMetaKey) {
+        // Ctrl/Cmd-click: toggle selection
+        const newSelection = new Set(selectedPaths);
+        if (newSelection.has(item.path)) {
+          newSelection.delete(item.path);
+        } else {
+          newSelection.add(item.path);
+        }
+        setSelectedPaths(newSelection);
+        setLastSelectedIndex(index);
+      } else {
+        // Regular click: single selection
+        setSelectedPaths(new Set([item.path]));
+        setLastSelectedIndex(index);
+      }
+    },
+    [selectedPaths, lastSelectedIndex, sortedItems]
+  );
+
+  // Clear selection when clicking empty area
+  const handleClearSelection = useCallback((e: React.MouseEvent) => {
+    if (e.target === e.currentTarget) {
+      setSelectedPaths(new Set());
+      setLastSelectedIndex(null);
+    }
+  }, []);
+
+  // Drag & drop handlers for file upload
+  const handleDragEnter = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounter.current++;
+    if (e.dataTransfer.types.includes('Files')) {
+      setIsDragging(true);
+    }
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounter.current--;
+    if (dragCounter.current === 0) {
+      setIsDragging(false);
+    }
+  }, []);
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  }, []);
+
+  const handleDrop = useCallback(
+    async (e: React.DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      dragCounter.current = 0;
+      setIsDragging(false);
+
+      const files = Array.from(e.dataTransfer.files);
+      if (files.length === 0) return;
+
+      for (const file of files) {
+        try {
+          await storageApi.upload(projectId!, currentPath, file);
+        } catch {
+          toast.error(`Failed to upload ${file.name}`);
+        }
+      }
+      queryClient.invalidateQueries({ queryKey: ['storage', projectId] });
+      toast.success(`Uploaded ${files.length} file(s)`);
+    },
+    [projectId, currentPath, queryClient]
+  );
 
   const handleCreateFile = () => {
     const newTab: EditorTab = {
@@ -309,12 +480,6 @@ export function StoragePage() {
       setCurrentPath(pathSegments.slice(0, index + 1).join('/'));
     }
   };
-
-  const sortedItems = [...items].sort((a, b) => {
-    if (a.is_dir && !b.is_dir) return -1;
-    if (!a.is_dir && b.is_dir) return 1;
-    return a.name.localeCompare(b.name);
-  });
 
   const handleOpenInNewTab = (item: StorageItem) => {
     if (item.url) {
@@ -512,7 +677,28 @@ export function StoragePage() {
                 </div>
               </div>
             </CardHeader>
-            <CardContent className="flex-1 overflow-hidden">
+
+            <CardContent
+              className={cn(
+                'flex-1 overflow-hidden relative',
+                isDragging && 'bg-primary/5'
+              )}
+              onDragEnter={handleDragEnter}
+              onDragLeave={handleDragLeave}
+              onDragOver={handleDragOver}
+              onDrop={handleDrop}
+              onClick={handleClearSelection}
+            >
+              {/* Drag overlay */}
+              {isDragging && (
+                <div className="absolute inset-0 flex items-center justify-center bg-primary/10 border-2 border-dashed border-primary rounded-lg z-10 pointer-events-none">
+                  <div className="text-center">
+                    <Upload className="size-12 text-primary mx-auto mb-2" />
+                    <p className="text-lg font-medium text-primary">Drop files to upload</p>
+                  </div>
+                </div>
+              )}
+
               {isLoading ? (
                 <div className="flex items-center justify-center h-48">
                   <p className="text-muted-foreground">Loading...</p>
@@ -527,15 +713,18 @@ export function StoragePage() {
                 </div>
               ) : (
                 <div className="divide-y">
-                  {sortedItems.map((item, index) => (
+                  {sortedItems.map((item, index) => {
+                    const isSelected = selectedPaths.has(item.path);
+                    return (
                     <ContextMenu key={item.path}>
                       <ContextMenuTrigger>
                         <div
                           className={cn(
-                            'flex items-center justify-between gap-3 p-3 hover:bg-muted/50',
-                            item.is_dir && 'cursor-pointer',
-                            index % 2 === 1 && 'bg-muted/30'
+                            'flex items-center justify-between gap-3 p-3 hover:bg-muted/50 cursor-pointer select-none',
+                            index % 2 === 1 && 'bg-muted/30',
+                            isSelected && 'bg-primary/20 hover:bg-primary/25'
                           )}
+                          onClick={(e) => handleItemSelect(item, index, e)}
                           onDoubleClick={() => {
                             if (item.is_dir) {
                               handleItemClick(item);
@@ -545,7 +734,13 @@ export function StoragePage() {
                           }}
                         >
                           <div className="flex items-center gap-3 flex-1 min-w-0">
-                            {getFileIcon(item)}
+                            {isSelected ? (
+                              <div className="size-6 shrink-0 rounded bg-primary flex items-center justify-center">
+                                <Check className="size-4 text-primary-foreground" />
+                              </div>
+                            ) : (
+                              getFileIcon(item)
+                            )}
                             <span className="truncate">{item.name}</span>
                           </div>
                           {!item.is_dir && (
@@ -597,6 +792,16 @@ export function StoragePage() {
                           <Pencil className="mr-2 size-4" />
                           Rename
                         </ContextMenuItem>
+                        <ContextMenuItem
+                          onClick={() => {
+                            setSelectedPaths(new Set([item.path]));
+                            setMoveTargetPath('');
+                            setMoveDialogOpen(true);
+                          }}
+                        >
+                          <Move className="mr-2 size-4" />
+                          Move
+                        </ContextMenuItem>
                         <ContextMenuSeparator />
                         <ContextMenuItem
                           variant="destructive"
@@ -610,10 +815,52 @@ export function StoragePage() {
                         </ContextMenuItem>
                       </ContextMenuContent>
                     </ContextMenu>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </CardContent>
+
+            {/* Selection toolbar - bottom */}
+            {selectedPaths.size > 0 && (
+              <div className="flex items-center justify-between px-4 py-2 bg-primary/10 border-t">
+                <span className="text-sm font-medium">
+                  {selectedPaths.size} item{selectedPaths.size > 1 ? 's' : ''} selected
+                </span>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setMoveTargetPath('');
+                      setMoveDialogOpen(true);
+                    }}
+                  >
+                    <Move className="mr-2 size-4" />
+                    Move
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setDeleteOpen(true)}
+                  >
+                    <Trash2 className="mr-2 size-4" />
+                    Delete
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setSelectedPaths(new Set());
+                      setLastSelectedIndex(null);
+                    }}
+                  >
+                    <X className="mr-2 size-4" />
+                    Clear
+                  </Button>
+                </div>
+              </div>
+            )}
           </>
         ) : activeTab ? (
           <>
@@ -717,16 +964,96 @@ export function StoragePage() {
       {/* Delete Confirm */}
       <ConfirmDialog
         open={deleteOpen}
-        onOpenChange={setDeleteOpen}
-        title={`Delete ${selectedItem?.is_dir ? 'Folder' : 'File'}`}
-        description={`Are you sure you want to delete "${selectedItem?.name}"?${
-          selectedItem?.is_dir ? ' All contents will be deleted.' : ''
-        }`}
+        onOpenChange={(open) => {
+          setDeleteOpen(open);
+          if (!open) setSelectedItem(null);
+        }}
+        title={
+          selectedPaths.size > 1
+            ? `Delete ${selectedPaths.size} items`
+            : `Delete ${selectedItem?.is_dir ? 'Folder' : 'File'}`
+        }
+        description={
+          selectedPaths.size > 1
+            ? `Are you sure you want to delete ${selectedPaths.size} selected items?`
+            : `Are you sure you want to delete "${selectedItem?.name}"?${
+                selectedItem?.is_dir ? ' All contents will be deleted.' : ''
+              }`
+        }
         confirmLabel="Delete"
         variant="destructive"
-        onConfirm={() => deleteMutation.mutate()}
-        isLoading={deleteMutation.isPending}
+        onConfirm={() => {
+          if (selectedPaths.size > 1 || (selectedPaths.size === 1 && !selectedItem)) {
+            deleteSelectedMutation.mutate();
+          } else {
+            deleteMutation.mutate();
+          }
+        }}
+        isLoading={deleteMutation.isPending || deleteSelectedMutation.isPending}
       />
+
+      {/* Move Dialog */}
+      <Dialog open={moveDialogOpen} onOpenChange={setMoveDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Move {selectedPaths.size} item{selectedPaths.size > 1 ? 's' : ''}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2">
+            <p className="text-sm text-muted-foreground mb-4">Select destination folder:</p>
+            <div className="border rounded-lg max-h-64 overflow-auto">
+              {/* Root folder option */}
+              <button
+                type="button"
+                onClick={() => setMoveTargetPath('')}
+                className={cn(
+                  'w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-muted/50 transition-colors',
+                  moveTargetPath === '' && 'bg-primary/20'
+                )}
+              >
+                <Home className="size-4 text-muted-foreground" />
+                <span className="font-medium">Root</span>
+                {moveTargetPath === '' && <Check className="size-4 ml-auto text-primary" />}
+              </button>
+              {/* Folder list */}
+              {allFolders
+                .filter((folder) => !selectedPaths.has(folder.path))
+                .sort((a, b) => a.path.localeCompare(b.path))
+                .map((folder) => (
+                  <button
+                    key={folder.path}
+                    type="button"
+                    onClick={() => setMoveTargetPath(folder.path)}
+                    className={cn(
+                      'w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-muted/50 transition-colors',
+                      moveTargetPath === folder.path && 'bg-primary/20'
+                    )}
+                  >
+                    <FolderOpen className="size-4 text-blue-500" />
+                    <span className="truncate">{folder.path}</span>
+                    {moveTargetPath === folder.path && (
+                      <Check className="size-4 ml-auto text-primary shrink-0" />
+                    )}
+                  </button>
+                ))}
+              {allFolders.length === 0 && (
+                <p className="text-sm text-muted-foreground p-3">No folders available</p>
+              )}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setMoveDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={() => moveMutation.mutate(moveTargetPath)}
+              disabled={moveMutation.isPending}
+            >
+              <Move className="mr-2 size-4" />
+              {moveMutation.isPending ? 'Moving...' : 'Move'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Close Tab Confirm */}
       <ConfirmDialog
