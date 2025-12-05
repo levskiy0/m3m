@@ -300,52 +300,6 @@ service.shotdown(() => {
 
 ---
 
-Сервис не запускается!
-
-`http://127.0.0.1:3000/api/projects/6931eac04c717825bfe2307c/start`
-``` 
-{"error":"EOF"}
-```
-
-А из релиза так вообще выполняется какой то `http://127.0.0.1:3000/api/projects/6931eac04c717825bfe2307c/pipeline/releases/1.0/activate`
-
-Да нужно выбирать какой релиз активный, но визульно это сейчас как запуск!!!
-
----
-
-Запустил
-
-```js
-$router.get('/health', function(ctx) {
-    return $router.response(200, { status: 'ok 222' });
-});
-
-// Example: Scheduled task
-$schedule.daily(function() {
-    $logger.info('Daily task executed');
-});
-
-$logger.info('Service started');
-```
-
-`http://127.0.0.1:3000/r/example/health` = `404 page not found`
-
-Логи в файле есть, в админке нет!
-
----
-
-Вообще пробегись по UI как Senior разрабютчик и причеши UX, как то что бы было нормально аккуратно по человечески.
-
-Это всетакие такой сервис раннер, а он не дотягиевает по дизайну.
-
-Нужна прям вкладка с текущим инстансом, толом, статистикой, быть может прям чарт рисовать по ресурсам...
-
-Остановка/Запуск/Перезапуск
-
-Все должно быть структурировано, и удобно!!!
-
----
-
 Active Release
 No active release
 
@@ -361,6 +315,13 @@ Pipeline в списке релизов вообще не видно какой 
 Список релизов - индикатор активный или нет не нужен, активным для проекта становится последний стабильный запущенный.
 
 Удалить релиз если он запущен нельзя.
+
+---
+
+``` 
+project-dashboard.ts…t=1764915025382:588 Uncaught TypeError: Cannot read properties of undefined (reading 'toLocaleString')
+    at ProjectDashboard (project-dashboard.ts…764915025382:588:62)
+```
 
 ---
 

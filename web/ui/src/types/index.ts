@@ -49,6 +49,7 @@ export interface Project {
   ownerID: string;
   members: string[];
   activeRelease?: string;
+  runningSource?: string; // "release:<version>" or "debug:<branch>"
   createdAt: string;
   updatedAt: string;
 }

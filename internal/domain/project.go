@@ -24,6 +24,7 @@ type Project struct {
 	Status        ProjectStatus        `bson:"status" json:"status"`
 	AutoStart     bool                 `bson:"auto_start" json:"auto_start"`
 	ActiveRelease string               `bson:"active_release" json:"active_release"`
+	RunningSource string               `bson:"running_source" json:"runningSource"` // "release:<version>" or "debug:<branch>"
 	CreatedAt     time.Time            `bson:"created_at" json:"created_at"`
 	UpdatedAt     time.Time            `bson:"updated_at" json:"updated_at"`
 }

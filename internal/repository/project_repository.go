@@ -199,3 +199,12 @@ func (r *ProjectRepository) SetAutoStart(ctx context.Context, id primitive.Objec
 	)
 	return err
 }
+
+func (r *ProjectRepository) SetRunningSource(ctx context.Context, id primitive.ObjectID, source string) error {
+	_, err := r.collection.UpdateOne(
+		ctx,
+		bson.M{"_id": id},
+		bson.M{"$set": bson.M{"running_source": source, "updated_at": time.Now()}},
+	)
+	return err
+}

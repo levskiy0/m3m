@@ -167,3 +167,7 @@ func (s *ProjectService) SetActiveRelease(ctx context.Context, id primitive.Obje
 func (s *ProjectService) GetByStatus(ctx context.Context, status domain.ProjectStatus) ([]*domain.Project, error) {
 	return s.projectRepo.FindByStatus(ctx, status)
 }
+
+func (s *ProjectService) SetRunningSource(ctx context.Context, id primitive.ObjectID, source string) error {
+	return s.projectRepo.SetRunningSource(ctx, id, source)
+}

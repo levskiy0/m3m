@@ -93,20 +93,33 @@ func (h *RuntimeHandler) Start(c *gin.Context) {
 	}
 
 	var req struct {
-		Version string `json:"version"`
+		Version string `json:"version"` // Release version to run
+		Branch  string `json:"branch"`  // Branch name to run (debug mode)
 	}
 	// Body is optional - ignore EOF errors
 	c.ShouldBindJSON(&req)
 
-	// Get release code
 	var code string
-	if req.Version != "" {
+	var runningSource string
+
+	if req.Branch != "" {
+		// Debug mode: run code from branch
+		branch, err := h.pipelineService.GetBranch(c.Request.Context(), projectID, req.Branch)
+		if err != nil {
+			c.JSON(http.StatusNotFound, gin.H{"error": "branch not found"})
+			return
+		}
+		code = branch.Code
+		runningSource = "debug:" + req.Branch
+	} else if req.Version != "" {
+		// Run specific release version
 		release, err := h.pipelineService.GetRelease(c.Request.Context(), projectID, req.Version)
 		if err != nil {
 			c.JSON(http.StatusNotFound, gin.H{"error": "release not found"})
 			return
 		}
 		code = release.Code
+		runningSource = "release:" + req.Version
 
 		// Activate this release
 		h.pipelineService.ActivateRelease(c.Request.Context(), projectID, req.Version)
@@ -122,8 +135,10 @@ func (h *RuntimeHandler) Start(c *gin.Context) {
 				return
 			}
 			code = branch.Code
+			runningSource = "debug:develop"
 		} else {
 			code = release.Code
+			runningSource = "release:" + release.Version
 		}
 	}
 
@@ -136,10 +151,11 @@ func (h *RuntimeHandler) Start(c *gin.Context) {
 		return
 	}
 
-	// Update project status
+	// Update project status and running source
 	h.projectService.UpdateStatus(c.Request.Context(), projectID, domain.ProjectStatusRunning)
+	h.projectService.SetRunningSource(c.Request.Context(), projectID, runningSource)
 
-	c.JSON(http.StatusOK, gin.H{"message": "project started"})
+	c.JSON(http.StatusOK, gin.H{"message": "project started", "runningSource": runningSource})
 }
 
 func (h *RuntimeHandler) Stop(c *gin.Context) {
@@ -153,8 +169,9 @@ func (h *RuntimeHandler) Stop(c *gin.Context) {
 		return
 	}
 
-	// Update project status
+	// Update project status and clear running source
 	h.projectService.UpdateStatus(c.Request.Context(), projectID, domain.ProjectStatusStopped)
+	h.projectService.SetRunningSource(c.Request.Context(), projectID, "")
 
 	c.JSON(http.StatusOK, gin.H{"message": "project stopped"})
 }
@@ -168,7 +185,7 @@ func (h *RuntimeHandler) Restart(c *gin.Context) {
 	// Stop first
 	h.runtimeManager.Stop(projectID)
 
-	// Get current active release
+	// Get current project to check running source
 	project, err := h.projectService.GetByID(c.Request.Context(), projectID)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "project not found"})
@@ -176,10 +193,31 @@ func (h *RuntimeHandler) Restart(c *gin.Context) {
 	}
 
 	var code string
-	if project.ActiveRelease != "" {
-		release, err := h.pipelineService.GetRelease(c.Request.Context(), projectID, project.ActiveRelease)
+	runningSource := project.RunningSource
+
+	// Use the same source that was running before
+	if strings.HasPrefix(runningSource, "debug:") {
+		branchName := strings.TrimPrefix(runningSource, "debug:")
+		branch, err := h.pipelineService.GetBranch(c.Request.Context(), projectID, branchName)
+		if err == nil {
+			code = branch.Code
+		}
+	} else if strings.HasPrefix(runningSource, "release:") {
+		version := strings.TrimPrefix(runningSource, "release:")
+		release, err := h.pipelineService.GetRelease(c.Request.Context(), projectID, version)
 		if err == nil {
 			code = release.Code
+		}
+	}
+
+	// Fallback to active release or develop branch
+	if code == "" {
+		if project.ActiveRelease != "" {
+			release, err := h.pipelineService.GetRelease(c.Request.Context(), projectID, project.ActiveRelease)
+			if err == nil {
+				code = release.Code
+				runningSource = "release:" + project.ActiveRelease
+			}
 		}
 	}
 
@@ -190,6 +228,7 @@ func (h *RuntimeHandler) Restart(c *gin.Context) {
 			return
 		}
 		code = branch.Code
+		runningSource = "debug:develop"
 	}
 
 	// Clear old logs
@@ -201,7 +240,12 @@ func (h *RuntimeHandler) Restart(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "project restarted"})
+	// Update running source if it changed
+	if runningSource != project.RunningSource {
+		h.projectService.SetRunningSource(c.Request.Context(), projectID, runningSource)
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "project restarted", "runningSource": runningSource})
 }
 
 func (h *RuntimeHandler) Status(c *gin.Context) {
