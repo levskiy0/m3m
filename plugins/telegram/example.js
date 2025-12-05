@@ -11,7 +11,7 @@
 const TOKEN = $env.get("TELEGRAM_TOKEN");
 
 $telegram.startBot(TOKEN, ($bot) => {
-    logger.info("Fortune Teller Bot started!");
+    $logger.info("Fortune Teller Bot started!");
 
     // Handle /start command
     $bot.handle("/start", (ctx) => {
@@ -145,7 +145,7 @@ $telegram.startBot(TOKEN, ($bot) => {
             });
         } catch (e) {
             // Fallback to text if image not found
-            logger.warn("Image not found, sending text only: " + e.message);
+            $logger.warn("Image not found, sending text only: " + e.message);
             ctx.replyWithInlineKeyboard(
                 `<b>${answer}</b>\n\n${message}`,
                 [
@@ -158,6 +158,6 @@ $telegram.startBot(TOKEN, ($bot) => {
 
 // Graceful shutdown
 $service.shutdown(() => {
-    logger.info("Stopping Fortune Teller Bot...");
+    $logger.info("Stopping Fortune Teller Bot...");
     $telegram.stopAll();
 });
