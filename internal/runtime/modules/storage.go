@@ -32,6 +32,14 @@ func (s *StorageModule) Register(vm interface{}) {
 		"delete": s.Delete,
 		"list":   s.List,
 		"mkdir":  s.MkDir,
+		"tmp": map[string]interface{}{
+			"read":   s.TmpRead,
+			"write":  s.TmpWrite,
+			"exists": s.TmpExists,
+			"delete": s.TmpDelete,
+			"list":   s.TmpList,
+			"mkdir":  s.TmpMkDir,
+		},
 	})
 }
 
@@ -73,6 +81,32 @@ func (s *StorageModule) List(path string) []string {
 func (s *StorageModule) MkDir(path string) bool {
 	err := s.storage.MkDir(s.projectID, path)
 	return err == nil
+}
+
+// Tmp methods - wrap main methods with "tmp/" prefix
+
+func (s *StorageModule) TmpRead(path string) string {
+	return s.Read("tmp/" + path)
+}
+
+func (s *StorageModule) TmpWrite(path string, content string) bool {
+	return s.Write("tmp/"+path, content)
+}
+
+func (s *StorageModule) TmpExists(path string) bool {
+	return s.Exists("tmp/" + path)
+}
+
+func (s *StorageModule) TmpDelete(path string) bool {
+	return s.Delete("tmp/" + path)
+}
+
+func (s *StorageModule) TmpList(path string) []string {
+	return s.List("tmp/" + path)
+}
+
+func (s *StorageModule) TmpMkDir(path string) bool {
+	return s.MkDir("tmp/" + path)
 }
 
 // GetSchema implements JSSchemaProvider
@@ -119,6 +153,53 @@ func (s *StorageModule) GetSchema() JSModuleSchema {
 				Description: "Create directory",
 				Params:      []JSParamSchema{{Name: "path", Type: "string", Description: "Directory path to create"}},
 				Returns:     &JSParamSchema{Type: "boolean"},
+			},
+		},
+		Nested: []JSNestedModuleSchema{
+			{
+				Name:        "tmp",
+				Description: "Temporary storage operations (files stored in tmp/ directory)",
+				Methods: []JSMethodSchema{
+					{
+						Name:        "read",
+						Description: "Read file contents from tmp storage",
+						Params:      []JSParamSchema{{Name: "path", Type: "string", Description: "File path relative to tmp storage"}},
+						Returns:     &JSParamSchema{Type: "string"},
+					},
+					{
+						Name:        "write",
+						Description: "Write string content to tmp storage",
+						Params: []JSParamSchema{
+							{Name: "path", Type: "string", Description: "File path relative to tmp storage"},
+							{Name: "content", Type: "string", Description: "Content to write"},
+						},
+						Returns: &JSParamSchema{Type: "boolean"},
+					},
+					{
+						Name:        "exists",
+						Description: "Check if file exists in tmp storage",
+						Params:      []JSParamSchema{{Name: "path", Type: "string", Description: "File path to check"}},
+						Returns:     &JSParamSchema{Type: "boolean"},
+					},
+					{
+						Name:        "delete",
+						Description: "Delete file from tmp storage",
+						Params:      []JSParamSchema{{Name: "path", Type: "string", Description: "File path to delete"}},
+						Returns:     &JSParamSchema{Type: "boolean"},
+					},
+					{
+						Name:        "list",
+						Description: "List files in tmp directory",
+						Params:      []JSParamSchema{{Name: "path", Type: "string", Description: "Directory path"}},
+						Returns:     &JSParamSchema{Type: "string[]"},
+					},
+					{
+						Name:        "mkdir",
+						Description: "Create directory in tmp storage",
+						Params:      []JSParamSchema{{Name: "path", Type: "string", Description: "Directory path to create"}},
+						Returns:     &JSParamSchema{Type: "boolean"},
+					},
+				},
 			},
 		},
 	}

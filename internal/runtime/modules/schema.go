@@ -28,12 +28,20 @@ type JSTypeSchema struct {
 	Fields      []JSParamSchema `json:"fields"`
 }
 
-// JSModuleSchema describes a complete module
-type JSModuleSchema struct {
+// JSNestedModuleSchema describes a nested module/namespace
+type JSNestedModuleSchema struct {
 	Name        string           `json:"name"`
 	Description string           `json:"description"`
 	Methods     []JSMethodSchema `json:"methods"`
-	Types       []JSTypeSchema   `json:"types,omitempty"` // Custom types used by this module
+}
+
+// JSModuleSchema describes a complete module
+type JSModuleSchema struct {
+	Name        string                 `json:"name"`
+	Description string                 `json:"description"`
+	Methods     []JSMethodSchema       `json:"methods"`
+	Types       []JSTypeSchema         `json:"types,omitempty"`  // Custom types used by this module
+	Nested      []JSNestedModuleSchema `json:"nested,omitempty"` // Nested namespaces/objects
 }
 
 // JSSchemaProvider interface for modules that provide schema
@@ -93,6 +101,34 @@ func (s *JSModuleSchema) GenerateTypeScript() string {
 
 		sb.WriteString(fmt.Sprintf("    %s(%s): %s;\n", m.Name, strings.Join(params, ", "), returnType))
 		sb.WriteString("\n")
+	}
+
+	// Generate nested modules
+	for _, nested := range s.Nested {
+		sb.WriteString(fmt.Sprintf("    /** %s */\n", nested.Description))
+		sb.WriteString(fmt.Sprintf("    %s: {\n", nested.Name))
+
+		for _, m := range nested.Methods {
+			sb.WriteString(fmt.Sprintf("        /** %s */\n", m.Description))
+
+			params := make([]string, 0, len(m.Params))
+			for _, p := range m.Params {
+				optional := ""
+				if p.Optional {
+					optional = "?"
+				}
+				params = append(params, fmt.Sprintf("%s%s: %s", p.Name, optional, mapTypeToTS(p.Type)))
+			}
+
+			returnType := "void"
+			if m.Returns != nil {
+				returnType = mapTypeToTS(m.Returns.Type)
+			}
+
+			sb.WriteString(fmt.Sprintf("        %s(%s): %s;\n", m.Name, strings.Join(params, ", "), returnType))
+		}
+
+		sb.WriteString("    };\n\n")
 	}
 
 	sb.WriteString("};\n")
