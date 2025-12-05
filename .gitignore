@@ -4,6 +4,7 @@
 ./bin/
 ./internal/app/dist/
 ./server
+plugins/*.so
 storage
 logs
 issue.md

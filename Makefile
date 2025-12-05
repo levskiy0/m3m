@@ -99,7 +99,7 @@ init:
 	@mkdir -p storage logs plugins
 	$(GOMOD) tidy
 
-# Build example plugin
+# Build single plugin
 build-plugin:
 	@if [ -z "$(PLUGIN)" ]; then \
 		echo "Usage: make build-plugin PLUGIN=telegram"; \
@@ -107,6 +107,11 @@ build-plugin:
 	fi
 	@echo "Building plugin $(PLUGIN)..."
 	cd plugins/$(PLUGIN) && $(GOBUILD) -buildmode=plugin -o ../$(PLUGIN).so
+
+# Build all plugins
+build-plugins:
+	@echo "Building all plugins..."
+	cd plugins && $(MAKE) all
 
 # Help
 help:
@@ -124,5 +129,6 @@ help:
 	@echo "  make tidy          - Tidy dependencies"
 	@echo "  make init          - Initialize project"
 	@echo "  make new-admin     - Create admin (EMAIL=... PASSWORD=...)"
-	@echo "  make build-plugin  - Build plugin (PLUGIN=name)"
+	@echo "  make build-plugin  - Build single plugin (PLUGIN=name)"
+	@echo "  make build-plugins - Build all plugins"
 	@echo "  make build-all     - Build for all platforms"

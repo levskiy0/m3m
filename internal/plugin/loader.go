@@ -11,6 +11,7 @@ import (
 	"github.com/dop251/goja"
 
 	"m3m/internal/config"
+	"m3m/pkg/schema"
 )
 
 // Plugin interface that all plugins must implement
@@ -30,8 +31,8 @@ type Plugin interface {
 	// Shutdown gracefully stops the plugin
 	Shutdown() error
 
-	// TypeDefinitions returns TypeScript declarations for Monaco
-	TypeDefinitions() string
+	// GetSchema returns the schema for TypeScript generation
+	GetSchema() schema.ModuleSchema
 }
 
 // Loader handles loading and managing plugins
@@ -164,7 +165,8 @@ func (l *Loader) GetTypeDefinitions() string {
 
 	for name, p := range l.plugins {
 		defs.WriteString(fmt.Sprintf("// Plugin: %s v%s\n", name, p.Version()))
-		defs.WriteString(p.TypeDefinitions())
+		s := p.GetSchema()
+		defs.WriteString(s.GenerateTypeScript())
 		defs.WriteString("\n\n")
 	}
 

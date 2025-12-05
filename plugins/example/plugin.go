@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/dop251/goja"
+	"m3m/pkg/schema"
 )
 
 // ExamplePlugin demonstrates how to create a M3M plugin
@@ -44,30 +45,39 @@ func (p *ExamplePlugin) Shutdown() error {
 	return nil
 }
 
-// TypeDefinitions returns TypeScript declarations for Monaco
-func (p *ExamplePlugin) TypeDefinitions() string {
-	return `
-declare const example: {
-    /**
-     * Returns a greeting message
-     * @param name - The name to greet
-     */
-    hello(name: string): string;
-
-    /**
-     * Adds two numbers
-     * @param a - First number
-     * @param b - Second number
-     */
-    add(a: number, b: number): number;
-
-    /**
-     * Reverses a string
-     * @param str - String to reverse
-     */
-    reverse(str: string): string;
-};
-`
+// GetSchema returns the schema for TypeScript generation
+func (p *ExamplePlugin) GetSchema() schema.ModuleSchema {
+	return schema.ModuleSchema{
+		Name:        "example",
+		Description: "Example plugin demonstrating M3M plugin system",
+		Methods: []schema.MethodSchema{
+			{
+				Name:        "hello",
+				Description: "Returns a greeting message",
+				Params: []schema.ParamSchema{
+					{Name: "name", Type: "string", Description: "The name to greet"},
+				},
+				Returns: &schema.ParamSchema{Type: "string"},
+			},
+			{
+				Name:        "add",
+				Description: "Adds two numbers",
+				Params: []schema.ParamSchema{
+					{Name: "a", Type: "number", Description: "First number"},
+					{Name: "b", Type: "number", Description: "Second number"},
+				},
+				Returns: &schema.ParamSchema{Type: "number"},
+			},
+			{
+				Name:        "reverse",
+				Description: "Reverses a string",
+				Params: []schema.ParamSchema{
+					{Name: "str", Type: "string", Description: "String to reverse"},
+				},
+				Returns: &schema.ParamSchema{Type: "string"},
+			},
+		},
+	}
 }
 
 // Plugin functions

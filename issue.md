@@ -311,6 +311,22 @@ service.shotdown(() => {
 
 ---
 
+для `/plugins/` сделай единый make
+
+---
+
+```
+// TypeDefinitions returns TypeScript declarations for Monaco
+func (p *TelegramPlugin) TypeDefinitions() string {
+```
+
+Кажется что мы иначе делаем определение схемы...
+
+И кажется `internal/runtime/modules/schema.go` нужно перетащить контракты в `pkg`
+
+
+---
+
 `https://github.com/go-telegram/bot`
 
 Добавь новый `runtime api` через `plugins/telegram` / `$telegram` 

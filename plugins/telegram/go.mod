@@ -1,4 +1,4 @@
-module example
+module telegram
 
 go 1.24.0
 
@@ -6,6 +6,7 @@ toolchain go1.24.9
 
 require (
 	github.com/dop251/goja v0.0.0-20241024094426-79f3a7efcdbd
+	github.com/go-telegram/bot v1.11.1
 	m3m v0.0.0
 )
 
