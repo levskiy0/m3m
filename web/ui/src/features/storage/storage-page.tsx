@@ -553,18 +553,23 @@ export function StoragePage() {
 
   return (
     <>
-      <Card className="flex flex-col" style={{ height: 'calc(100vh - 85px)' }}>
+      <Card className="flex flex-col gap-0" style={{ height: 'calc(100vh - 85px)' }}>
         {/* Tabs Bar */}
-        <div className="flex items-center border-b bg-muted/30 px-2">
+        <div className="flex items-end border-b px-4">
           {/* Files tab */}
           <button
             onClick={() => setActiveTabId(null)}
             className={cn(
-              'flex items-center gap-2 px-3 py-2 text-sm border-b-2 -mb-px transition-colors',
+              'flex items-center gap-2 px-4 py-2 text-sm border-t border-l border-r',
               activeTabId === null
-                ? 'border-primary text-foreground'
+                ? 'border-border bg-background'
                 : 'border-transparent text-muted-foreground hover:text-foreground'
             )}
+            style={{
+              borderTopLeftRadius: 6,
+              borderTopRightRadius: 6,
+              marginBottom: activeTabId === null ? -1 : 0,
+            }}
           >
             <Folder className="size-4" />
             Files
@@ -573,30 +578,36 @@ export function StoragePage() {
           {/* Open file tabs */}
           {tabs.map((tab) => {
             const isDirty = tab.content !== tab.originalContent;
+            const isActive = activeTabId === tab.id;
             return (
               <div
                 key={tab.id}
                 className={cn(
-                  'flex items-center gap-1 px-3 py-2 text-sm border-b-2 -mb-px transition-colors group',
-                  activeTabId === tab.id
-                    ? 'border-primary text-foreground'
+                  'group flex items-center gap-1 px-4 py-2 text-sm border-t border-l border-r',
+                  isActive
+                    ? 'border-border bg-background'
                     : 'border-transparent text-muted-foreground hover:text-foreground'
                 )}
+                style={{
+                  borderTopLeftRadius: 6,
+                  borderTopRightRadius: 6,
+                  marginBottom: isActive ? -1 : 0,
+                }}
               >
                 <button
                   onClick={() => setActiveTabId(tab.id)}
                   className="flex items-center gap-2"
                 >
                   <FileCode className="size-4" />
-                  <span>{tab.name}</span>
-                  {isDirty && <span className="text-primary">*</span>}
+                  <span className="max-w-32 truncate">{tab.name}</span>
+                  {isDirty && <span className="text-orange-500">*</span>}
                 </button>
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
                     handleCloseTab(tab.id);
                   }}
-                  className="p-0.5 rounded hover:bg-muted opacity-0 group-hover:opacity-100 transition-opacity"
+                  className="ml-1 p-0.5 rounded hover:bg-muted opacity-0 group-hover:opacity-100"
                 >
                   <X className="size-3" />
                 </button>
@@ -609,7 +620,7 @@ export function StoragePage() {
         {activeTabId === null ? (
           <>
             {/* File Browser */}
-            <CardHeader className="pb-0 grid-rows-[none]">
+            <CardHeader className="py-4 grid-rows-[none]">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-1 text-sm text-muted-foreground">
                   <Button
@@ -881,7 +892,7 @@ export function StoragePage() {
         ) : activeTab ? (
           <>
             {/* Editor View */}
-            <div className="flex items-center justify-between px-4 py-2 border-b">
+            <div className="flex items-center justify-between px-6 py-4 border-b">
               <div className="flex items-center gap-2">
                 {activeTab.isNew && (
                   <Input
