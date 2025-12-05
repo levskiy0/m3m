@@ -15,7 +15,7 @@ import {
   ChevronsUpDown,
   Plus,
   Globe,
-  Server,
+  Package,
 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 
