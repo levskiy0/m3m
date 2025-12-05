@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useParams, useLocation } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
@@ -323,6 +323,34 @@ export function PipelinePage() {
   const isDevelopBranch = currentBranch?.name === 'develop';
   const isLoading = branchesLoading || releasesLoading || (selectedBranchId && branchLoading);
 
+  // Keyboard shortcuts handlers
+  const handleSave = useCallback(() => {
+    if (hasChanges && !saveMutation.isPending) {
+      saveMutation.mutate();
+    }
+  }, [hasChanges, saveMutation]);
+
+  const handleRunDebug = useCallback(async () => {
+    if (!currentBranch || startDebugMutation.isPending || (isRunning && !isDebugMode)) return;
+
+    if (runningBranch === currentBranch.name) {
+      // Stop if already running
+      stopDebugMutation.mutate();
+    } else {
+      // Save and run
+      if (hasChanges) {
+        await saveMutation.mutateAsync();
+      }
+      startDebugMutation.mutate(currentBranch.name);
+    }
+  }, [currentBranch, hasChanges, runningBranch, isRunning, isDebugMode, saveMutation, startDebugMutation, stopDebugMutation]);
+
+  // Key bindings for Monaco editor
+  const keyBindings = useMemo(() => [
+    { key: 'ctrl+s', label: 'Save', action: handleSave },
+    { key: 'ctrl+r', label: 'Run Debug', action: handleRunDebug },
+  ], [handleSave, handleRunDebug]);
+
   if (isLoading) {
     return (
       <div className="space-y-4">
@@ -493,6 +521,7 @@ export function PipelinePage() {
                   onChange={handleCodeChange}
                   language="javascript"
                   typeDefinitions={runtimeTypes}
+                  keyBindings={keyBindings}
                 />
               </div>
             </>

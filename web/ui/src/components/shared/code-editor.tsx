@@ -3,6 +3,12 @@ import Editor from '@monaco-editor/react';
 import type { OnMount, Monaco } from '@monaco-editor/react';
 import type { editor } from 'monaco-editor';
 
+interface KeyBinding {
+  key: string;
+  label: string;
+  action: () => void;
+}
+
 interface CodeEditorProps {
   value: string;
   onChange?: (value: string) => void;
@@ -10,7 +16,9 @@ interface CodeEditorProps {
   readOnly?: boolean;
   height?: string | number;
   typeDefinitions?: string;
+  keyBindings?: KeyBinding[];
 }
+
 
 export function CodeEditor({
   value,
@@ -19,9 +27,12 @@ export function CodeEditor({
   readOnly = false,
   height = '100%',
   typeDefinitions,
+  keyBindings,
 }: CodeEditorProps) {
   const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
   const monacoRef = useRef<Monaco | null>(null);
+  const keyBindingsRef = useRef(keyBindings);
+  keyBindingsRef.current = keyBindings;
 
   const handleMount: OnMount = (editor, monaco) => {
     editorRef.current = editor;
@@ -50,6 +61,30 @@ export function CodeEditor({
         'ts:runtime.d.ts'
       );
     }
+
+    // Register Ctrl+S for save
+    editor.addAction({
+      id: 'custom-save',
+      label: 'Save',
+      keybindings: [monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS],
+      run: () => {
+        const bindings = keyBindingsRef.current;
+        const saveBinding = bindings?.find(b => b.key === 'ctrl+s');
+        saveBinding?.action();
+      },
+    });
+
+    // Register Ctrl+R for run
+    editor.addAction({
+      id: 'custom-run',
+      label: 'Run Debug',
+      keybindings: [monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyR],
+      run: () => {
+        const bindings = keyBindingsRef.current;
+        const runBinding = bindings?.find(b => b.key === 'ctrl+r');
+        runBinding?.action();
+      },
+    });
   };
 
   useEffect(() => {
