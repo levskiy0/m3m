@@ -114,7 +114,7 @@ $telegram.startBot(TOKEN, ($bot) => {
     // Fortune prediction function
     function predictFortune(ctx) {
         const isYes = Math.random() > 0.5;
-        const image = isYes ? "yes.png" : "no.png";
+        const image = $storage.getPath(isYes ? "yes.png" : "no.png");
         const answer = isYes ? "YES" : "NO";
 
         const messages = isYes ? [
