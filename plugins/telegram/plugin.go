@@ -35,6 +35,7 @@ type BotInstance struct {
 	handlers       map[string]goja.Callable
 	callbacks      map[string]goja.Callable
 	defaultHandler goja.Callable
+	storagePath    string
 }
 
 // UpdateContext provides context for handler callbacks
@@ -107,11 +108,12 @@ func (p *TelegramPlugin) startBot(runtime *goja.Runtime, token string, callback 
 	ctx, cancel := context.WithCancel(context.Background())
 
 	instance := &BotInstance{
-		ctx:       ctx,
-		cancel:    cancel,
-		runtime:   runtime,
-		handlers:  make(map[string]goja.Callable),
-		callbacks: make(map[string]goja.Callable),
+		ctx:         ctx,
+		cancel:      cancel,
+		runtime:     runtime,
+		handlers:    make(map[string]goja.Callable),
+		callbacks:   make(map[string]goja.Callable),
+		storagePath: p.storagePath,
 	}
 
 	// Create bot options with default handler
@@ -390,6 +392,9 @@ func (uctx *UpdateContext) createReplyPhoto() func(string, string) (map[string]i
 			ParseMode: models.ParseModeHTML,
 		}
 
+		// Resolve path relative to storage
+		photo = uctx.instance.resolvePath(photo)
+
 		// Check if it's a file path, URL or file_id
 		if isFilePath(photo) {
 			data, err := os.ReadFile(photo)
@@ -398,6 +403,15 @@ func (uctx *UpdateContext) createReplyPhoto() func(string, string) (map[string]i
 			}
 			params.Photo = &models.InputFileUpload{
 				Filename: filepath.Base(photo),
+				Data:     bytes.NewReader(data),
+			}
+		} else if isBase64(photo) {
+			data, err := base64.StdEncoding.DecodeString(photo)
+			if err != nil {
+				return nil, fmt.Errorf("invalid base64: %w", err)
+			}
+			params.Photo = &models.InputFileUpload{
+				Filename: "image.png",
 				Data:     bytes.NewReader(data),
 			}
 		} else {
@@ -1106,6 +1120,13 @@ func isBase64(s string) bool {
 func (p *TelegramPlugin) resolvePath(path string) string {
 	if p.storagePath != "" && !filepath.IsAbs(path) && isFilePath(path) {
 		return filepath.Join(p.storagePath, path)
+	}
+	return path
+}
+
+func (instance *BotInstance) resolvePath(path string) string {
+	if instance.storagePath != "" && !filepath.IsAbs(path) && isFilePath(path) {
+		return filepath.Join(instance.storagePath, path)
 	}
 	return path
 }
