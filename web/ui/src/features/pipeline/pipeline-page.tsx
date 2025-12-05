@@ -46,7 +46,7 @@ export function PipelinePage() {
   const { projectId } = useParams<{ projectId: string }>();
   const queryClient = useQueryClient();
 
-  const [selectedBranch, setSelectedBranch] = useState<string>('develop');
+  const [selectedBranchId, setSelectedBranchId] = useState<string>('');
   const [code, setCode] = useState('');
   const [hasChanges, setHasChanges] = useState(false);
 
@@ -84,11 +84,23 @@ export function PipelinePage() {
     enabled: !!projectId,
   });
 
+  // Auto-select develop branch on load
+  useEffect(() => {
+    if (branches.length > 0 && !selectedBranchId) {
+      const developBranch = branches.find((b) => b.name === 'develop');
+      if (developBranch) {
+        setSelectedBranchId(developBranch.id);
+      } else {
+        setSelectedBranchId(branches[0].id);
+      }
+    }
+  }, [branches, selectedBranchId]);
+
   // Fetch full branch with code when selected
   const { data: currentBranch, isLoading: branchLoading } = useQuery({
-    queryKey: ['branch', projectId, selectedBranch],
-    queryFn: () => pipelineApi.getBranch(projectId!, selectedBranch),
-    enabled: !!projectId && !!selectedBranch && branches.length > 0,
+    queryKey: ['branch', projectId, selectedBranchId],
+    queryFn: () => pipelineApi.getBranch(projectId!, selectedBranchId),
+    enabled: !!projectId && !!selectedBranchId,
   });
 
   const { data: runtimeTypes } = useQuery({
@@ -109,9 +121,9 @@ export function PipelinePage() {
 
   // Mutations
   const saveMutation = useMutation({
-    mutationFn: () => pipelineApi.updateBranch(projectId!, selectedBranch, { code }),
+    mutationFn: () => pipelineApi.updateBranch(projectId!, selectedBranchId, { code }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['branch', projectId, selectedBranch] });
+      queryClient.invalidateQueries({ queryKey: ['branch', projectId, selectedBranchId] });
       setHasChanges(false);
       toast.success('Code saved');
     },
@@ -126,7 +138,7 @@ export function PipelinePage() {
     onSuccess: (branch) => {
       queryClient.invalidateQueries({ queryKey: ['branches', projectId] });
       setCreateBranchOpen(false);
-      setSelectedBranch(branch.name);
+      setSelectedBranchId(branch.id);
       resetBranchForm();
       toast.success('Branch created');
     },
@@ -136,11 +148,15 @@ export function PipelinePage() {
   });
 
   const deleteBranchMutation = useMutation({
-    mutationFn: () => pipelineApi.deleteBranch(projectId!, selectedBranch),
+    mutationFn: () => pipelineApi.deleteBranch(projectId!, selectedBranchId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['branches', projectId] });
       setDeleteBranchOpen(false);
-      setSelectedBranch('develop');
+      // Select develop branch after deletion
+      const developBranch = branches.find((b) => b.name === 'develop');
+      if (developBranch) {
+        setSelectedBranchId(developBranch.id);
+      }
       toast.success('Branch deleted');
     },
     onError: (err) => {
@@ -150,11 +166,11 @@ export function PipelinePage() {
 
   const resetBranchMutation = useMutation({
     mutationFn: () =>
-      pipelineApi.resetBranch(projectId!, selectedBranch, {
+      pipelineApi.resetBranch(projectId!, selectedBranchId, {
         target_version: resetTargetVersion,
       }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['branch', projectId, selectedBranch] });
+      queryClient.invalidateQueries({ queryKey: ['branch', projectId, selectedBranchId] });
       setResetBranchOpen(false);
       setResetTargetVersion('');
       toast.success('Branch reset');
@@ -179,7 +195,7 @@ export function PipelinePage() {
   });
 
   const deleteReleaseMutation = useMutation({
-    mutationFn: (version: string) => pipelineApi.deleteRelease(projectId!, version),
+    mutationFn: (releaseId: string) => pipelineApi.deleteRelease(projectId!, releaseId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['releases', projectId] });
       setDeleteReleaseOpen(false);
@@ -192,7 +208,7 @@ export function PipelinePage() {
   });
 
   const activateReleaseMutation = useMutation({
-    mutationFn: (version: string) => pipelineApi.activateRelease(projectId!, version),
+    mutationFn: (releaseId: string) => pipelineApi.activateRelease(projectId!, releaseId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['releases', projectId] });
       queryClient.invalidateQueries({ queryKey: ['project', projectId] });
@@ -238,7 +254,9 @@ export function PipelinePage() {
     setHasChanges(value !== (currentBranch?.code || DEFAULT_SERVICE_CODE));
   };
 
-  const isLoading = branchesLoading || releasesLoading || branchLoading;
+  const selectedBranchSummary = branches.find((b) => b.id === selectedBranchId);
+  const isDevelopBranch = currentBranch?.name === 'develop';
+  const isLoading = branchesLoading || releasesLoading || (selectedBranchId && branchLoading);
 
   if (isLoading) {
     return (
@@ -254,14 +272,14 @@ export function PipelinePage() {
       {/* Header */}
       <div className="flex items-center justify-between flex-shrink-0">
         <div className="flex items-center gap-4">
-          <Select value={selectedBranch} onValueChange={setSelectedBranch}>
+          <Select value={selectedBranchId} onValueChange={setSelectedBranchId}>
             <SelectTrigger className="w-48">
               <GitBranch className="mr-2 size-4" />
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
               {branches.map((branch) => (
-                <SelectItem key={branch.name} value={branch.name}>
+                <SelectItem key={branch.id} value={branch.id}>
                   {branch.name}
                 </SelectItem>
               ))}
@@ -275,7 +293,7 @@ export function PipelinePage() {
             <Plus className="mr-2 size-4" />
             New Branch
           </Button>
-          {selectedBranch !== 'develop' && (
+          {!isDevelopBranch && (
             <>
               <Button
                 variant="outline"
@@ -343,7 +361,7 @@ export function PipelinePage() {
               <div className="space-y-2">
                 {releases.map((release) => (
                   <div
-                    key={release.version}
+                    key={release.id}
                     className={cn(
                       'flex items-center justify-between p-2 rounded-lg border',
                       release.isActive && 'border-primary bg-primary/5'
@@ -377,7 +395,7 @@ export function PipelinePage() {
                           variant="ghost"
                           size="icon"
                           className="size-8"
-                          onClick={() => activateReleaseMutation.mutate(release.version)}
+                          onClick={() => activateReleaseMutation.mutate(release.id)}
                           disabled={activateReleaseMutation.isPending}
                         >
                           <Play className="size-4" />
@@ -389,7 +407,7 @@ export function PipelinePage() {
                           size="icon"
                           className="size-8"
                           onClick={() => {
-                            setReleaseToDelete(release.version);
+                            setReleaseToDelete(release.id);
                             setDeleteReleaseOpen(true);
                           }}
                         >
@@ -448,12 +466,12 @@ export function PipelinePage() {
                   <SelectContent>
                     {newBranchSource === 'branch'
                       ? branches.map((b) => (
-                          <SelectItem key={b.name} value={b.name}>
+                          <SelectItem key={b.id} value={b.name}>
                             {b.name}
                           </SelectItem>
                         ))
                       : releases.map((r) => (
-                          <SelectItem key={r.version} value={r.version}>
+                          <SelectItem key={r.id} value={r.version}>
                             {r.version}
                           </SelectItem>
                         ))}
@@ -495,7 +513,7 @@ export function PipelinePage() {
                   </SelectTrigger>
                   <SelectContent>
                     {branches.map((b) => (
-                      <SelectItem key={b.name} value={b.name}>
+                      <SelectItem key={b.id} value={b.name}>
                         {b.name}
                       </SelectItem>
                     ))}
@@ -572,7 +590,7 @@ export function PipelinePage() {
           <DialogHeader>
             <DialogTitle>Reset Branch</DialogTitle>
             <DialogDescription>
-              Reset "{selectedBranch}" to a specific release version
+              Reset "{selectedBranchSummary?.name}" to a specific release version
             </DialogDescription>
           </DialogHeader>
           <FieldGroup>
@@ -584,7 +602,7 @@ export function PipelinePage() {
                 </SelectTrigger>
                 <SelectContent>
                   {releases.map((r) => (
-                    <SelectItem key={r.version} value={r.version}>
+                    <SelectItem key={r.id} value={r.version}>
                       {r.version}
                     </SelectItem>
                   ))}
@@ -611,7 +629,7 @@ export function PipelinePage() {
         open={deleteBranchOpen}
         onOpenChange={setDeleteBranchOpen}
         title="Delete Branch"
-        description={`Are you sure you want to delete "${selectedBranch}"?`}
+        description={`Are you sure you want to delete "${selectedBranchSummary?.name}"?`}
         confirmLabel="Delete"
         variant="destructive"
         onConfirm={() => deleteBranchMutation.mutate()}
@@ -622,7 +640,7 @@ export function PipelinePage() {
         open={deleteReleaseOpen}
         onOpenChange={setDeleteReleaseOpen}
         title="Delete Release"
-        description={`Are you sure you want to delete release "${releaseToDelete}"?`}
+        description={`Are you sure you want to delete this release?`}
         confirmLabel="Delete"
         variant="destructive"
         onConfirm={() => releaseToDelete && deleteReleaseMutation.mutate(releaseToDelete)}
