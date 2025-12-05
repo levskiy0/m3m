@@ -28,7 +28,8 @@
       "Bash(xargs kill -9)",
       "Bash(wc:*)",
       "Bash(go get:*)",
-      "Bash(make dev:*)"
+      "Bash(make dev:*)",
+      "Bash(make web-build:*)"
     ],
     "deny": [],
     "ask": []

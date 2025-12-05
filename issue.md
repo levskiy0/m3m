@@ -301,7 +301,17 @@ service.shotdown(() => {
 ---
 
 
+Форма "Create Release" имеет странные позиции полей, расположи их равномерно
 
+Source Branch | Version Bump | Tag
+Comment
+
+---
+
+Create Branch - тоже самое!
+
+Branch name
+Source Type | Source Branch 
 
 
 

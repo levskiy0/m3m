@@ -70,8 +70,7 @@ export function PipelinePage() {
   const [releaseTag, setReleaseTag] = useState<string>('develop');
 
   // Reset form
-  const [resetTarget, setResetTarget] = useState<'branch' | 'release'>('release');
-  const [resetTargetName, setResetTargetName] = useState('');
+  const [resetTargetVersion, setResetTargetVersion] = useState('');
 
   const { data: branches = [], isLoading: branchesLoading } = useQuery({
     queryKey: ['branches', projectId],
@@ -147,12 +146,12 @@ export function PipelinePage() {
   const resetBranchMutation = useMutation({
     mutationFn: () =>
       pipelineApi.resetBranch(projectId!, selectedBranch, {
-        targetType: resetTarget,
-        targetName: resetTargetName,
+        target_version: resetTargetVersion,
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['branches', projectId] });
       setResetBranchOpen(false);
+      setResetTargetVersion('');
       toast.success('Branch reset');
     },
     onError: (err) => {
@@ -564,45 +563,22 @@ export function PipelinePage() {
           <DialogHeader>
             <DialogTitle>Reset Branch</DialogTitle>
             <DialogDescription>
-              Reset "{selectedBranch}" to a specific version
+              Reset "{selectedBranch}" to a specific release version
             </DialogDescription>
           </DialogHeader>
           <FieldGroup>
             <Field>
-              <FieldLabel>Reset to</FieldLabel>
-              <Select
-                value={resetTarget}
-                onValueChange={(v) => setResetTarget(v as 'branch' | 'release')}
-              >
+              <FieldLabel>Target Release</FieldLabel>
+              <Select value={resetTargetVersion} onValueChange={setResetTargetVersion}>
                 <SelectTrigger>
-                  <SelectValue />
+                  <SelectValue placeholder="Select release" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="branch">Branch</SelectItem>
-                  <SelectItem value="release">Release</SelectItem>
-                </SelectContent>
-              </Select>
-            </Field>
-            <Field>
-              <FieldLabel>Target</FieldLabel>
-              <Select value={resetTargetName} onValueChange={setResetTargetName}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select target" />
-                </SelectTrigger>
-                <SelectContent>
-                  {resetTarget === 'branch'
-                    ? branches
-                        .filter((b) => b.name !== selectedBranch)
-                        .map((b) => (
-                          <SelectItem key={b.name} value={b.name}>
-                            {b.name}
-                          </SelectItem>
-                        ))
-                    : releases.map((r) => (
-                        <SelectItem key={r.version} value={r.version}>
-                          {r.version}
-                        </SelectItem>
-                      ))}
+                  {releases.map((r) => (
+                    <SelectItem key={r.version} value={r.version}>
+                      {r.version}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </Field>
@@ -613,7 +589,7 @@ export function PipelinePage() {
             </Button>
             <Button
               onClick={() => resetBranchMutation.mutate()}
-              disabled={!resetTargetName || resetBranchMutation.isPending}
+              disabled={!resetTargetVersion || resetBranchMutation.isPending}
             >
               {resetBranchMutation.isPending ? 'Resetting...' : 'Reset'}
             </Button>
