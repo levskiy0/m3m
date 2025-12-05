@@ -39,7 +39,8 @@
       "WebFetch(domain:github.com)",
       "WebFetch(domain:pkg.go.dev)",
       "WebFetch(domain:raw.githubusercontent.com)",
-      "Bash(make all:*)"
+      "Bash(make all:*)",
+      "Bash(timeout 5 go run:*)"
     ],
     "deny": [],
     "ask": []
