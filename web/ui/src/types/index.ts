@@ -348,6 +348,8 @@ export interface RuntimeStatus {
 export interface SparklineData {
   memory: number[];   // MB values
   requests: number[]; // Request counts per interval
+  jobs?: number[];    // Scheduled jobs execution counts
+  cpu?: number[];     // CPU percent values
 }
 
 export interface RuntimeStats {
@@ -369,6 +371,10 @@ export interface RuntimeStats {
   total_requests: number;
   hits_by_path: Record<string, number>;
   history?: SparklineData;
+  // Extended stats (may not be available on all backends)
+  storage_bytes?: number;
+  database_bytes?: number;
+  cpu_percent?: number;
 }
 
 export interface LogEntry {

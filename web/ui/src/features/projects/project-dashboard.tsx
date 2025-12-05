@@ -9,8 +9,6 @@ import {
   HardDrive,
   Database,
   Target,
-  Variable,
-  Settings,
   Key,
   ExternalLink,
   Clock,
@@ -26,6 +24,8 @@ import {
   ChevronDown,
   Bug,
   Tag,
+  Cpu,
+  Plus,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -239,14 +239,6 @@ export function ProjectDashboard() {
   const isRunning = project.status === 'running';
   const isPending = startMutation.isPending || stopMutation.isPending || restartMutation.isPending;
 
-  const quickLinks = [
-    { icon: Code, label: 'Pipeline', description: 'Edit code & releases', href: `/projects/${projectId}/pipeline` },
-    { icon: HardDrive, label: 'Storage', description: 'Manage files', href: `/projects/${projectId}/storage` },
-    { icon: Database, label: 'Models', description: 'Database schemas', href: `/projects/${projectId}/models` },
-    { icon: Target, label: 'Goals', description: 'Track metrics', href: `/projects/${projectId}/goals` },
-    { icon: Variable, label: 'Environment', description: 'Config variables', href: `/projects/${projectId}/environment` },
-    { icon: Settings, label: 'Settings', description: 'Project settings', href: `/projects/${projectId}/settings` },
-  ];
 
   // Create goal stats map for quick lookup
   const goalStatsMap = new Map<string, GoalStats>();
@@ -425,6 +417,7 @@ export function ProjectDashboard() {
         <TabsContent value="instance" className="space-y-6">
           {/* Runtime Stats */}
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            {/* Uptime */}
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardDescription className="text-sm font-medium">Uptime</CardDescription>
@@ -442,6 +435,7 @@ export function ProjectDashboard() {
               </CardContent>
             </Card>
 
+            {/* Requests */}
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardDescription className="text-sm font-medium">Requests</CardDescription>
@@ -473,23 +467,69 @@ export function ProjectDashboard() {
               </CardContent>
             </Card>
 
+            {/* Scheduled Jobs */}
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardDescription className="text-sm font-medium">Scheduled Jobs</CardDescription>
                 <Clock className="size-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
+                <div className="flex items-end justify-between gap-4">
+                  <div>
+                    <div className="text-2xl font-bold">
+                      {isRunning && stats?.scheduled_jobs != null ? stats.scheduled_jobs : '--'}
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {isRunning && stats
+                        ? stats.scheduler_active ? 'Scheduler active' : 'Scheduler inactive'
+                        : 'No data'}
+                    </p>
+                  </div>
+                  <Sparkline
+                    data={stats?.history?.jobs || []}
+                    width={80}
+                    height={32}
+                    color="hsl(var(--chart-3))"
+                    strokeWidth={2}
+                    fillOpacity={0.15}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Storage */}
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardDescription className="text-sm font-medium">Storage</CardDescription>
+                <HardDrive className="size-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
                 <div className="text-2xl font-bold">
-                  {isRunning && stats?.scheduled_jobs != null ? stats.scheduled_jobs : '--'}
+                  {stats?.storage_bytes != null ? formatBytes(stats.storage_bytes) : '--'}
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">
-                  {isRunning && stats
-                    ? stats.scheduler_active ? 'Scheduler active' : 'Scheduler inactive'
-                    : 'No data'}
+                  Project files
                 </p>
               </CardContent>
             </Card>
 
+            {/* Database */}
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardDescription className="text-sm font-medium">Database</CardDescription>
+                <Database className="size-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {stats?.database_bytes != null ? formatBytes(stats.database_bytes) : '--'}
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Collections data
+                </p>
+              </CardContent>
+            </Card>
+
+            {/* Memory */}
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardDescription className="text-sm font-medium">Memory</CardDescription>
@@ -508,6 +548,32 @@ export function ProjectDashboard() {
                     width={80}
                     height={32}
                     color="hsl(var(--chart-2))"
+                    strokeWidth={2}
+                    fillOpacity={0.15}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* CPU */}
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardDescription className="text-sm font-medium">CPU</CardDescription>
+                <Cpu className="size-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-end justify-between gap-4">
+                  <div>
+                    <div className="text-2xl font-bold">
+                      {stats?.cpu_percent != null ? `${stats.cpu_percent.toFixed(1)}%` : '--'}
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">Process usage</p>
+                  </div>
+                  <Sparkline
+                    data={stats?.history?.cpu || []}
+                    width={80}
+                    height={32}
+                    color="hsl(var(--chart-4))"
                     strokeWidth={2}
                     fillOpacity={0.15}
                   />
@@ -562,29 +628,36 @@ export function ProjectDashboard() {
             </Card>
           </div>
 
-          {/* Quick Links */}
+          {/* Goals Section */}
           <div>
-            <h2 className="text-lg font-semibold mb-4">Quick Access</h2>
-            <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-              {quickLinks.map((link) => (
-                <Link key={link.href} to={link.href}>
-                  <Card className="transition-all hover:bg-muted/50 hover:border-primary/30">
-                    <CardContent className="flex items-center gap-4 p-4">
-                      <div className="size-10 rounded-lg bg-muted flex items-center justify-center shrink-0">
-                        <link.icon className="size-5 text-muted-foreground" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium">{link.label}</p>
-                        <p className="text-sm text-muted-foreground truncate">
-                          {link.description}
-                        </p>
-                      </div>
-                      <ChevronRight className="size-4 text-muted-foreground" />
-                    </CardContent>
-                  </Card>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold">Goals</h2>
+              <Button variant="outline" size="sm" asChild>
+                <Link to={`/projects/${projectId}/goals`}>
+                  <Plus className="mr-1.5 size-4" />
+                  Add Goal
                 </Link>
-              ))}
+              </Button>
             </div>
+            {goals.length > 0 ? (
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {goals.map((goal) => {
+                  const stat = goalStatsMap.get(goal.id);
+                  return (
+                    <GoalWidget key={goal.id} goal={goal} stats={stat} />
+                  );
+                })}
+              </div>
+            ) : (
+              <Card>
+                <CardContent className="flex flex-col items-center justify-center py-8">
+                  <Target className="size-10 text-muted-foreground mb-3" />
+                  <p className="text-muted-foreground text-center text-sm">
+                    No goals configured. Create goals to track metrics.
+                  </p>
+                </CardContent>
+              </Card>
+            )}
           </div>
         </TabsContent>
 
@@ -720,7 +793,63 @@ export function ProjectDashboard() {
   );
 }
 
-// Goal Card Component with mini chart
+// Goal Widget Component with different display variants
+// - daily_counter: shows mini sparkline chart
+// - counter: shows simple value without chart
+function GoalWidget({ goal, stats }: { goal: Goal; stats?: GoalStats }) {
+  const isDailyCounter = goal.type === 'daily_counter';
+  const sparklineData = stats?.dailyStats?.slice(-14).map((d) => d.value) || [];
+
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <div className="flex items-center gap-2">
+          <span
+            className="size-2.5 rounded-full"
+            style={{ backgroundColor: goal.color || '#6b7280' }}
+          />
+          <CardDescription className="text-sm font-medium">{goal.name}</CardDescription>
+        </div>
+        <Target className="size-4 text-muted-foreground" />
+      </CardHeader>
+      <CardContent>
+        {isDailyCounter ? (
+          // Daily counter with sparkline
+          <div className="flex items-end justify-between gap-4">
+            <div>
+              <div className="text-2xl font-bold">
+                {stats?.value?.toLocaleString() ?? 0}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                {goal.description || 'Daily counter'}
+              </p>
+            </div>
+            <Sparkline
+              data={sparklineData}
+              width={80}
+              height={32}
+              color={goal.color || '#6b7280'}
+              strokeWidth={2}
+              fillOpacity={0.15}
+            />
+          </div>
+        ) : (
+          // Simple counter without chart
+          <div>
+            <div className="text-2xl font-bold">
+              {stats?.value?.toLocaleString() ?? 0}
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              {goal.description || 'Total count'}
+            </p>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// Goal Card Component with full chart (used in Stats tab)
 function GoalCard({ goal, stats }: { goal: Goal; stats?: GoalStats }) {
   const chartData = stats?.dailyStats?.slice(-7).map((d) => ({
     date: new Date(d.date).toLocaleDateString('en', { weekday: 'short' }),
@@ -747,7 +876,7 @@ function GoalCard({ goal, stats }: { goal: Goal; stats?: GoalStats }) {
         <div className="text-3xl font-bold mb-2">
           {stats?.value?.toLocaleString() ?? 0}
         </div>
-        {chartData.length > 0 && (
+        {chartData.length > 0 && goal.type === 'daily_counter' && (
           <div className="h-16 mt-2">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={chartData}>
