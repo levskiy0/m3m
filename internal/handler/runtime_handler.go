@@ -62,7 +62,10 @@ func (h *RuntimeHandler) Register(r *gin.RouterGroup, authMiddleware *middleware
 
 	// Plugins info
 	r.GET("/plugins", h.ListPlugins)
+}
 
+// RegisterPublicRoutes registers public routes on the root router (not under /api)
+func (h *RuntimeHandler) RegisterPublicRoutes(r *gin.Engine) {
 	// Project routes (public, handled by runtime router)
 	r.Any("/r/:projectSlug/*route", h.HandleRoute)
 }
@@ -240,6 +243,12 @@ func (h *RuntimeHandler) Monitor(c *gin.Context) {
 	c.JSON(http.StatusOK, stats)
 }
 
+type LogEntry struct {
+	Timestamp string `json:"timestamp"`
+	Level     string `json:"level"`
+	Message   string `json:"message"`
+}
+
 func (h *RuntimeHandler) Logs(c *gin.Context) {
 	projectID, ok := h.checkAccess(c)
 	if !ok {
@@ -249,7 +258,7 @@ func (h *RuntimeHandler) Logs(c *gin.Context) {
 	logsPath := h.storageService.GetLogsPath(projectID.Hex())
 	entries, err := os.ReadDir(logsPath)
 	if err != nil {
-		c.JSON(http.StatusOK, gin.H{"logs": []string{}})
+		c.JSON(http.StatusOK, []LogEntry{})
 		return
 	}
 
@@ -262,7 +271,7 @@ func (h *RuntimeHandler) Logs(c *gin.Context) {
 	}
 
 	if latestLog == "" {
-		c.JSON(http.StatusOK, gin.H{"logs": []string{}})
+		c.JSON(http.StatusOK, []LogEntry{})
 		return
 	}
 
@@ -274,18 +283,52 @@ func (h *RuntimeHandler) Logs(c *gin.Context) {
 	}
 	defer file.Close()
 
-	logs := make([]string, 0)
+	logs := make([]LogEntry, 0)
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
-		logs = append(logs, scanner.Text())
+		line := scanner.Text()
+		entry := parseLogLine(line)
+		logs = append(logs, entry)
 	}
 
-	// Return last 1000 lines max
+	// Return last 1000 entries max
 	if len(logs) > 1000 {
 		logs = logs[len(logs)-1000:]
 	}
 
-	c.JSON(http.StatusOK, gin.H{"logs": logs})
+	c.JSON(http.StatusOK, logs)
+}
+
+// parseLogLine parses log line in format: [2006-01-02 15:04:05] [LEVEL] message
+func parseLogLine(line string) LogEntry {
+	entry := LogEntry{
+		Timestamp: "",
+		Level:     "info",
+		Message:   line,
+	}
+
+	// Try to parse timestamp: [2006-01-02 15:04:05]
+	if len(line) > 21 && line[0] == '[' {
+		closeBracket := strings.Index(line, "]")
+		if closeBracket > 0 {
+			entry.Timestamp = line[1:closeBracket]
+			line = strings.TrimPrefix(line[closeBracket+1:], " ")
+
+			// Try to parse level: [LEVEL]
+			if len(line) > 2 && line[0] == '[' {
+				levelEnd := strings.Index(line, "]")
+				if levelEnd > 0 {
+					level := strings.ToLower(line[1:levelEnd])
+					if level == "debug" || level == "info" || level == "warn" || level == "error" {
+						entry.Level = level
+					}
+					entry.Message = strings.TrimPrefix(line[levelEnd+1:], " ")
+				}
+			}
+		}
+	}
+
+	return entry
 }
 
 func (h *RuntimeHandler) DownloadLogs(c *gin.Context) {
