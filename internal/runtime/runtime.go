@@ -324,6 +324,10 @@ type RuntimeStats struct {
 	TotalRequests   int64            `json:"total_requests"`
 	HitsByPath      map[string]int64 `json:"hits_by_path"`
 	History         *SparklineData   `json:"history,omitempty"`
+	// Extended metrics
+	StorageBytes  int64   `json:"storage_bytes"`
+	DatabaseBytes int64   `json:"database_bytes"`
+	CPUPercent    float64 `json:"cpu_percent"`
 }
 
 // MemoryStats contains memory statistics
@@ -386,6 +390,30 @@ func (m *Manager) GetStats(projectID primitive.ObjectID) (*RuntimeStats, error) 
 	if rt.Metrics != nil {
 		sparklineData := rt.Metrics.GetSparklineData()
 		stats.History = &sparklineData
+	}
+
+	// Get storage size
+	if m.storageService != nil {
+		if size, err := m.storageService.GetStorageSize(projectID.Hex()); err == nil {
+			stats.StorageBytes = size
+		}
+	}
+
+	// Get database size
+	if m.modelService != nil {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if size, err := m.modelService.GetProjectDataSize(ctx, projectID); err == nil {
+			stats.DatabaseBytes = size
+		}
+	}
+
+	// Get CPU percent from latest metrics snapshot
+	if rt.Metrics != nil {
+		latestSnapshots := rt.Metrics.GetLatest(1)
+		if len(latestSnapshots) > 0 {
+			stats.CPUPercent = latestSnapshots[0].CPUPercent
+		}
 	}
 
 	return stats, nil

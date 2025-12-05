@@ -424,3 +424,37 @@ func parseFloat(s string) (float64, error) {
 	_, err := fmt.Sscanf(s, "%f", &f)
 	return f, err
 }
+
+// GetProjectDataSize calculates total size of all data collections for a project in bytes
+func (r *ModelRepository) GetProjectDataSize(ctx context.Context, projectID primitive.ObjectID) (int64, error) {
+	// Find all models for this project
+	models, err := r.FindByProject(ctx, projectID)
+	if err != nil {
+		return 0, err
+	}
+
+	var totalSize int64
+	for _, model := range models {
+		collectionName := r.dataCollectionName(model.ProjectID, model.Slug)
+
+		// Run collStats command to get collection size
+		result := r.db.Database.RunCommand(ctx, bson.D{
+			{Key: "collStats", Value: collectionName},
+		})
+
+		var stats bson.M
+		if err := result.Decode(&stats); err != nil {
+			// Collection might not exist yet, skip
+			continue
+		}
+
+		// Get storageSize (actual disk size including indexes)
+		if size, ok := stats["storageSize"].(int64); ok {
+			totalSize += size
+		} else if size, ok := stats["storageSize"].(int32); ok {
+			totalSize += int64(size)
+		}
+	}
+
+	return totalSize, nil
+}

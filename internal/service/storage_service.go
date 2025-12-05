@@ -294,6 +294,30 @@ func (s *StorageService) ClearLogs(projectID string) error {
 	return os.RemoveAll(logsPath)
 }
 
+// GetStorageSize calculates total size of project storage folder in bytes
+func (s *StorageService) GetStorageSize(projectID string) (int64, error) {
+	storagePath := s.getProjectStoragePath(projectID)
+
+	var totalSize int64
+	err := filepath.Walk(storagePath, func(_ string, info os.FileInfo, err error) error {
+		if err != nil {
+			if os.IsNotExist(err) {
+				return nil // Directory doesn't exist yet, return 0
+			}
+			return err
+		}
+		if !info.IsDir() {
+			totalSize += info.Size()
+		}
+		return nil
+	})
+
+	if err != nil {
+		return 0, err
+	}
+	return totalSize, nil
+}
+
 func getMimeType(filename string) string {
 	ext := strings.ToLower(filepath.Ext(filename))
 	mimeTypes := map[string]string{

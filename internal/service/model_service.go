@@ -240,3 +240,8 @@ func (s *ModelService) applyDefaults(model *domain.Model, data map[string]interf
 
 	return result
 }
+
+// GetProjectDataSize returns total size of all data collections for a project in bytes
+func (s *ModelService) GetProjectDataSize(ctx context.Context, projectID primitive.ObjectID) (int64, error) {
+	return s.modelRepo.GetProjectDataSize(ctx, projectID)
+}
