@@ -583,7 +583,7 @@ export function StoragePage() {
               <div
                 key={tab.id}
                 className={cn(
-                  'group flex items-center gap-1 px-4 py-2 text-sm border-t border-l border-r',
+                  'group flex items-center gap-3 px-4 py-2 text-sm border-t border-l border-r',
                   isActive
                     ? 'border-border bg-background'
                     : 'border-transparent text-muted-foreground hover:text-foreground'
@@ -607,7 +607,10 @@ export function StoragePage() {
                     e.stopPropagation();
                     handleCloseTab(tab.id);
                   }}
-                  className="ml-1 p-0.5 rounded hover:bg-muted opacity-0 group-hover:opacity-100"
+                  className={cn(
+                    'ml-1 p-0.5 rounded hover:bg-muted',
+                    isActive ? '' : 'opacity-0 group-hover:opacity-100'
+                  )}
                 >
                   <X className="size-3" />
                 </button>
@@ -703,9 +706,8 @@ export function StoragePage() {
             >
               {/* Drag overlay */}
               {isDragging && (
-                <div className="absolute inset-0 flex items-center justify-center bg-primary/10 border-2 border-dashed border-primary rounded-lg z-10 pointer-events-none">
+                <div className="absolute inset-0 flex items-center justify-center bg-primary/10 border-1 border-dashed border-primary z-10 pointer-events-none">
                   <div className="text-center">
-                    <Upload className="size-12 text-primary mx-auto mb-2" />
                     <p className="text-lg font-medium text-primary">Drop files to upload</p>
                   </div>
                 </div>
