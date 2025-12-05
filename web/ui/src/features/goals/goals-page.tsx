@@ -54,7 +54,6 @@ import { ConfirmDialog } from '@/components/shared/confirm-dialog';
 import { EmptyState } from '@/components/shared/empty-state';
 import { Sparkline } from '@/components/shared/sparkline';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 
 function slugify(text: string): string {
