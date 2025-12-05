@@ -1,8 +1,10 @@
 package modules
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
+	"reflect"
 	"sync"
 	"time"
 
@@ -54,11 +56,70 @@ func (l *LoggerModule) log(level string, args ...interface{}) {
 	defer l.mu.Unlock()
 
 	timestamp := time.Now().Format("2006-01-02 15:04:05")
-	message := fmt.Sprint(args...)
+	message := formatArgs(args...)
 	logLine := fmt.Sprintf("[%s] [%s] %s\n", timestamp, level, message)
 
 	l.file.WriteString(logLine)
 	l.file.Sync() // Flush buffer to disk immediately
+}
+
+// formatArgs formats arguments for logging, converting structs/maps/slices to JSON
+func formatArgs(args ...interface{}) string {
+	if len(args) == 0 {
+		return ""
+	}
+
+	parts := make([]string, len(args))
+	for i, arg := range args {
+		parts[i] = formatValue(arg)
+	}
+
+	if len(parts) == 1 {
+		return parts[0]
+	}
+
+	// Join multiple arguments with space
+	result := parts[0]
+	for i := 1; i < len(parts); i++ {
+		result += " " + parts[i]
+	}
+	return result
+}
+
+// formatValue formats a single value, using JSON for complex types
+func formatValue(v interface{}) string {
+	if v == nil {
+		return "null"
+	}
+
+	// Handle strings directly
+	if s, ok := v.(string); ok {
+		return s
+	}
+
+	// Check if it's a complex type that should be JSON-serialized
+	rv := reflect.ValueOf(v)
+	kind := rv.Kind()
+
+	// Dereference pointers
+	if kind == reflect.Ptr {
+		if rv.IsNil() {
+			return "null"
+		}
+		rv = rv.Elem()
+		kind = rv.Kind()
+	}
+
+	// Serialize structs, maps, and slices as JSON
+	if kind == reflect.Struct || kind == reflect.Map || kind == reflect.Slice || kind == reflect.Array {
+		jsonBytes, err := json.Marshal(v)
+		if err == nil {
+			return string(jsonBytes)
+		}
+	}
+
+	// Fall back to default formatting
+	return fmt.Sprint(v)
 }
 
 func (l *LoggerModule) Debug(args ...interface{}) {
