@@ -34,6 +34,7 @@ type FileInfo struct {
 	UpdatedAt   time.Time `json:"updated_at"`
 	URL         string    `json:"url,omitempty"`
 	DownloadURL string    `json:"download_url,omitempty"`
+	ThumbURL    string    `json:"thumb_url,omitempty"`
 }
 
 type StorageService struct {
@@ -94,9 +95,13 @@ func (s *StorageService) List(projectID, relativePath string) ([]FileInfo, error
 
 		if !entry.IsDir() {
 			fileInfo.MimeType = getMimeType(entry.Name())
-			// Generate public URLs
-			fileInfo.URL = fmt.Sprintf("%s/api/cdn/%s%s", s.config.Server.URI, projectID, filePath)
-			fileInfo.DownloadURL = fmt.Sprintf("%s/api/download/%s%s", s.config.Server.URI, projectID, filePath)
+			// Generate public URLs (without /api prefix)
+			fileInfo.URL = fmt.Sprintf("%s/cdn/%s%s", s.config.Server.URI, projectID, filePath)
+			fileInfo.DownloadURL = fmt.Sprintf("%s/cdn-download/%s%s", s.config.Server.URI, projectID, filePath)
+			// Add thumb_url for images
+			if strings.HasPrefix(fileInfo.MimeType, "image/") {
+				fileInfo.ThumbURL = fmt.Sprintf("%s/cdn-thumb/64x64/%s%s", s.config.Server.URI, projectID, filePath)
+			}
 		}
 
 		files = append(files, fileInfo)
@@ -209,6 +214,101 @@ func (s *StorageService) Exists(projectID, relativePath string) bool {
 
 	_, err = os.Stat(fullPath)
 	return err == nil
+}
+
+// GetResizedImage returns path to resized image, creating it if needed
+// Images are cached in /storage/{project-id}/tmp/resize/{WxH}/...
+func (s *StorageService) GetResizedImage(projectID, relativePath string, width, height int) (string, error) {
+	// Build cache path
+	sizeDir := fmt.Sprintf("%dx%d", width, height)
+	cacheDir := filepath.Join(s.config.Storage.Path, projectID, "tmp", "resize", sizeDir)
+	cachePath := filepath.Join(cacheDir, relativePath)
+
+	// Check if cached version exists
+	if _, err := os.Stat(cachePath); err == nil {
+		return cachePath, nil
+	}
+
+	// Get original file
+	originalPath, err := s.resolvePath(projectID, relativePath)
+	if err != nil {
+		return "", err
+	}
+
+	if _, err := os.Stat(originalPath); os.IsNotExist(err) {
+		return "", ErrFileNotFound
+	}
+
+	// Open and decode original image
+	file, err := os.Open(originalPath)
+	if err != nil {
+		return "", err
+	}
+	defer file.Close()
+
+	img, format, err := image.Decode(file)
+	if err != nil {
+		return "", fmt.Errorf("failed to decode image: %w", err)
+	}
+
+	// Calculate new dimensions (object-contain - fit within bounds, preserve aspect ratio)
+	origBounds := img.Bounds()
+	origWidth := origBounds.Dx()
+	origHeight := origBounds.Dy()
+
+	ratio := float64(origWidth) / float64(origHeight)
+	targetRatio := float64(width) / float64(height)
+
+	var newWidth, newHeight int
+	if ratio > targetRatio {
+		// Image is wider - fit by width
+		newWidth = width
+		newHeight = int(float64(width) / ratio)
+	} else {
+		// Image is taller - fit by height
+		newHeight = height
+		newWidth = int(float64(height) * ratio)
+	}
+
+	if newWidth < 1 {
+		newWidth = 1
+	}
+	if newHeight < 1 {
+		newHeight = 1
+	}
+
+	// Create resized image
+	resized := image.NewRGBA(image.Rect(0, 0, newWidth, newHeight))
+	draw.CatmullRom.Scale(resized, resized.Bounds(), img, origBounds, draw.Over, nil)
+
+	// Create cache directory
+	cacheFileDir := filepath.Dir(cachePath)
+	if err := os.MkdirAll(cacheFileDir, 0755); err != nil {
+		return "", fmt.Errorf("failed to create cache dir: %w", err)
+	}
+
+	// Save to cache
+	outFile, err := os.Create(cachePath)
+	if err != nil {
+		return "", fmt.Errorf("failed to create cache file: %w", err)
+	}
+	defer outFile.Close()
+
+	switch format {
+	case "png":
+		err = png.Encode(outFile, resized)
+	case "gif":
+		err = png.Encode(outFile, resized) // Convert GIF to PNG for simplicity
+	default:
+		err = jpeg.Encode(outFile, resized, &jpeg.Options{Quality: 85})
+	}
+
+	if err != nil {
+		os.Remove(cachePath)
+		return "", fmt.Errorf("failed to encode image: %w", err)
+	}
+
+	return cachePath, nil
 }
 
 func (s *StorageService) GenerateThumbnail(projectID, relativePath string, width, height int) ([]byte, error) {

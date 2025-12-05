@@ -337,6 +337,7 @@ export interface StorageItem {
   updated_at: string;
   url?: string;
   download_url?: string;
+  thumb_url?: string;
 }
 
 export interface CreateDirRequest {

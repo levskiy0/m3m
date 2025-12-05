@@ -255,11 +255,11 @@ export function StoragePage() {
     const ext = getFileExtension(item.name);
 
     // Images - show thumbnail
-    if (isImageFile(item.name) && item.url) {
+    if (isImageFile(item.name) && item.thumb_url) {
       return (
         <div className="size-6 shrink-0 rounded overflow-hidden bg-muted flex items-center justify-center">
           <img
-            src={item.url}
+            src={item.thumb_url}
             alt={item.name}
             className="h-full w-full object-cover"
             onError={(e) => {

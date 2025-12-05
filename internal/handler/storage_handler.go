@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"fmt"
 	"io"
 	"net/http"
 	"path/filepath"
@@ -26,10 +27,6 @@ func NewStorageHandler(storageService *service.StorageService, projectService *s
 }
 
 func (h *StorageHandler) Register(r *gin.RouterGroup, authMiddleware *middleware.AuthMiddleware) {
-	// Public routes - direct file access without auth
-	r.GET("/cdn/:id/*path", h.CDN)
-	r.GET("/download/:id/*path", h.PublicDownload)
-
 	storage := r.Group("/projects/:id/storage")
 	storage.Use(authMiddleware.Authenticate())
 	{
@@ -43,6 +40,16 @@ func (h *StorageHandler) Register(r *gin.RouterGroup, authMiddleware *middleware
 		storage.PUT("/file/*path", h.UpdateFile)
 		storage.GET("/thumbnail/*path", h.Thumbnail)
 	}
+}
+
+// RegisterPublicRoutes registers CDN routes at root level (not under /api)
+func (h *StorageHandler) RegisterPublicRoutes(r *gin.Engine) {
+	// /cdn/{project-id}/path/to/file - direct view
+	r.GET("/cdn/:id/*path", h.CDN)
+	// /cdn-download/{project-id}/path/to/file - force download
+	r.GET("/cdn-download/:id/*path", h.PublicDownload)
+	// /cdn-thumb/{WxH}/{project-id}/path/to/file - resized image
+	r.GET("/cdn-thumb/:size/:id/*path", h.CDNResize)
 }
 
 func (h *StorageHandler) checkAccess(c *gin.Context) (string, bool) {
@@ -298,4 +305,44 @@ func (h *StorageHandler) PublicDownload(c *gin.Context) {
 	}
 
 	c.FileAttachment(filePath, filepath.Base(path))
+}
+
+// CDNResize serves resized images (e.g., /cdn/50x50/{project-id}/path/to/image.png)
+func (h *StorageHandler) CDNResize(c *gin.Context) {
+	sizeParam := c.Param("size")
+	projectID := c.Param("id")
+	path := c.Param("path")
+	path = strings.TrimPrefix(path, "/")
+
+	// Check if size param is "download" - redirect to PublicDownload
+	if sizeParam == "download" {
+		h.PublicDownload(c)
+		return
+	}
+
+	// Parse size (e.g., "50x50", "100x100")
+	var width, height int
+	if _, err := fmt.Sscanf(sizeParam, "%dx%d", &width, &height); err != nil {
+		// Not a valid size format, treat as regular CDN request
+		// This shouldn't happen with proper routing, but handle gracefully
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid size format, use WxH (e.g., 50x50)"})
+		return
+	}
+
+	if width <= 0 || height <= 0 || width > 2000 || height > 2000 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid dimensions"})
+		return
+	}
+
+	filePath, err := h.storageService.GetResizedImage(projectID, path, width, height)
+	if err != nil {
+		if err == service.ErrFileNotFound {
+			c.JSON(http.StatusNotFound, gin.H{"error": "file not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.File(filePath)
 }

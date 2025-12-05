@@ -93,8 +93,9 @@ func RegisterRoutes(
 	runtimeHandler.Register(api, authMiddleware)
 	widgetHandler.Register(api, authMiddleware)
 
-	// Public project routes (at root level, not under /api)
+	// Public routes (at root level, not under /api)
 	runtimeHandler.RegisterPublicRoutes(r)
+	storageHandler.RegisterPublicRoutes(r)
 
 	// Register UI static routes
 	registerUIRoutes(r, cfg, logger)
