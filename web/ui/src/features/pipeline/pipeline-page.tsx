@@ -371,7 +371,7 @@ export function PipelinePage() {
             >
               <ScrollText className="size-4" />
               Logs
-              <Badge variant="outline" className="ml-1 border-amber-500/50 text-amber-500 text-xs">
+              <Badge variant="outline" className="ml-1 border-amber-500/50 text-amber-500 text-[10px] h-[20px] py-0">
                 {runningBranch}
               </Badge>
             </button>
