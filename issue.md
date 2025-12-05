@@ -311,11 +311,14 @@ service.shotdown(() => {
 
 ---
 
+`https://github.com/go-telegram/bot`
+
 Добавь новый `runtime api` через `plugins/telegram` / `$telegram` 
 
 Нужен прям полный нормальный функционал создания бота, отправки команд, отправки файлов из сторейджа и тд!
 
 ---
+
 
 в `plugins/telegram/example.js` напиши пример бота который гадает да или нет и отдает сообщение с картинкой (yes.png/no.png) и клавиатурой 
 
