@@ -88,7 +88,7 @@ func (h *MetricsHistory) Clear() {
 }
 
 // CollectSnapshot collects current metrics and returns a snapshot
-func (h *MetricsHistory) CollectSnapshot(requestsDelta int64) MetricsSnapshot {
+func (h *MetricsHistory) CollectSnapshot(requestsDelta, jobsDelta int64, cpuPercent float64) MetricsSnapshot {
 	var memStats runtime.MemStats
 	runtime.ReadMemStats(&memStats)
 
@@ -98,7 +98,8 @@ func (h *MetricsHistory) CollectSnapshot(requestsDelta int64) MetricsSnapshot {
 		MemorySys:   memStats.Sys,
 		NumGC:       memStats.NumGC,
 		Requests:    requestsDelta,
-		CPUPercent:  0, // CPU tracking is complex, simplified for now
+		Jobs:        jobsDelta,
+		CPUPercent:  cpuPercent,
 	}
 
 	return snapshot
@@ -108,7 +109,8 @@ func (h *MetricsHistory) CollectSnapshot(requestsDelta int64) MetricsSnapshot {
 type SparklineData struct {
 	Memory   []float64 `json:"memory"`   // MB values
 	Requests []int64   `json:"requests"` // Request counts
-	J
+	Jobs     []int64   `json:"jobs"`     // Scheduled job execution counts
+	CPU      []float64 `json:"cpu"`      // CPU percent values
 }
 
 // GetSparklineData returns data formatted for sparkline charts
@@ -119,15 +121,15 @@ func (h *MetricsHistory) GetSparklineData() SparklineData {
 	data := SparklineData{
 		Memory:   make([]float64, len(h.snapshots)),
 		Requests: make([]int64, len(h.snapshots)),
+		Jobs:     make([]int64, len(h.snapshots)),
+		CPU:      make([]float64, len(h.snapshots)),
 	}
-Unlock()
-
-	data := SparklineData{
 
 	for i, s := range h.snapshots {
 		data.Memory[i] = float64(s.MemoryAlloc) / 1024 / 1024 // Convert to MB
 		data.Requests[i] = s.Requests
-CPU
+		data.Jobs[i] = s.Jobs
+		data.CPU[i] = s.CPUPercent
 	}
 
 	return data
