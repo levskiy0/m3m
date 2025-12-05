@@ -23,6 +23,9 @@ import {
   ArrowDown,
   Download,
   ChevronRight,
+  ChevronDown,
+  Bug,
+  Tag,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -56,8 +59,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
 import type { LogEntry, Goal, GoalStats } from '@/types';
+import type { StartOptions } from '@/api/runtime';
 
 type LogLevel = 'all' | 'debug' | 'info' | 'warn' | 'error';
 
@@ -118,6 +130,12 @@ export function ProjectDashboard() {
     enabled: !!projectId,
   });
 
+  const { data: branches = [] } = useQuery({
+    queryKey: ['branches', projectId],
+    queryFn: () => pipelineApi.listBranches(projectId!),
+    enabled: !!projectId,
+  });
+
   const { data: status } = useQuery({
     queryKey: ['runtime-status', projectId],
     queryFn: () => runtimeApi.status(projectId!),
@@ -165,7 +183,7 @@ export function ProjectDashboard() {
   }, [logs, autoScroll]);
 
   const startMutation = useMutation({
-    mutationFn: () => runtimeApi.start(projectId!),
+    mutationFn: (options?: StartOptions) => runtimeApi.start(projectId!, options),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['project', projectId] });
       queryClient.invalidateQueries({ queryKey: ['projects'] });
@@ -305,30 +323,82 @@ export function ProjectDashboard() {
               </Button>
             </>
           ) : (
-            <Button
-              size="sm"
-              onClick={() => startMutation.mutate()}
-              disabled={isPending || releases.length === 0}
-              className="gap-2 bg-green-600 hover:bg-green-700"
-            >
-              <Play className="size-4" />
-              Start Service
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  size="sm"
+                  disabled={isPending || (releases.length === 0 && branches.length === 0)}
+                  className="gap-2 bg-green-600 hover:bg-green-700"
+                >
+                  <Play className="size-4" />
+                  Start Service
+                  <ChevronDown className="size-4 ml-1" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                {releases.length > 0 && (
+                  <>
+                    <DropdownMenuLabel className="flex items-center gap-2">
+                      <Tag className="size-3" />
+                      Releases
+                    </DropdownMenuLabel>
+                    {releases.slice(0, 5).map((release) => (
+                      <DropdownMenuItem
+                        key={release.id}
+                        onClick={() => startMutation.mutate({ version: release.version })}
+                      >
+                        <span className="font-mono">{release.version}</span>
+                        {release.tag && (
+                          <Badge variant="secondary" className="ml-auto text-xs capitalize">
+                            {release.tag}
+                          </Badge>
+                        )}
+                      </DropdownMenuItem>
+                    ))}
+                    {releases.length > 5 && (
+                      <DropdownMenuItem asChild>
+                        <Link to={`/projects/${projectId}/pipeline`} className="text-muted-foreground">
+                          View all releases...
+                        </Link>
+                      </DropdownMenuItem>
+                    )}
+                  </>
+                )}
+                {branches.length > 0 && (
+                  <>
+                    {releases.length > 0 && <DropdownMenuSeparator />}
+                    <DropdownMenuLabel className="flex items-center gap-2">
+                      <Bug className="size-3" />
+                      Debug (Branches)
+                    </DropdownMenuLabel>
+                    {branches.map((branch) => (
+                      <DropdownMenuItem
+                        key={branch.id}
+                        onClick={() => startMutation.mutate({ branch: branch.name })}
+                      >
+                        <Code className="size-4 mr-2" />
+                        {branch.name}
+                      </DropdownMenuItem>
+                    ))}
+                  </>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
           )}
         </div>
       </div>
 
-      {/* Warning if no releases */}
-      {releases.length === 0 && (
+      {/* Warning if no releases and no branches */}
+      {releases.length === 0 && branches.length === 0 && (
         <Card className="border-amber-500/50 bg-amber-500/5">
           <CardContent className="flex items-center gap-4 p-4">
             <div className="size-10 rounded-full bg-amber-500/20 flex items-center justify-center shrink-0">
               <AlertTriangle className="size-5 text-amber-500" />
             </div>
             <div className="flex-1">
-              <p className="font-medium">No releases available</p>
+              <p className="font-medium">No code available</p>
               <p className="text-sm text-muted-foreground">
-                Create a release in the Pipeline to start your service.
+                Create a release or write code in the Pipeline to start your service.
               </p>
             </div>
             <Button asChild size="sm">
@@ -437,12 +507,47 @@ export function ProjectDashboard() {
 
           {/* Project Info Cards */}
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            <Card>
+            <Card className={cn(isRunning && project.runningSource?.startsWith('debug:') && "border-amber-500/50")}>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">Active Release</CardTitle>
+                <CardTitle className="text-sm font-medium">
+                  {isRunning ? 'Running' : 'Active Release'}
+                </CardTitle>
               </CardHeader>
               <CardContent>
-                {activeRelease ? (
+                {isRunning && project.runningSource ? (
+                  <div className="flex items-center justify-between">
+                    <div>
+                      {project.runningSource.startsWith('debug:') ? (
+                        <>
+                          <div className="flex items-center gap-2">
+                            <Bug className="size-5 text-amber-500" />
+                            <p className="text-2xl font-bold text-amber-500">Debug</p>
+                          </div>
+                          <Badge variant="outline" className="mt-1 border-amber-500/50 text-amber-500">
+                            {project.runningSource.replace('debug:', '')}
+                          </Badge>
+                        </>
+                      ) : (
+                        <>
+                          <p className="text-2xl font-bold">
+                            {project.runningSource.replace('release:', '')}
+                          </p>
+                          {activeRelease?.tag && (
+                            <Badge variant="secondary" className="mt-1 capitalize">
+                              {activeRelease.tag}
+                            </Badge>
+                          )}
+                        </>
+                      )}
+                    </div>
+                    <Button variant="ghost" size="sm" asChild>
+                      <Link to={`/projects/${projectId}/pipeline`}>
+                        View
+                        <ChevronRight className="ml-1 size-4" />
+                      </Link>
+                    </Button>
+                  </div>
+                ) : activeRelease ? (
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-2xl font-bold">{activeRelease.version}</p>

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
@@ -8,15 +8,17 @@ import {
   Plus,
   Trash2,
   RotateCcw,
-  CheckCircle,
+  Square,
+  Bug,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
-import { pipelineApi, runtimeApi } from '@/api';
+import { pipelineApi, runtimeApi, projectsApi } from '@/api';
 import { DEFAULT_SERVICE_CODE, RELEASE_TAGS } from '@/lib/constants';
-import type { CreateBranchRequest, CreateReleaseRequest } from '@/types';
+import type { CreateBranchRequest, CreateReleaseRequest, LogEntry } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   Dialog,
   DialogContent,
@@ -72,6 +74,15 @@ export function PipelinePage() {
   // Reset form
   const [resetTargetVersion, setResetTargetVersion] = useState('');
 
+  // Logs ref for auto-scroll
+  const logsRef = useRef<HTMLDivElement>(null);
+
+  const { data: project } = useQuery({
+    queryKey: ['project', projectId],
+    queryFn: () => projectsApi.get(projectId!),
+    enabled: !!projectId,
+  });
+
   const { data: branches = [], isLoading: branchesLoading } = useQuery({
     queryKey: ['branches', projectId],
     queryFn: () => pipelineApi.listBranches(projectId!),
@@ -83,6 +94,31 @@ export function PipelinePage() {
     queryFn: () => pipelineApi.listReleases(projectId!),
     enabled: !!projectId,
   });
+
+  // Check if running debug mode
+  const isRunning = project?.status === 'running';
+  const isDebugMode = isRunning && project?.runningSource?.startsWith('debug:');
+  const runningBranch = isDebugMode ? project?.runningSource?.replace('debug:', '') : null;
+  const runningRelease = isRunning && project?.runningSource?.startsWith('release:')
+    ? project?.runningSource?.replace('release:', '')
+    : null;
+
+  // Fetch logs when running debug mode
+  const { data: logsData = [] } = useQuery({
+    queryKey: ['logs', projectId],
+    queryFn: () => runtimeApi.logs(projectId!),
+    enabled: !!projectId && isDebugMode,
+    refetchInterval: isDebugMode ? 2000 : false,
+  });
+
+  const logs: LogEntry[] = Array.isArray(logsData) ? logsData : [];
+
+  // Auto-scroll logs
+  useEffect(() => {
+    if (logsRef.current && isDebugMode) {
+      logsRef.current.scrollTop = logsRef.current.scrollHeight;
+    }
+  }, [logs, isDebugMode]);
 
   // Auto-select develop branch on load
   useEffect(() => {
@@ -207,15 +243,26 @@ export function PipelinePage() {
     },
   });
 
-  const activateReleaseMutation = useMutation({
-    mutationFn: (releaseId: string) => pipelineApi.activateRelease(projectId!, releaseId),
+  const startDebugMutation = useMutation({
+    mutationFn: (branchName: string) => runtimeApi.start(projectId!, { branch: branchName }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['releases', projectId] });
       queryClient.invalidateQueries({ queryKey: ['project', projectId] });
-      toast.success('Release activated');
+      queryClient.invalidateQueries({ queryKey: ['logs', projectId] });
+      toast.success('Debug mode started');
     },
     onError: (err) => {
-      toast.error(err instanceof Error ? err.message : 'Failed to activate release');
+      toast.error(err instanceof Error ? err.message : 'Failed to start debug');
+    },
+  });
+
+  const stopDebugMutation = useMutation({
+    mutationFn: () => runtimeApi.stop(projectId!),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['project', projectId] });
+      toast.success('Service stopped');
+    },
+    onError: (err) => {
+      toast.error(err instanceof Error ? err.message : 'Failed to stop');
     },
   });
 
@@ -315,6 +362,36 @@ export function PipelinePage() {
           )}
         </div>
         <div className="flex items-center gap-2">
+          {/* Debug Run/Stop Button */}
+          {currentBranch && (
+            runningBranch === currentBranch.name ? (
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={() => stopDebugMutation.mutate()}
+                disabled={stopDebugMutation.isPending}
+              >
+                <Square className="mr-2 size-4" />
+                Stop Debug
+              </Button>
+            ) : (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  if (hasChanges) {
+                    saveMutation.mutate();
+                  }
+                  startDebugMutation.mutate(currentBranch.name);
+                }}
+                disabled={startDebugMutation.isPending || (isRunning && !isDebugMode)}
+                className="border-amber-500/50 text-amber-600 hover:bg-amber-500/10"
+              >
+                <Bug className="mr-2 size-4" />
+                Run Debug
+              </Button>
+            )
+          )}
           <Button
             variant="outline"
             onClick={() => setCreateReleaseOpen(true)}
@@ -332,14 +409,69 @@ export function PipelinePage() {
 
       {/* Main Content */}
       <div className="flex gap-4 flex-1 min-h-0">
-        {/* Code Editor */}
-        <div className="flex-1 border rounded-lg overflow-hidden">
-          <CodeEditor
-            value={code}
-            onChange={handleCodeChange}
-            language="javascript"
-            typeDefinitions={runtimeTypes}
-          />
+        {/* Code Editor + Logs */}
+        <div className="flex-1 flex flex-col gap-4 min-h-0">
+          {/* Code Editor */}
+          <div className={cn(
+            "border rounded-lg overflow-hidden",
+            isDebugMode ? "flex-1" : "h-full"
+          )}>
+            <CodeEditor
+              value={code}
+              onChange={handleCodeChange}
+              language="javascript"
+              typeDefinitions={runtimeTypes}
+            />
+          </div>
+
+          {/* Debug Logs Panel */}
+          {isDebugMode && runningBranch === currentBranch?.name && (
+            <Card className="h-48 flex-shrink-0 border-amber-500/50">
+              <CardHeader className="py-2 px-4">
+                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                  <Bug className="size-4 text-amber-500" />
+                  Debug Logs
+                  <Badge variant="outline" className="ml-auto border-amber-500/50 text-amber-500">
+                    {runningBranch}
+                  </Badge>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-0">
+                <ScrollArea
+                  ref={logsRef}
+                  className="h-32 bg-zinc-950 font-mono text-xs px-4"
+                >
+                  {logs.length === 0 ? (
+                    <div className="flex items-center justify-center h-full text-muted-foreground">
+                      Waiting for logs...
+                    </div>
+                  ) : (
+                    <div className="space-y-0.5 py-2">
+                      {logs.slice(-100).map((log, index) => (
+                        <div key={index} className="flex gap-2 text-gray-300">
+                          <span className="text-gray-500 shrink-0">
+                            {new Date(log.timestamp).toLocaleTimeString()}
+                          </span>
+                          <span
+                            className={cn(
+                              'shrink-0 uppercase w-12',
+                              log.level === 'error' && 'text-red-400',
+                              log.level === 'warn' && 'text-amber-400',
+                              log.level === 'info' && 'text-blue-400',
+                              log.level === 'debug' && 'text-gray-400'
+                            )}
+                          >
+                            [{log.level}]
+                          </span>
+                          <span className="text-gray-200 break-all">{log.message}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </ScrollArea>
+              </CardContent>
+            </Card>
+          )}
         </div>
 
         {/* Releases Panel */}
@@ -359,65 +491,57 @@ export function PipelinePage() {
               />
             ) : (
               <div className="space-y-2">
-                {releases.map((release) => (
-                  <div
-                    key={release.id}
-                    className={cn(
-                      'flex items-center justify-between p-2 rounded-lg border',
-                      release.isActive && 'border-primary bg-primary/5'
-                    )}
-                  >
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono font-medium">
-                          {release.version}
-                        </span>
-                        {release.isActive && (
-                          <Badge variant="default" className="text-xs">
-                            Active
-                          </Badge>
-                        )}
-                        {release.tag && (
-                          <Badge variant="outline" className="text-xs capitalize">
-                            {release.tag}
-                          </Badge>
+                {releases.map((release) => {
+                  const isReleaseRunning = runningRelease === release.version;
+                  return (
+                    <div
+                      key={release.id}
+                      className={cn(
+                        'flex items-center justify-between p-2 rounded-lg border',
+                        isReleaseRunning && 'border-green-500/50 bg-green-500/5'
+                      )}
+                    >
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono font-medium">
+                            {release.version}
+                          </span>
+                          {isReleaseRunning && (
+                            <Badge variant="default" className="text-xs bg-green-600">
+                              Running
+                            </Badge>
+                          )}
+                          {release.tag && (
+                            <Badge variant="outline" className="text-xs capitalize">
+                              {release.tag}
+                            </Badge>
+                          )}
+                        </div>
+                        {release.comment && (
+                          <p className="text-xs text-muted-foreground truncate">
+                            {release.comment}
+                          </p>
                         )}
                       </div>
-                      {release.comment && (
-                        <p className="text-xs text-muted-foreground truncate">
-                          {release.comment}
-                        </p>
-                      )}
+                      <div className="flex items-center gap-1">
+                        {!isReleaseRunning && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="size-8"
+                            title="Delete release"
+                            onClick={() => {
+                              setReleaseToDelete(release.id);
+                              setDeleteReleaseOpen(true);
+                            }}
+                          >
+                            <Trash2 className="size-4" />
+                          </Button>
+                        )}
+                      </div>
                     </div>
-                    <div className="flex items-center gap-1">
-                      {!release.isActive && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="size-8"
-                          title="Set as active release"
-                          onClick={() => activateReleaseMutation.mutate(release.id)}
-                          disabled={activateReleaseMutation.isPending}
-                        >
-                          <CheckCircle className="size-4" />
-                        </Button>
-                      )}
-                      {!release.isActive && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="size-8"
-                          onClick={() => {
-                            setReleaseToDelete(release.id);
-                            setDeleteReleaseOpen(true);
-                          }}
-                        >
-                          <Trash2 className="size-4" />
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </CardContent>

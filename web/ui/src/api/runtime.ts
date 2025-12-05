@@ -7,9 +7,14 @@ interface Plugin {
   version?: string;
 }
 
+export interface StartOptions {
+  version?: string; // Release version to run
+  branch?: string;  // Branch name to run (debug mode)
+}
+
 export const runtimeApi = {
-  start: async (projectId: string, version?: string): Promise<void> => {
-    return api.post(`/api/projects/${projectId}/start`, version ? { version } : undefined);
+  start: async (projectId: string, options?: StartOptions): Promise<{ runningSource?: string }> => {
+    return api.post(`/api/projects/${projectId}/start`, options);
   },
 
   stop: async (projectId: string): Promise<void> => {
