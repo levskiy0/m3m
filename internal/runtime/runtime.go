@@ -30,6 +30,7 @@ type ProjectRuntime struct {
 	Metrics       *MetricsHistory
 	metricsCancel context.CancelFunc
 	lastHitCount  int64
+	lastJobCount  int64
 }
 
 // Manager manages all project runtimes

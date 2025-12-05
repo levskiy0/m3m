@@ -3,17 +3,19 @@ package modules
 import (
 	"log/slog"
 	"sync"
+	"sync/atomic"
 
 	"github.com/dop251/goja"
 	"github.com/robfig/cron/v3"
 )
 
 type ScheduleModule struct {
-	cron    *cron.Cron
-	jobs    []cron.EntryID
-	mu      sync.Mutex
-	started bool
-	logger  *slog.Logger
+	cron           *cron.Cron
+	jobs           []cron.EntryID
+	mu             sync.Mutex
+	started        bool
+	logger         *slog.Logger
+	executionCount int64
 }
 
 func NewScheduleModule(logger *slog.Logger) *ScheduleModule {
@@ -34,6 +36,9 @@ func (s *ScheduleModule) addJob(spec string, handler goja.Callable) {
 				s.logger.Error("Scheduled job panic", "error", r)
 			}
 		}()
+
+		// Increment execution count
+		atomic.AddInt64(&s.executionCount, 1)
 
 		_, err := handler(nil, nil)
 		if err != nil {
@@ -97,6 +102,11 @@ func (s *ScheduleModule) IsStarted() bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return s.started
+}
+
+// ExecutionCount returns the total number of job executions
+func (s *ScheduleModule) ExecutionCount() int64 {
+	return atomic.LoadInt64(&s.executionCount)
 }
 
 // Name returns the module name for JavaScript
