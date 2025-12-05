@@ -1017,26 +1017,26 @@ function WidgetCard({ widget, goal, stats, onDelete }: WidgetCardProps) {
           </div>
         </CardHeader>
         <CardContent>
-          <div className="text-3xl font-bold mb-1">
-            {stats?.value?.toLocaleString() ?? 0}
-          </div>
-          {goal.description && (
-            <p className="text-xs text-muted-foreground mb-3">
-              {goal.description}
-            </p>
-          )}
-          {isDailyCounter && sparklineData.length > 0 && (
-            <div className="h-12 mt-2">
+          <div className="flex items-end justify-between gap-4">
+            <div>
+              <div className="text-2xl font-bold">
+                {stats?.value?.toLocaleString() ?? 0}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                {goal.description || (isDailyCounter ? 'Daily counter' : 'Total count')}
+              </p>
+            </div>
+            {isDailyCounter && sparklineData.length > 0 && (
               <Sparkline
                 data={sparklineData}
-                width={280}
-                height={48}
+                width={80}
+                height={32}
                 color={goal.color || '#6b7280'}
                 strokeWidth={2}
-                fillOpacity={0.2}
+                fillOpacity={0.15}
               />
-            </div>
-          )}
+            )}
+          </div>
         </CardContent>
       </Card>
     );
