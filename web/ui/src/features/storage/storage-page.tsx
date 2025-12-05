@@ -44,8 +44,7 @@ import {
   ContextMenuTrigger,
 } from '@/components/ui/context-menu';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
+import { Field, FieldLabel } from '@/components/ui/field';
 import { CodeEditor } from '@/components/shared/code-editor';
 import { ConfirmDialog } from '@/components/shared/confirm-dialog';
 
@@ -309,7 +308,7 @@ export function StoragePage() {
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-6 px-2"
+                className="h-6 p-2"
                 onClick={() => setCurrentPath('')}
               >
                 <Home className="size-3" />
@@ -400,12 +399,14 @@ export function StoragePage() {
                         {getFileIcon(item)}
                         <span className="truncate">{item.name}</span>
                       </div>
-                      <div className="flex items-center gap-6 text-sm text-muted-foreground">
-                        <span className="w-20 text-right">{formatFileSize(item.size)}</span>
-                        <span className="w-24">
-                          {new Date(item.updated_at).toLocaleDateString()}
-                        </span>
-                      </div>
+                      {!item.is_dir && (
+                        <div className="flex items-center gap-6 text-sm text-muted-foreground">
+                          <span className="w-20 text-right">{formatFileSize(item.size)}</span>
+                          <span className="w-24">
+                            {new Date(item.updated_at).toLocaleDateString()}
+                          </span>
+                        </div>
+                      )}
                     </div>
                   </ContextMenuTrigger>
                   <ContextMenuContent>
@@ -496,30 +497,42 @@ export function StoragePage() {
 
       {/* Create File Dialog */}
       <Dialog open={createFileOpen} onOpenChange={setCreateFileOpen}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-6xl h-[90vh] flex flex-col">
           <DialogHeader>
             <DialogTitle>Create File</DialogTitle>
           </DialogHeader>
-          <FieldGroup>
-            <Field>
-              <FieldLabel>File Name</FieldLabel>
-              <Input
-                value={newFileName}
-                onChange={(e) => setNewFileName(e.target.value)}
-                placeholder="config.json"
-              />
-            </Field>
-            <Field>
-              <FieldLabel>Content</FieldLabel>
-              <Textarea
-                value={newFileContent}
-                onChange={(e) => setNewFileContent(e.target.value)}
-                placeholder="File content..."
-                rows={10}
-                className="font-mono text-sm"
-              />
-            </Field>
-          </FieldGroup>
+          <Field>
+            <FieldLabel>File Name</FieldLabel>
+            <Input
+              value={newFileName}
+              onChange={(e) => setNewFileName(e.target.value)}
+              placeholder="config.json"
+            />
+          </Field>
+          <div className="h-[400px] border rounded-md overflow-hidden">
+            <CodeEditor
+              value={newFileContent}
+              onChange={setNewFileContent}
+              language={
+                newFileName.endsWith('.json')
+                  ? 'json'
+                  : newFileName.endsWith('.yaml') || newFileName.endsWith('.yml')
+                  ? 'yaml'
+                  : newFileName.endsWith('.js')
+                  ? 'javascript'
+                  : newFileName.endsWith('.ts')
+                  ? 'typescript'
+                  : newFileName.endsWith('.html')
+                  ? 'html'
+                  : newFileName.endsWith('.css')
+                  ? 'css'
+                  : newFileName.endsWith('.md')
+                  ? 'markdown'
+                  : 'plaintext'
+              }
+              height="100%"
+            />
+          </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setCreateFileOpen(false)}>
               Cancel
@@ -563,11 +576,11 @@ export function StoragePage() {
 
       {/* Edit File Dialog */}
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
-        <DialogContent className="max-w-4xl h-[80vh]">
+        <DialogContent className="max-w-6xl h-[90vh] flex flex-col">
           <DialogHeader>
             <DialogTitle>Edit: {selectedItem?.name}</DialogTitle>
           </DialogHeader>
-          <div className="flex-1 min-h-0 border rounded-md overflow-hidden">
+          <div className="h-[400px] border rounded-md overflow-hidden">
             <CodeEditor
               value={editContent}
               onChange={setEditContent}
@@ -577,6 +590,16 @@ export function StoragePage() {
                   : selectedItem?.name?.endsWith('.yaml') ||
                     selectedItem?.name?.endsWith('.yml')
                   ? 'yaml'
+                  : selectedItem?.name?.endsWith('.js')
+                  ? 'javascript'
+                  : selectedItem?.name?.endsWith('.ts')
+                  ? 'typescript'
+                  : selectedItem?.name?.endsWith('.html')
+                  ? 'html'
+                  : selectedItem?.name?.endsWith('.css')
+                  ? 'css'
+                  : selectedItem?.name?.endsWith('.md')
+                  ? 'markdown'
                   : 'plaintext'
               }
               height="100%"
