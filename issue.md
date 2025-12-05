@@ -313,6 +313,27 @@ service.shotdown(() => {
 
 ---
 
+Запустил
+
+```js
+$router.get('/health', function(ctx) {
+    return $router.response(200, { status: 'ok 222' });
+});
+
+// Example: Scheduled task
+$schedule.daily(function() {
+    $logger.info('Daily task executed');
+});
+
+$logger.info('Service started');
+```
+
+`http://127.0.0.1:3000/r/example/health` = `404 page not found`
+
+Логи в файле есть, в админке нет!
+
+---
+
 Вообще пробегись по UI и причеши UX, как то что бы было нормально аккуратно по человечески
 
 ---
