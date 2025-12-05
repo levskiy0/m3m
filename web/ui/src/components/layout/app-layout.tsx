@@ -91,6 +91,8 @@ function useBreadcrumbs(): BreadcrumbItem[] {
     }
   } else if (pathSegments[0] === 'goals') {
     breadcrumbs.push({ label: 'Global Goals' });
+  } else if (pathSegments[0] === 'system') {
+    breadcrumbs.push({ label: 'System Info' });
   } else if (pathSegments[0] === 'settings') {
     breadcrumbs.push({ label: 'Settings', href: '/settings/profile' });
     if (pathSegments[1] === 'users') {

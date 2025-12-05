@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	goruntime "runtime"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -63,6 +64,13 @@ func (h *RuntimeHandler) Register(r *gin.RouterGroup, authMiddleware *middleware
 
 	// Plugins info
 	r.GET("/plugins", h.ListPlugins)
+
+	// System info (requires auth)
+	system := r.Group("/system")
+	system.Use(authMiddleware.Authenticate())
+	{
+		system.GET("/info", h.SystemInfo)
+	}
 }
 
 // RegisterPublicRoutes registers public routes on the root router (not under /api)
@@ -415,6 +423,38 @@ func (h *RuntimeHandler) Types(c *gin.Context) {
 func (h *RuntimeHandler) ListPlugins(c *gin.Context) {
 	plugins := h.pluginLoader.GetPluginInfos()
 	c.JSON(http.StatusOK, plugins)
+}
+
+// SystemInfo returns system information including runtime and loaded plugins
+func (h *RuntimeHandler) SystemInfo(c *gin.Context) {
+	// Get Go runtime info
+	var memStats goruntime.MemStats
+	goruntime.ReadMemStats(&memStats)
+
+	// Get running projects
+	runningProjects := h.runtimeManager.GetRunningProjects()
+
+	// Get plugins
+	plugins := h.pluginLoader.GetPluginInfos()
+
+	info := gin.H{
+		"version":       "1.0.0",
+		"go_version":    goruntime.Version(),
+		"go_os":         goruntime.GOOS,
+		"go_arch":       goruntime.GOARCH,
+		"num_cpu":       goruntime.NumCPU(),
+		"num_goroutine": goruntime.NumGoroutine(),
+		"memory": gin.H{
+			"alloc":       memStats.Alloc,
+			"total_alloc": memStats.TotalAlloc,
+			"sys":         memStats.Sys,
+			"num_gc":      memStats.NumGC,
+		},
+		"running_projects_count": len(runningProjects),
+		"plugins":                plugins,
+	}
+
+	c.JSON(http.StatusOK, info)
 }
 
 func (h *RuntimeHandler) HandleRoute(c *gin.Context) {

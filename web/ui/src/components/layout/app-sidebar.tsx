@@ -15,6 +15,7 @@ import {
   ChevronsUpDown,
   Plus,
   Globe,
+  Server,
 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 
@@ -242,6 +243,18 @@ export function AppSidebar() {
                 <Link to="/goals">
                   <Globe />
                   <span>Global Goals</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                asChild
+                isActive={location.pathname === '/system'}
+                tooltip="System Info"
+              >
+                <Link to="/system">
+                  <Server />
+                  <span>System Info</span>
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>

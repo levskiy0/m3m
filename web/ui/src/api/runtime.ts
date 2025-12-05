@@ -1,10 +1,27 @@
 import { api } from './client';
 import type { RuntimeStatus, RuntimeStats, LogEntry } from '@/types';
 
-interface Plugin {
+export interface Plugin {
   name: string;
   description?: string;
   version?: string;
+}
+
+export interface SystemInfo {
+  version: string;
+  go_version: string;
+  go_os: string;
+  go_arch: string;
+  num_cpu: number;
+  num_goroutine: number;
+  memory: {
+    alloc: number;
+    total_alloc: number;
+    sys: number;
+    num_gc: number;
+  };
+  running_projects_count: number;
+  plugins: Plugin[];
 }
 
 export interface StartOptions {
@@ -47,5 +64,9 @@ export const runtimeApi = {
 
   listPlugins: async (): Promise<Plugin[]> => {
     return api.get<Plugin[]>('/plugins');
+  },
+
+  getSystemInfo: async (): Promise<SystemInfo> => {
+    return api.get<SystemInfo>('/api/system/info');
   },
 };
