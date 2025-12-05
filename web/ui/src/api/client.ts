@@ -106,6 +106,37 @@ export class ApiClient {
     });
   }
 
+  async putText(endpoint: string, text: string): Promise<void> {
+    const token = getToken();
+
+    const headers: HeadersInit = {
+      'Content-Type': 'text/plain',
+    };
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    const response = await fetch(`${this.baseURL}${endpoint}`, {
+      method: 'PUT',
+      headers,
+      body: text,
+    });
+
+    if (!response.ok) {
+      if (response.status === 401) {
+        removeToken();
+        window.location.href = '/login';
+        throw new Error('Unauthorized');
+      }
+
+      const error = await response.json().catch(() => ({
+        error: 'Unknown error',
+      }));
+
+      throw new Error(error.message || error.error || 'Request failed');
+    }
+  }
+
   async delete<T>(endpoint: string): Promise<T> {
     return this.request<T>(endpoint, { method: 'DELETE' });
   }

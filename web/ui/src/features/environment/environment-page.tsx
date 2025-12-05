@@ -327,21 +327,6 @@ export function EnvironmentPage() {
         </Card>
       )}
 
-      {/* Usage Info */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-sm">Usage in Runtime</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <code className="text-sm bg-muted px-2 py-1 rounded">
-            env.get('YOUR_KEY')
-          </code>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Access environment variables in your service code using the env module.
-          </p>
-        </CardContent>
-      </Card>
-
       {/* Create Dialog */}
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
         <DialogContent>

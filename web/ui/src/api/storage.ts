@@ -64,11 +64,17 @@ export const storageApi = {
   },
 
   createFile: async (projectId: string, data: CreateFileRequest): Promise<StorageItem> => {
-    return api.post<StorageItem>(`/api/projects/${projectId}/storage/file`, data);
+    // Backend expects {path: "full/path", content: "..."}, so combine path and name
+    const fullPath = data.path ? `${data.path}/${data.name}` : data.name;
+    return api.post<StorageItem>(`/api/projects/${projectId}/storage/file`, {
+      path: fullPath,
+      content: data.content,
+    });
   },
 
   updateFile: async (projectId: string, path: string, content: string): Promise<void> => {
-    return api.put(`/api/projects/${projectId}/storage/file/${path}`, { content });
+    // Backend reads raw body, not JSON
+    return api.putText(`/api/projects/${projectId}/storage/file/${path}`, content);
   },
 
   getThumbnail: async (projectId: string, path: string): Promise<Blob> => {
