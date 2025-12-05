@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/dop251/goja"
+	"m3m/pkg/schema"
 )
 
 type SMTPModule struct {
@@ -212,15 +213,15 @@ func (m *SMTPModule) getEnvString(key string) string {
 }
 
 // GetSchema implements JSSchemaProvider
-func (m *SMTPModule) GetSchema() JSModuleSchema {
-	return JSModuleSchema{
+func (m *SMTPModule) GetSchema() schema.ModuleSchema {
+	return schema.ModuleSchema{
 		Name:        "$smtp",
 		Description: "Email sending via SMTP (requires SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM env vars)",
-		Types: []JSTypeSchema{
+		Types: []schema.TypeSchema{
 			{
 				Name:        "EmailOptions",
 				Description: "Options for sending email",
-				Fields: []JSParamSchema{
+				Fields: []schema.ParamSchema{
 					{Name: "from", Type: "string", Description: "Sender email address (overrides SMTP_FROM)", Optional: true},
 					{Name: "reply_to", Type: "string", Description: "Reply-to address", Optional: true},
 					{Name: "cc", Type: "string[]", Description: "CC recipients", Optional: true},
@@ -232,39 +233,39 @@ func (m *SMTPModule) GetSchema() JSModuleSchema {
 			{
 				Name:        "SMTPResult",
 				Description: "Result of sending email",
-				Fields: []JSParamSchema{
+				Fields: []schema.ParamSchema{
 					{Name: "success", Type: "boolean", Description: "Whether the email was sent successfully"},
 					{Name: "error", Type: "string", Description: "Error message if failed", Optional: true},
 				},
 			},
 		},
-		Methods: []JSMethodSchema{
+		Methods: []schema.MethodSchema{
 			{
 				Name:        "send",
 				Description: "Send an email",
-				Params: []JSParamSchema{
+				Params: []schema.ParamSchema{
 					{Name: "to", Type: "string", Description: "Recipient email address"},
 					{Name: "subject", Type: "string", Description: "Email subject"},
 					{Name: "body", Type: "string", Description: "Email body content"},
 					{Name: "options", Type: "EmailOptions", Description: "Additional email options", Optional: true},
 				},
-				Returns: &JSParamSchema{Type: "SMTPResult"},
+				Returns: &schema.ParamSchema{Type: "SMTPResult"},
 			},
 			{
 				Name:        "sendHTML",
 				Description: "Send an HTML email",
-				Params: []JSParamSchema{
+				Params: []schema.ParamSchema{
 					{Name: "to", Type: "string", Description: "Recipient email address"},
 					{Name: "subject", Type: "string", Description: "Email subject"},
 					{Name: "body", Type: "string", Description: "HTML email body"},
 				},
-				Returns: &JSParamSchema{Type: "SMTPResult"},
+				Returns: &schema.ParamSchema{Type: "SMTPResult"},
 			},
 		},
 	}
 }
 
 // GetSMTPSchema returns the smtp schema (static version)
-func GetSMTPSchema() JSModuleSchema {
+func GetSMTPSchema() schema.ModuleSchema {
 	return (&SMTPModule{}).GetSchema()
 }

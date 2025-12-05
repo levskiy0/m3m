@@ -42,7 +42,8 @@ type RuntimeConfig struct {
 }
 
 type PluginsConfig struct {
-	Path string `mapstructure:"path"`
+	Path   string                            `mapstructure:"path"`
+	Config map[string]map[string]interface{} `mapstructure:"config"` // Plugin-specific configs: plugins.config.$pluginName
 }
 
 type LoggingConfig struct {

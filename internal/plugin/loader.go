@@ -11,38 +11,11 @@ import (
 	"github.com/dop251/goja"
 
 	"m3m/internal/config"
-	"m3m/pkg/schema"
+	pkgplugin "m3m/pkg/plugin"
 )
 
-// Plugin interface that all plugins must implement
-type Plugin interface {
-	// Name returns the module name for registration in runtime
-	Name() string
-
-	// Version returns the plugin version
-	Version() string
-
-	// Description returns a short description of the plugin
-	Description() string
-
-	// Author returns the plugin author name
-	Author() string
-
-	// URL returns the plugin homepage or repository URL
-	URL() string
-
-	// Init initializes the plugin with configuration
-	Init(config map[string]interface{}) error
-
-	// RegisterModule registers functions in GOJA runtime
-	RegisterModule(runtime *goja.Runtime) error
-
-	// Shutdown gracefully stops the plugin
-	Shutdown() error
-
-	// GetSchema returns the schema for TypeScript generation
-	GetSchema() schema.ModuleSchema
-}
+// Plugin is an alias to pkg/plugin.Plugin for backward compatibility
+type Plugin = pkgplugin.Plugin
 
 // Loader handles loading and managing plugins
 type Loader struct {
@@ -130,10 +103,21 @@ func (l *Loader) Load(path string) error {
 		return fmt.Errorf("plugin does not implement Plugin interface")
 	}
 
-	// Initialize plugin with config
-	// Plugin config can be stored in main config under plugins.config.<name>
+	// Initialize plugin with config from plugins.config.<name>
 	pluginConfig := make(map[string]interface{})
-	// TODO: Load plugin-specific config from config file
+	pluginName := pluginInstance.Name()
+
+	// Load plugin-specific config if available
+	if l.config.Plugins.Config != nil {
+		if cfg, ok := l.config.Plugins.Config[pluginName]; ok {
+			pluginConfig = cfg
+		}
+	}
+
+	// Always provide storage_path for plugins that need it
+	if _, hasStorage := pluginConfig["storage_path"]; !hasStorage {
+		pluginConfig["storage_path"] = l.config.Storage.Path
+	}
 
 	if err := pluginInstance.Init(pluginConfig); err != nil {
 		return fmt.Errorf("failed to initialize plugin: %w", err)
@@ -198,14 +182,8 @@ func (l *Loader) Shutdown() error {
 	return lastErr
 }
 
-// PluginInfo represents information about a loaded plugin
-type PluginInfo struct {
-	Name        string `json:"name"`
-	Version     string `json:"version"`
-	Description string `json:"description,omitempty"`
-	Author      string `json:"author,omitempty"`
-	URL         string `json:"url,omitempty"`
-}
+// PluginInfo is an alias to pkg/plugin.PluginInfo for backward compatibility
+type PluginInfo = pkgplugin.PluginInfo
 
 // GetPluginInfos returns information about all loaded plugins
 func (l *Loader) GetPluginInfos() []PluginInfo {

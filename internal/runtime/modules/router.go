@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	"github.com/dop251/goja"
+	"m3m/pkg/schema"
 )
 
 type RequestContext struct {
@@ -297,15 +298,15 @@ func (r *RouterModule) ResetHits() int64 {
 }
 
 // GetSchema implements JSSchemaProvider
-func (r *RouterModule) GetSchema() JSModuleSchema {
-	return JSModuleSchema{
+func (r *RouterModule) GetSchema() schema.ModuleSchema {
+	return schema.ModuleSchema{
 		Name:        "$router",
 		Description: "HTTP routing for creating API endpoints",
-		Types: []JSTypeSchema{
+		Types: []schema.TypeSchema{
 			{
 				Name:        "RequestContext",
 				Description: "HTTP request context passed to route handlers",
-				Fields: []JSParamSchema{
+				Fields: []schema.ParamSchema{
 					{Name: "method", Type: "string", Description: "HTTP method"},
 					{Name: "path", Type: "string", Description: "Request path"},
 					{Name: "params", Type: "{ [key: string]: string }", Description: "URL path parameters"},
@@ -317,18 +318,18 @@ func (r *RouterModule) GetSchema() JSModuleSchema {
 			{
 				Name:        "ResponseData",
 				Description: "HTTP response data",
-				Fields: []JSParamSchema{
+				Fields: []schema.ParamSchema{
 					{Name: "status", Type: "number", Description: "HTTP status code"},
 					{Name: "body", Type: "any", Description: "Response body"},
 					{Name: "headers", Type: "{ [key: string]: string }", Description: "Response headers", Optional: true},
 				},
 			},
 		},
-		Methods: []JSMethodSchema{
+		Methods: []schema.MethodSchema{
 			{
 				Name:        "get",
 				Description: "Register a GET route handler",
-				Params: []JSParamSchema{
+				Params: []schema.ParamSchema{
 					{Name: "path", Type: "string", Description: "URL path pattern (supports :param)"},
 					{Name: "handler", Type: "(ctx: RequestContext) => ResponseData | any", Description: "Route handler function"},
 				},
@@ -336,7 +337,7 @@ func (r *RouterModule) GetSchema() JSModuleSchema {
 			{
 				Name:        "post",
 				Description: "Register a POST route handler",
-				Params: []JSParamSchema{
+				Params: []schema.ParamSchema{
 					{Name: "path", Type: "string", Description: "URL path pattern (supports :param)"},
 					{Name: "handler", Type: "(ctx: RequestContext) => ResponseData | any", Description: "Route handler function"},
 				},
@@ -344,7 +345,7 @@ func (r *RouterModule) GetSchema() JSModuleSchema {
 			{
 				Name:        "put",
 				Description: "Register a PUT route handler",
-				Params: []JSParamSchema{
+				Params: []schema.ParamSchema{
 					{Name: "path", Type: "string", Description: "URL path pattern (supports :param)"},
 					{Name: "handler", Type: "(ctx: RequestContext) => ResponseData | any", Description: "Route handler function"},
 				},
@@ -352,7 +353,7 @@ func (r *RouterModule) GetSchema() JSModuleSchema {
 			{
 				Name:        "delete",
 				Description: "Register a DELETE route handler",
-				Params: []JSParamSchema{
+				Params: []schema.ParamSchema{
 					{Name: "path", Type: "string", Description: "URL path pattern (supports :param)"},
 					{Name: "handler", Type: "(ctx: RequestContext) => ResponseData | any", Description: "Route handler function"},
 				},
@@ -360,17 +361,17 @@ func (r *RouterModule) GetSchema() JSModuleSchema {
 			{
 				Name:        "response",
 				Description: "Create a response object",
-				Params: []JSParamSchema{
+				Params: []schema.ParamSchema{
 					{Name: "status", Type: "number", Description: "HTTP status code"},
 					{Name: "body", Type: "any", Description: "Response body"},
 				},
-				Returns: &JSParamSchema{Type: "ResponseData"},
+				Returns: &schema.ParamSchema{Type: "ResponseData"},
 			},
 		},
 	}
 }
 
 // GetRouterSchema returns the router schema (static version)
-func GetRouterSchema() JSModuleSchema {
+func GetRouterSchema() schema.ModuleSchema {
 	return (&RouterModule{}).GetSchema()
 }

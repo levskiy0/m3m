@@ -8,6 +8,7 @@ import (
 
 	"m3m/internal/domain"
 	"m3m/internal/service"
+	"m3m/pkg/schema"
 )
 
 type DatabaseModule struct {
@@ -263,15 +264,15 @@ func (c *CollectionWrapper) Count(filter map[string]interface{}) int64 {
 }
 
 // GetSchema implements JSSchemaProvider
-func (d *DatabaseModule) GetSchema() JSModuleSchema {
-	return JSModuleSchema{
+func (d *DatabaseModule) GetSchema() schema.ModuleSchema {
+	return schema.ModuleSchema{
 		Name:        "$database",
 		Description: "Database operations for model-based data storage. Supports MongoDB-style filter operators: $eq, $ne, $gt, $gte, $lt, $lte, $contains, $startsWith, $endsWith, $in, $nin",
-		Types: []JSTypeSchema{
+		Types: []schema.TypeSchema{
 			{
 				Name:        "QueryOptions",
 				Description: "Options for find queries",
-				Fields: []JSParamSchema{
+				Fields: []schema.ParamSchema{
 					{Name: "page", Type: "number", Description: "Page number (default: 1)"},
 					{Name: "limit", Type: "number", Description: "Results per page (default: 100)"},
 					{Name: "sort", Type: "string", Description: "Field to sort by"},
@@ -281,7 +282,7 @@ func (d *DatabaseModule) GetSchema() JSModuleSchema {
 			{
 				Name:        "Collection",
 				Description: "A database collection for a model",
-				Fields: []JSParamSchema{
+				Fields: []schema.ParamSchema{
 					{Name: "find", Type: "(filter?: object) => object[]", Description: "Find documents matching filter. Supports operators: {field: {$gt: value}}"},
 					{Name: "findWithOptions", Type: "(filter?: object, options?: QueryOptions) => object[]", Description: "Find with pagination and sorting"},
 					{Name: "findOne", Type: "(filter?: object) => object | null", Description: "Find first document matching filter"},
@@ -292,18 +293,18 @@ func (d *DatabaseModule) GetSchema() JSModuleSchema {
 				},
 			},
 		},
-		Methods: []JSMethodSchema{
+		Methods: []schema.MethodSchema{
 			{
 				Name:        "collection",
 				Description: "Get a collection wrapper for a model",
-				Params:      []JSParamSchema{{Name: "name", Type: "string", Description: "Model slug name"}},
-				Returns:     &JSParamSchema{Type: "Collection"},
+				Params:      []schema.ParamSchema{{Name: "name", Type: "string", Description: "Model slug name"}},
+				Returns:     &schema.ParamSchema{Type: "Collection"},
 			},
 		},
 	}
 }
 
 // GetDatabaseSchema returns the database schema (static version)
-func GetDatabaseSchema() JSModuleSchema {
+func GetDatabaseSchema() schema.ModuleSchema {
 	return (&DatabaseModule{}).GetSchema()
 }

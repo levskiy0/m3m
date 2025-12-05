@@ -2,6 +2,7 @@ package modules
 
 import (
 	"github.com/dop251/goja"
+	"m3m/pkg/schema"
 )
 
 type DelayedModule struct {
@@ -47,21 +48,21 @@ func (d *DelayedModule) Run(handler goja.Callable) {
 }
 
 // GetSchema implements JSSchemaProvider
-func (d *DelayedModule) GetSchema() JSModuleSchema {
-	return JSModuleSchema{
+func (d *DelayedModule) GetSchema() schema.ModuleSchema {
+	return schema.ModuleSchema{
 		Name:        "$delayed",
 		Description: "Run tasks asynchronously in background with worker pool limiting",
-		Methods: []JSMethodSchema{
+		Methods: []schema.MethodSchema{
 			{
 				Name:        "run",
 				Description: "Execute a function asynchronously in the background",
-				Params:      []JSParamSchema{{Name: "handler", Type: "() => void", Description: "Function to execute"}},
+				Params:      []schema.ParamSchema{{Name: "handler", Type: "() => void", Description: "Function to execute"}},
 			},
 		},
 	}
 }
 
 // GetDelayedSchema returns the delayed schema (static version)
-func GetDelayedSchema() JSModuleSchema {
+func GetDelayedSchema() schema.ModuleSchema {
 	return (&DelayedModule{}).GetSchema()
 }

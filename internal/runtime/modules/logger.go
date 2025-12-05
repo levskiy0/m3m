@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/dop251/goja"
+	"m3m/pkg/schema"
 )
 
 type LoggerModule struct {
@@ -145,36 +146,36 @@ func (l *LoggerModule) Close() {
 }
 
 // GetSchema implements JSSchemaProvider
-func (l *LoggerModule) GetSchema() JSModuleSchema {
-	return JSModuleSchema{
+func (l *LoggerModule) GetSchema() schema.ModuleSchema {
+	return schema.ModuleSchema{
 		Name:        "$logger",
 		Description: "Logging utilities for debugging and monitoring",
-		Methods: []JSMethodSchema{
+		Methods: []schema.MethodSchema{
 			{
 				Name:        "debug",
 				Description: "Log a debug message",
-				Params: []JSParamSchema{
+				Params: []schema.ParamSchema{
 					{Name: "args", Type: "any", Description: "Values to log"},
 				},
 			},
 			{
 				Name:        "info",
 				Description: "Log an info message",
-				Params: []JSParamSchema{
+				Params: []schema.ParamSchema{
 					{Name: "args", Type: "any", Description: "Values to log"},
 				},
 			},
 			{
 				Name:        "warn",
 				Description: "Log a warning message",
-				Params: []JSParamSchema{
+				Params: []schema.ParamSchema{
 					{Name: "args", Type: "any", Description: "Values to log"},
 				},
 			},
 			{
 				Name:        "error",
 				Description: "Log an error message",
-				Params: []JSParamSchema{
+				Params: []schema.ParamSchema{
 					{Name: "args", Type: "any", Description: "Values to log"},
 				},
 			},
@@ -183,40 +184,40 @@ func (l *LoggerModule) GetSchema() JSModuleSchema {
 }
 
 // GetLoggerSchema returns the logger schema (static version)
-func GetLoggerSchema() JSModuleSchema {
+func GetLoggerSchema() schema.ModuleSchema {
 	return (&LoggerModule{}).GetSchema()
 }
 
 // GetConsoleSchema returns schema for console (alias for logger)
-func GetConsoleSchema() JSModuleSchema {
-	return JSModuleSchema{
+func GetConsoleSchema() schema.ModuleSchema {
+	return schema.ModuleSchema{
 		Name:        "console",
 		Description: "Console output (alias for logger)",
-		Methods: []JSMethodSchema{
+		Methods: []schema.MethodSchema{
 			{
 				Name:        "log",
 				Description: "Log a message (alias for info)",
-				Params:      []JSParamSchema{{Name: "args", Type: "...any", Description: "Values to log"}},
+				Params:      []schema.ParamSchema{{Name: "args", Type: "...any", Description: "Values to log"}},
 			},
 			{
 				Name:        "info",
 				Description: "Log an info message",
-				Params:      []JSParamSchema{{Name: "args", Type: "...any", Description: "Values to log"}},
+				Params:      []schema.ParamSchema{{Name: "args", Type: "...any", Description: "Values to log"}},
 			},
 			{
 				Name:        "warn",
 				Description: "Log a warning message",
-				Params:      []JSParamSchema{{Name: "args", Type: "...any", Description: "Values to log"}},
+				Params:      []schema.ParamSchema{{Name: "args", Type: "...any", Description: "Values to log"}},
 			},
 			{
 				Name:        "error",
 				Description: "Log an error message",
-				Params:      []JSParamSchema{{Name: "args", Type: "...any", Description: "Values to log"}},
+				Params:      []schema.ParamSchema{{Name: "args", Type: "...any", Description: "Values to log"}},
 			},
 			{
 				Name:        "debug",
 				Description: "Log a debug message",
-				Params:      []JSParamSchema{{Name: "args", Type: "...any", Description: "Values to log"}},
+				Params:      []schema.ParamSchema{{Name: "args", Type: "...any", Description: "Values to log"}},
 			},
 		},
 	}

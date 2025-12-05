@@ -1,8 +1,12 @@
 package modules
 
+import (
+	"m3m/pkg/schema"
+)
+
 // GetAllSchemas returns all module schemas
-func GetAllSchemas() []JSModuleSchema {
-	return []JSModuleSchema{
+func GetAllSchemas() []schema.ModuleSchema {
+	return []schema.ModuleSchema{
 		GetLoggerSchema(),
 		GetConsoleSchema(),
 		GetRouterSchema(),

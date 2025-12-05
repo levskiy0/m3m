@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 
 	"github.com/dop251/goja"
+	"m3m/pkg/schema"
 )
 
 type CryptoModule struct{}
@@ -49,34 +50,34 @@ func (c *CryptoModule) RandomBytes(length int) string {
 }
 
 // GetSchema implements JSSchemaProvider
-func (c *CryptoModule) GetSchema() JSModuleSchema {
-	return JSModuleSchema{
+func (c *CryptoModule) GetSchema() schema.ModuleSchema {
+	return schema.ModuleSchema{
 		Name:        "$crypto",
 		Description: "Cryptographic utilities for hashing and random data",
-		Methods: []JSMethodSchema{
+		Methods: []schema.MethodSchema{
 			{
 				Name:        "md5",
 				Description: "Generate MD5 hash of data",
-				Params:      []JSParamSchema{{Name: "data", Type: "string", Description: "Data to hash"}},
-				Returns:     &JSParamSchema{Type: "string"},
+				Params:      []schema.ParamSchema{{Name: "data", Type: "string", Description: "Data to hash"}},
+				Returns:     &schema.ParamSchema{Type: "string"},
 			},
 			{
 				Name:        "sha256",
 				Description: "Generate SHA256 hash of data",
-				Params:      []JSParamSchema{{Name: "data", Type: "string", Description: "Data to hash"}},
-				Returns:     &JSParamSchema{Type: "string"},
+				Params:      []schema.ParamSchema{{Name: "data", Type: "string", Description: "Data to hash"}},
+				Returns:     &schema.ParamSchema{Type: "string"},
 			},
 			{
 				Name:        "randomBytes",
 				Description: "Generate random bytes as hex string",
-				Params:      []JSParamSchema{{Name: "length", Type: "number", Description: "Number of bytes to generate"}},
-				Returns:     &JSParamSchema{Type: "string"},
+				Params:      []schema.ParamSchema{{Name: "length", Type: "number", Description: "Number of bytes to generate"}},
+				Returns:     &schema.ParamSchema{Type: "string"},
 			},
 		},
 	}
 }
 
 // GetCryptoSchema returns the crypto schema (static version)
-func GetCryptoSchema() JSModuleSchema {
+func GetCryptoSchema() schema.ModuleSchema {
 	return (&CryptoModule{}).GetSchema()
 }

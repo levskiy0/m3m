@@ -40,7 +40,10 @@
       "WebFetch(domain:pkg.go.dev)",
       "WebFetch(domain:raw.githubusercontent.com)",
       "Bash(make all:*)",
-      "Bash(timeout 5 go run:*)"
+      "Bash(timeout 5 go run:*)",
+      "Bash(for file in *.go)",
+      "Bash(do sed -i '' 's/JSModuleSchema/schema.ModuleSchema/g; s/JSMethodSchema/schema.MethodSchema/g; s/JSParamSchema/schema.ParamSchema/g; s/JSTypeSchema/schema.TypeSchema/g; s/JSNestedModuleSchema/schema.NestedModuleSchema/g' \"$file\")",
+      "Bash(done)"
     ],
     "deny": [],
     "ask": []

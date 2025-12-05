@@ -7,6 +7,7 @@ import (
 
 	"github.com/dop251/goja"
 	"github.com/go-playground/validator/v10"
+	"m3m/pkg/schema"
 )
 
 // ValidatorModule provides data validation utilities using go-playground/validator
@@ -438,15 +439,15 @@ func formatValidationMessageSimple(e validator.FieldError) string {
 }
 
 // GetSchema implements JSSchemaProvider
-func (v *ValidatorModule) GetSchema() JSModuleSchema {
-	return JSModuleSchema{
+func (v *ValidatorModule) GetSchema() schema.ModuleSchema {
+	return schema.ModuleSchema{
 		Name:        "$validator",
 		Description: "Data validation utilities powered by go-playground/validator",
-		Types: []JSTypeSchema{
+		Types: []schema.TypeSchema{
 			{
 				Name:        "ValidationError",
 				Description: "Single validation error",
-				Fields: []JSParamSchema{
+				Fields: []schema.ParamSchema{
 					{Name: "field", Type: "string", Description: "Field name that failed validation"},
 					{Name: "tag", Type: "string", Description: "Validation rule that failed"},
 					{Name: "value", Type: "string", Description: "The value that failed validation"},
@@ -456,304 +457,304 @@ func (v *ValidatorModule) GetSchema() JSModuleSchema {
 			{
 				Name:        "ValidationResult",
 				Description: "Result of validation",
-				Fields: []JSParamSchema{
+				Fields: []schema.ParamSchema{
 					{Name: "valid", Type: "boolean", Description: "Whether validation passed"},
 					{Name: "errors", Type: "ValidationError[]", Description: "Array of validation errors"},
 				},
 			},
 		},
-		Methods: []JSMethodSchema{
+		Methods: []schema.MethodSchema{
 			// Core validation
 			{
 				Name:        "struct",
 				Description: "Validate object against rules. Rules use go-playground/validator syntax (e.g., 'required,email', 'min=1,max=100')",
-				Params: []JSParamSchema{
+				Params: []schema.ParamSchema{
 					{Name: "data", Type: "object", Description: "Object to validate"},
 					{Name: "rules", Type: "object", Description: "Object mapping field names to validation rules"},
 				},
-				Returns: &JSParamSchema{Type: "ValidationResult", Description: "Validation result with errors"},
+				Returns: &schema.ParamSchema{Type: "ValidationResult", Description: "Validation result with errors"},
 			},
 			{
 				Name:        "var",
 				Description: "Validate a single value against rules",
-				Params: []JSParamSchema{
+				Params: []schema.ParamSchema{
 					{Name: "value", Type: "any", Description: "Value to validate"},
 					{Name: "rules", Type: "string", Description: "Validation rules (e.g., 'required,email')"},
 				},
-				Returns: &JSParamSchema{Type: "ValidationResult", Description: "Validation result with errors"},
+				Returns: &schema.ParamSchema{Type: "ValidationResult", Description: "Validation result with errors"},
 			},
 			{
 				Name:        "isValid",
 				Description: "Quick validation that returns boolean",
-				Params: []JSParamSchema{
+				Params: []schema.ParamSchema{
 					{Name: "value", Type: "any", Description: "Value to validate"},
 					{Name: "rules", Type: "string", Description: "Validation rules"},
 				},
-				Returns: &JSParamSchema{Type: "boolean"},
+				Returns: &schema.ParamSchema{Type: "boolean"},
 			},
 			// String validators
 			{
 				Name:        "isEmail",
 				Description: "Check if value is a valid email address",
-				Params:      []JSParamSchema{{Name: "value", Type: "string"}},
-				Returns:     &JSParamSchema{Type: "boolean"},
+				Params:      []schema.ParamSchema{{Name: "value", Type: "string"}},
+				Returns:     &schema.ParamSchema{Type: "boolean"},
 			},
 			{
 				Name:        "isURL",
 				Description: "Check if value is a valid URL",
-				Params:      []JSParamSchema{{Name: "value", Type: "string"}},
-				Returns:     &JSParamSchema{Type: "boolean"},
+				Params:      []schema.ParamSchema{{Name: "value", Type: "string"}},
+				Returns:     &schema.ParamSchema{Type: "boolean"},
 			},
 			{
 				Name:        "isUUID",
 				Description: "Check if value is a valid UUID (any version)",
-				Params:      []JSParamSchema{{Name: "value", Type: "string"}},
-				Returns:     &JSParamSchema{Type: "boolean"},
+				Params:      []schema.ParamSchema{{Name: "value", Type: "string"}},
+				Returns:     &schema.ParamSchema{Type: "boolean"},
 			},
 			{
 				Name:        "isUUIDv4",
 				Description: "Check if value is a valid UUID v4",
-				Params:      []JSParamSchema{{Name: "value", Type: "string"}},
-				Returns:     &JSParamSchema{Type: "boolean"},
+				Params:      []schema.ParamSchema{{Name: "value", Type: "string"}},
+				Returns:     &schema.ParamSchema{Type: "boolean"},
 			},
 			{
 				Name:        "isNumeric",
 				Description: "Check if value contains only numeric characters",
-				Params:      []JSParamSchema{{Name: "value", Type: "string"}},
-				Returns:     &JSParamSchema{Type: "boolean"},
+				Params:      []schema.ParamSchema{{Name: "value", Type: "string"}},
+				Returns:     &schema.ParamSchema{Type: "boolean"},
 			},
 			{
 				Name:        "isAlpha",
 				Description: "Check if value contains only alphabetic characters",
-				Params:      []JSParamSchema{{Name: "value", Type: "string"}},
-				Returns:     &JSParamSchema{Type: "boolean"},
+				Params:      []schema.ParamSchema{{Name: "value", Type: "string"}},
+				Returns:     &schema.ParamSchema{Type: "boolean"},
 			},
 			{
 				Name:        "isAlphanumeric",
 				Description: "Check if value contains only alphanumeric characters",
-				Params:      []JSParamSchema{{Name: "value", Type: "string"}},
-				Returns:     &JSParamSchema{Type: "boolean"},
+				Params:      []schema.ParamSchema{{Name: "value", Type: "string"}},
+				Returns:     &schema.ParamSchema{Type: "boolean"},
 			},
 			{
 				Name:        "isJSON",
 				Description: "Check if value is valid JSON",
-				Params:      []JSParamSchema{{Name: "value", Type: "string"}},
-				Returns:     &JSParamSchema{Type: "boolean"},
+				Params:      []schema.ParamSchema{{Name: "value", Type: "string"}},
+				Returns:     &schema.ParamSchema{Type: "boolean"},
 			},
 			{
 				Name:        "isBase64",
 				Description: "Check if value is valid base64",
-				Params:      []JSParamSchema{{Name: "value", Type: "string"}},
-				Returns:     &JSParamSchema{Type: "boolean"},
+				Params:      []schema.ParamSchema{{Name: "value", Type: "string"}},
+				Returns:     &schema.ParamSchema{Type: "boolean"},
 			},
 			// Network validators
 			{
 				Name:        "isIP",
 				Description: "Check if value is valid IP address (v4 or v6)",
-				Params:      []JSParamSchema{{Name: "value", Type: "string"}},
-				Returns:     &JSParamSchema{Type: "boolean"},
+				Params:      []schema.ParamSchema{{Name: "value", Type: "string"}},
+				Returns:     &schema.ParamSchema{Type: "boolean"},
 			},
 			{
 				Name:        "isIPv4",
 				Description: "Check if value is valid IPv4 address",
-				Params:      []JSParamSchema{{Name: "value", Type: "string"}},
-				Returns:     &JSParamSchema{Type: "boolean"},
+				Params:      []schema.ParamSchema{{Name: "value", Type: "string"}},
+				Returns:     &schema.ParamSchema{Type: "boolean"},
 			},
 			{
 				Name:        "isIPv6",
 				Description: "Check if value is valid IPv6 address",
-				Params:      []JSParamSchema{{Name: "value", Type: "string"}},
-				Returns:     &JSParamSchema{Type: "boolean"},
+				Params:      []schema.ParamSchema{{Name: "value", Type: "string"}},
+				Returns:     &schema.ParamSchema{Type: "boolean"},
 			},
 			{
 				Name:        "isCIDR",
 				Description: "Check if value is valid CIDR notation",
-				Params:      []JSParamSchema{{Name: "value", Type: "string"}},
-				Returns:     &JSParamSchema{Type: "boolean"},
+				Params:      []schema.ParamSchema{{Name: "value", Type: "string"}},
+				Returns:     &schema.ParamSchema{Type: "boolean"},
 			},
 			{
 				Name:        "isMAC",
 				Description: "Check if value is valid MAC address",
-				Params:      []JSParamSchema{{Name: "value", Type: "string"}},
-				Returns:     &JSParamSchema{Type: "boolean"},
+				Params:      []schema.ParamSchema{{Name: "value", Type: "string"}},
+				Returns:     &schema.ParamSchema{Type: "boolean"},
 			},
 			// Color validators
 			{
 				Name:        "isHexColor",
 				Description: "Check if value is valid hex color (e.g., #fff, #ffffff)",
-				Params:      []JSParamSchema{{Name: "value", Type: "string"}},
-				Returns:     &JSParamSchema{Type: "boolean"},
+				Params:      []schema.ParamSchema{{Name: "value", Type: "string"}},
+				Returns:     &schema.ParamSchema{Type: "boolean"},
 			},
 			{
 				Name:        "isRGBColor",
 				Description: "Check if value is valid RGB color",
-				Params:      []JSParamSchema{{Name: "value", Type: "string"}},
-				Returns:     &JSParamSchema{Type: "boolean"},
+				Params:      []schema.ParamSchema{{Name: "value", Type: "string"}},
+				Returns:     &schema.ParamSchema{Type: "boolean"},
 			},
 			{
 				Name:        "isRGBAColor",
 				Description: "Check if value is valid RGBA color",
-				Params:      []JSParamSchema{{Name: "value", Type: "string"}},
-				Returns:     &JSParamSchema{Type: "boolean"},
+				Params:      []schema.ParamSchema{{Name: "value", Type: "string"}},
+				Returns:     &schema.ParamSchema{Type: "boolean"},
 			},
 			// Geo validators
 			{
 				Name:        "isLatitude",
 				Description: "Check if value is valid latitude (-90 to 90)",
-				Params:      []JSParamSchema{{Name: "value", Type: "number"}},
-				Returns:     &JSParamSchema{Type: "boolean"},
+				Params:      []schema.ParamSchema{{Name: "value", Type: "number"}},
+				Returns:     &schema.ParamSchema{Type: "boolean"},
 			},
 			{
 				Name:        "isLongitude",
 				Description: "Check if value is valid longitude (-180 to 180)",
-				Params:      []JSParamSchema{{Name: "value", Type: "number"}},
-				Returns:     &JSParamSchema{Type: "boolean"},
+				Params:      []schema.ParamSchema{{Name: "value", Type: "number"}},
+				Returns:     &schema.ParamSchema{Type: "boolean"},
 			},
 			// Other validators
 			{
 				Name:        "isCreditCard",
 				Description: "Check if value is valid credit card number (Luhn algorithm)",
-				Params:      []JSParamSchema{{Name: "value", Type: "string"}},
-				Returns:     &JSParamSchema{Type: "boolean"},
+				Params:      []schema.ParamSchema{{Name: "value", Type: "string"}},
+				Returns:     &schema.ParamSchema{Type: "boolean"},
 			},
 			{
 				Name:        "isISBN",
 				Description: "Check if value is valid ISBN (10 or 13)",
-				Params:      []JSParamSchema{{Name: "value", Type: "string"}},
-				Returns:     &JSParamSchema{Type: "boolean"},
+				Params:      []schema.ParamSchema{{Name: "value", Type: "string"}},
+				Returns:     &schema.ParamSchema{Type: "boolean"},
 			},
 			// String comparison
 			{
 				Name:        "contains",
 				Description: "Check if value contains the substring",
-				Params: []JSParamSchema{
+				Params: []schema.ParamSchema{
 					{Name: "value", Type: "string"},
 					{Name: "substring", Type: "string"},
 				},
-				Returns: &JSParamSchema{Type: "boolean"},
+				Returns: &schema.ParamSchema{Type: "boolean"},
 			},
 			{
 				Name:        "startsWith",
 				Description: "Check if value starts with the prefix",
-				Params: []JSParamSchema{
+				Params: []schema.ParamSchema{
 					{Name: "value", Type: "string"},
 					{Name: "prefix", Type: "string"},
 				},
-				Returns: &JSParamSchema{Type: "boolean"},
+				Returns: &schema.ParamSchema{Type: "boolean"},
 			},
 			{
 				Name:        "endsWith",
 				Description: "Check if value ends with the suffix",
-				Params: []JSParamSchema{
+				Params: []schema.ParamSchema{
 					{Name: "value", Type: "string"},
 					{Name: "suffix", Type: "string"},
 				},
-				Returns: &JSParamSchema{Type: "boolean"},
+				Returns: &schema.ParamSchema{Type: "boolean"},
 			},
 			// Length validators
 			{
 				Name:        "minLength",
 				Description: "Check if string length is at least min",
-				Params: []JSParamSchema{
+				Params: []schema.ParamSchema{
 					{Name: "value", Type: "string"},
 					{Name: "min", Type: "number"},
 				},
-				Returns: &JSParamSchema{Type: "boolean"},
+				Returns: &schema.ParamSchema{Type: "boolean"},
 			},
 			{
 				Name:        "maxLength",
 				Description: "Check if string length is at most max",
-				Params: []JSParamSchema{
+				Params: []schema.ParamSchema{
 					{Name: "value", Type: "string"},
 					{Name: "max", Type: "number"},
 				},
-				Returns: &JSParamSchema{Type: "boolean"},
+				Returns: &schema.ParamSchema{Type: "boolean"},
 			},
 			{
 				Name:        "length",
 				Description: "Check if string length is exactly length",
-				Params: []JSParamSchema{
+				Params: []schema.ParamSchema{
 					{Name: "value", Type: "string"},
 					{Name: "length", Type: "number"},
 				},
-				Returns: &JSParamSchema{Type: "boolean"},
+				Returns: &schema.ParamSchema{Type: "boolean"},
 			},
 			{
 				Name:        "lengthBetween",
 				Description: "Check if string length is between min and max (inclusive)",
-				Params: []JSParamSchema{
+				Params: []schema.ParamSchema{
 					{Name: "value", Type: "string"},
 					{Name: "min", Type: "number"},
 					{Name: "max", Type: "number"},
 				},
-				Returns: &JSParamSchema{Type: "boolean"},
+				Returns: &schema.ParamSchema{Type: "boolean"},
 			},
 			// Number validators
 			{
 				Name:        "min",
 				Description: "Check if number is at least min",
-				Params: []JSParamSchema{
+				Params: []schema.ParamSchema{
 					{Name: "value", Type: "number"},
 					{Name: "min", Type: "number"},
 				},
-				Returns: &JSParamSchema{Type: "boolean"},
+				Returns: &schema.ParamSchema{Type: "boolean"},
 			},
 			{
 				Name:        "max",
 				Description: "Check if number is at most max",
-				Params: []JSParamSchema{
+				Params: []schema.ParamSchema{
 					{Name: "value", Type: "number"},
 					{Name: "max", Type: "number"},
 				},
-				Returns: &JSParamSchema{Type: "boolean"},
+				Returns: &schema.ParamSchema{Type: "boolean"},
 			},
 			{
 				Name:        "between",
 				Description: "Check if number is between min and max (inclusive)",
-				Params: []JSParamSchema{
+				Params: []schema.ParamSchema{
 					{Name: "value", Type: "number"},
 					{Name: "min", Type: "number"},
 					{Name: "max", Type: "number"},
 				},
-				Returns: &JSParamSchema{Type: "boolean"},
+				Returns: &schema.ParamSchema{Type: "boolean"},
 			},
 			// Pattern and choice validators
 			{
 				Name:        "matches",
 				Description: "Check if value matches the regex pattern",
-				Params: []JSParamSchema{
+				Params: []schema.ParamSchema{
 					{Name: "value", Type: "string"},
 					{Name: "pattern", Type: "string", Description: "Regular expression pattern"},
 				},
-				Returns: &JSParamSchema{Type: "boolean"},
+				Returns: &schema.ParamSchema{Type: "boolean"},
 			},
 			{
 				Name:        "oneOf",
 				Description: "Check if value is one of the allowed values",
-				Params: []JSParamSchema{
+				Params: []schema.ParamSchema{
 					{Name: "value", Type: "any"},
 					{Name: "allowed", Type: "any[]", Description: "Array of allowed values"},
 				},
-				Returns: &JSParamSchema{Type: "boolean"},
+				Returns: &schema.ParamSchema{Type: "boolean"},
 			},
 			// General validators
 			{
 				Name:        "notEmpty",
 				Description: "Check if value is not empty (works for strings, arrays, objects)",
-				Params:      []JSParamSchema{{Name: "value", Type: "any"}},
-				Returns:     &JSParamSchema{Type: "boolean"},
+				Params:      []schema.ParamSchema{{Name: "value", Type: "any"}},
+				Returns:     &schema.ParamSchema{Type: "boolean"},
 			},
 			{
 				Name:        "required",
 				Description: "Check if value is not null/undefined",
-				Params:      []JSParamSchema{{Name: "value", Type: "any"}},
-				Returns:     &JSParamSchema{Type: "boolean"},
+				Params:      []schema.ParamSchema{{Name: "value", Type: "any"}},
+				Returns:     &schema.ParamSchema{Type: "boolean"},
 			},
 		},
 	}
 }
 
 // GetValidatorSchema returns the validator schema (static version)
-func GetValidatorSchema() JSModuleSchema {
+func GetValidatorSchema() schema.ModuleSchema {
 	return (&ValidatorModule{}).GetSchema()
 }

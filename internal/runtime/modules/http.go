@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/dop251/goja"
+	"m3m/pkg/schema"
 )
 
 type HTTPModule struct {
@@ -144,15 +145,15 @@ func (h *HTTPModule) Delete(url string, options ...*HTTPOptions) *HTTPResponse {
 }
 
 // GetSchema implements JSSchemaProvider
-func (h *HTTPModule) GetSchema() JSModuleSchema {
-	return JSModuleSchema{
+func (h *HTTPModule) GetSchema() schema.ModuleSchema {
+	return schema.ModuleSchema{
 		Name:        "$http",
 		Description: "HTTP client for making external API requests",
-		Types: []JSTypeSchema{
+		Types: []schema.TypeSchema{
 			{
 				Name:        "HTTPResponse",
 				Description: "Response from an HTTP request",
-				Fields: []JSParamSchema{
+				Fields: []schema.ParamSchema{
 					{Name: "status", Type: "number", Description: "HTTP status code"},
 					{Name: "statusText", Type: "string", Description: "HTTP status text"},
 					{Name: "headers", Type: "{ [key: string]: string }", Description: "Response headers"},
@@ -162,56 +163,56 @@ func (h *HTTPModule) GetSchema() JSModuleSchema {
 			{
 				Name:        "HTTPOptions",
 				Description: "Options for HTTP requests",
-				Fields: []JSParamSchema{
+				Fields: []schema.ParamSchema{
 					{Name: "headers", Type: "{ [key: string]: string }", Description: "Request headers", Optional: true},
 					{Name: "timeout", Type: "number", Description: "Request timeout in milliseconds", Optional: true},
 				},
 			},
 		},
-		Methods: []JSMethodSchema{
+		Methods: []schema.MethodSchema{
 			{
 				Name:        "get",
 				Description: "Make a GET request",
-				Params: []JSParamSchema{
+				Params: []schema.ParamSchema{
 					{Name: "url", Type: "string", Description: "URL to request"},
 					{Name: "options", Type: "HTTPOptions", Description: "Request options", Optional: true},
 				},
-				Returns: &JSParamSchema{Type: "HTTPResponse"},
+				Returns: &schema.ParamSchema{Type: "HTTPResponse"},
 			},
 			{
 				Name:        "post",
 				Description: "Make a POST request",
-				Params: []JSParamSchema{
+				Params: []schema.ParamSchema{
 					{Name: "url", Type: "string", Description: "URL to request"},
 					{Name: "body", Type: "any", Description: "Request body (will be JSON encoded)"},
 					{Name: "options", Type: "HTTPOptions", Description: "Request options", Optional: true},
 				},
-				Returns: &JSParamSchema{Type: "HTTPResponse"},
+				Returns: &schema.ParamSchema{Type: "HTTPResponse"},
 			},
 			{
 				Name:        "put",
 				Description: "Make a PUT request",
-				Params: []JSParamSchema{
+				Params: []schema.ParamSchema{
 					{Name: "url", Type: "string", Description: "URL to request"},
 					{Name: "body", Type: "any", Description: "Request body (will be JSON encoded)"},
 					{Name: "options", Type: "HTTPOptions", Description: "Request options", Optional: true},
 				},
-				Returns: &JSParamSchema{Type: "HTTPResponse"},
+				Returns: &schema.ParamSchema{Type: "HTTPResponse"},
 			},
 			{
 				Name:        "delete",
 				Description: "Make a DELETE request",
-				Params: []JSParamSchema{
+				Params: []schema.ParamSchema{
 					{Name: "url", Type: "string", Description: "URL to request"},
 					{Name: "options", Type: "HTTPOptions", Description: "Request options", Optional: true},
 				},
-				Returns: &JSParamSchema{Type: "HTTPResponse"},
+				Returns: &schema.ParamSchema{Type: "HTTPResponse"},
 			},
 		},
 	}
 }
 
 // GetHTTPSchema returns the http schema (static version)
-func GetHTTPSchema() JSModuleSchema {
+func GetHTTPSchema() schema.ModuleSchema {
 	return (&HTTPModule{}).GetSchema()
 }

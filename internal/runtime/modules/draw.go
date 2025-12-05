@@ -13,6 +13,7 @@ import (
 	"github.com/fogleman/gg"
 
 	"m3m/internal/service"
+	"m3m/pkg/schema"
 )
 
 // Canvas represents a drawing canvas in JS
@@ -382,15 +383,15 @@ func hexToByte(s string) byte {
 }
 
 // GetSchema implements JSSchemaProvider
-func (d *DrawModule) GetSchema() JSModuleSchema {
-	return JSModuleSchema{
+func (d *DrawModule) GetSchema() schema.ModuleSchema {
+	return schema.ModuleSchema{
 		Name:        "$draw",
 		Description: "Canvas-based drawing and graphics creation",
-		Types: []JSTypeSchema{
+		Types: []schema.TypeSchema{
 			{
 				Name:        "Canvas",
 				Description: "A drawing canvas with various drawing methods",
-				Fields: []JSParamSchema{
+				Fields: []schema.ParamSchema{
 					{Name: "setColor", Type: "(color: string) => void", Description: "Set drawing color (hex or named)"},
 					{Name: "setLineWidth", Type: "(width: number) => void", Description: "Set line width"},
 					{Name: "clear", Type: "(color: string) => void", Description: "Clear canvas with color"},
@@ -421,27 +422,27 @@ func (d *DrawModule) GetSchema() JSModuleSchema {
 				},
 			},
 		},
-		Methods: []JSMethodSchema{
+		Methods: []schema.MethodSchema{
 			{
 				Name:        "createCanvas",
 				Description: "Create a new drawing canvas",
-				Params: []JSParamSchema{
+				Params: []schema.ParamSchema{
 					{Name: "width", Type: "number", Description: "Canvas width in pixels"},
 					{Name: "height", Type: "number", Description: "Canvas height in pixels"},
 				},
-				Returns: &JSParamSchema{Type: "Canvas"},
+				Returns: &schema.ParamSchema{Type: "Canvas"},
 			},
 			{
 				Name:        "loadImage",
 				Description: "Load an image from storage as a canvas",
-				Params:      []JSParamSchema{{Name: "path", Type: "string", Description: "Path to image in storage"}},
-				Returns:     &JSParamSchema{Type: "Canvas | null"},
+				Params:      []schema.ParamSchema{{Name: "path", Type: "string", Description: "Path to image in storage"}},
+				Returns:     &schema.ParamSchema{Type: "Canvas | null"},
 			},
 		},
 	}
 }
 
 // GetDrawSchema returns the draw schema (static version)
-func GetDrawSchema() JSModuleSchema {
+func GetDrawSchema() schema.ModuleSchema {
 	return (&DrawModule{}).GetSchema()
 }

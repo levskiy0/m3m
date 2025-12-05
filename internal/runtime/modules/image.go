@@ -13,6 +13,7 @@ import (
 	"golang.org/x/image/draw"
 
 	"m3m/internal/service"
+	"m3m/pkg/schema"
 )
 
 type ImageModule struct {
@@ -285,54 +286,54 @@ func init() {
 }
 
 // GetSchema implements JSSchemaProvider
-func (m *ImageModule) GetSchema() JSModuleSchema {
-	return JSModuleSchema{
+func (m *ImageModule) GetSchema() schema.ModuleSchema {
+	return schema.ModuleSchema{
 		Name:        "$image",
 		Description: "Image manipulation operations (resize, crop, thumbnail)",
-		Types: []JSTypeSchema{
+		Types: []schema.TypeSchema{
 			{
 				Name:        "ImageInfo",
 				Description: "Information about an image",
-				Fields: []JSParamSchema{
+				Fields: []schema.ParamSchema{
 					{Name: "width", Type: "number", Description: "Image width in pixels"},
 					{Name: "height", Type: "number", Description: "Image height in pixels"},
 					{Name: "format", Type: "string", Description: "Image format (png, jpeg, etc.)"},
 				},
 			},
 		},
-		Methods: []JSMethodSchema{
+		Methods: []schema.MethodSchema{
 			{
 				Name:        "info",
 				Description: "Get image information (dimensions, format)",
-				Params:      []JSParamSchema{{Name: "path", Type: "string", Description: "Path to image in storage"}},
-				Returns:     &JSParamSchema{Type: "ImageInfo | null"},
+				Params:      []schema.ParamSchema{{Name: "path", Type: "string", Description: "Path to image in storage"}},
+				Returns:     &schema.ParamSchema{Type: "ImageInfo | null"},
 			},
 			{
 				Name:        "resize",
 				Description: "Resize image to exact dimensions",
-				Params: []JSParamSchema{
+				Params: []schema.ParamSchema{
 					{Name: "src", Type: "string", Description: "Source image path"},
 					{Name: "dst", Type: "string", Description: "Destination image path"},
 					{Name: "width", Type: "number", Description: "Target width"},
 					{Name: "height", Type: "number", Description: "Target height"},
 				},
-				Returns: &JSParamSchema{Type: "boolean"},
+				Returns: &schema.ParamSchema{Type: "boolean"},
 			},
 			{
 				Name:        "resizeKeepRatio",
 				Description: "Resize image keeping aspect ratio within bounds",
-				Params: []JSParamSchema{
+				Params: []schema.ParamSchema{
 					{Name: "src", Type: "string", Description: "Source image path"},
 					{Name: "dst", Type: "string", Description: "Destination image path"},
 					{Name: "maxWidth", Type: "number", Description: "Maximum width"},
 					{Name: "maxHeight", Type: "number", Description: "Maximum height"},
 				},
-				Returns: &JSParamSchema{Type: "boolean"},
+				Returns: &schema.ParamSchema{Type: "boolean"},
 			},
 			{
 				Name:        "crop",
 				Description: "Crop a region from image",
-				Params: []JSParamSchema{
+				Params: []schema.ParamSchema{
 					{Name: "src", Type: "string", Description: "Source image path"},
 					{Name: "dst", Type: "string", Description: "Destination image path"},
 					{Name: "x", Type: "number", Description: "X offset"},
@@ -340,29 +341,29 @@ func (m *ImageModule) GetSchema() JSModuleSchema {
 					{Name: "width", Type: "number", Description: "Crop width"},
 					{Name: "height", Type: "number", Description: "Crop height"},
 				},
-				Returns: &JSParamSchema{Type: "boolean"},
+				Returns: &schema.ParamSchema{Type: "boolean"},
 			},
 			{
 				Name:        "thumbnail",
 				Description: "Create a square thumbnail from center",
-				Params: []JSParamSchema{
+				Params: []schema.ParamSchema{
 					{Name: "src", Type: "string", Description: "Source image path"},
 					{Name: "dst", Type: "string", Description: "Destination image path"},
 					{Name: "size", Type: "number", Description: "Thumbnail size (width and height)"},
 				},
-				Returns: &JSParamSchema{Type: "boolean"},
+				Returns: &schema.ParamSchema{Type: "boolean"},
 			},
 			{
 				Name:        "readAsBase64",
 				Description: "Read image as base64 data URI",
-				Params:      []JSParamSchema{{Name: "path", Type: "string", Description: "Path to image in storage"}},
-				Returns:     &JSParamSchema{Type: "string"},
+				Params:      []schema.ParamSchema{{Name: "path", Type: "string", Description: "Path to image in storage"}},
+				Returns:     &schema.ParamSchema{Type: "string"},
 			},
 		},
 	}
 }
 
 // GetImageSchema returns the image schema (static version)
-func GetImageSchema() JSModuleSchema {
+func GetImageSchema() schema.ModuleSchema {
 	return (&ImageModule{}).GetSchema()
 }

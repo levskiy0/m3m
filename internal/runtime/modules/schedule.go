@@ -7,6 +7,7 @@ import (
 
 	"github.com/dop251/goja"
 	"github.com/robfig/cron/v3"
+	"m3m/pkg/schema"
 )
 
 type ScheduleModule struct {
@@ -124,25 +125,25 @@ func (s *ScheduleModule) Register(vm interface{}) {
 }
 
 // GetSchema implements JSSchemaProvider
-func (s *ScheduleModule) GetSchema() JSModuleSchema {
-	return JSModuleSchema{
+func (s *ScheduleModule) GetSchema() schema.ModuleSchema {
+	return schema.ModuleSchema{
 		Name:        "$schedule",
 		Description: "Job scheduling for periodic tasks using cron expressions",
-		Methods: []JSMethodSchema{
+		Methods: []schema.MethodSchema{
 			{
 				Name:        "daily",
 				Description: "Schedule a job to run daily at midnight",
-				Params:      []JSParamSchema{{Name: "handler", Type: "() => void", Description: "Function to execute"}},
+				Params:      []schema.ParamSchema{{Name: "handler", Type: "() => void", Description: "Function to execute"}},
 			},
 			{
 				Name:        "hourly",
 				Description: "Schedule a job to run at the start of every hour",
-				Params:      []JSParamSchema{{Name: "handler", Type: "() => void", Description: "Function to execute"}},
+				Params:      []schema.ParamSchema{{Name: "handler", Type: "() => void", Description: "Function to execute"}},
 			},
 			{
 				Name:        "cron",
 				Description: "Schedule a job using a cron expression",
-				Params: []JSParamSchema{
+				Params: []schema.ParamSchema{
 					{Name: "expression", Type: "string", Description: "Cron expression (e.g., '0 0 * * *')"},
 					{Name: "handler", Type: "() => void", Description: "Function to execute"},
 				},
@@ -152,6 +153,6 @@ func (s *ScheduleModule) GetSchema() JSModuleSchema {
 }
 
 // GetScheduleSchema returns the schedule schema (static version)
-func GetScheduleSchema() JSModuleSchema {
+func GetScheduleSchema() schema.ModuleSchema {
 	return (&ScheduleModule{}).GetSchema()
 }

@@ -6,6 +6,7 @@ import (
 	"m3m/internal/service"
 
 	"github.com/dop251/goja"
+	"m3m/pkg/schema"
 )
 
 type StorageModule struct {
@@ -140,118 +141,118 @@ func (s *StorageModule) TmpGetPath(path string) string {
 }
 
 // GetSchema implements JSSchemaProvider
-func (s *StorageModule) GetSchema() JSModuleSchema {
-	return JSModuleSchema{
+func (s *StorageModule) GetSchema() schema.ModuleSchema {
+	return schema.ModuleSchema{
 		Name:        "$storage",
 		Description: "File storage operations for the project",
-		Methods: []JSMethodSchema{
+		Methods: []schema.MethodSchema{
 			{
 				Name:        "read",
 				Description: "Read file contents as string",
-				Params:      []JSParamSchema{{Name: "path", Type: "string", Description: "File path relative to project storage"}},
-				Returns:     &JSParamSchema{Type: "string"},
+				Params:      []schema.ParamSchema{{Name: "path", Type: "string", Description: "File path relative to project storage"}},
+				Returns:     &schema.ParamSchema{Type: "string"},
 			},
 			{
 				Name:        "readBase64",
 				Description: "Read file contents as base64 encoded string (for binary files like images)",
-				Params:      []JSParamSchema{{Name: "path", Type: "string", Description: "File path relative to project storage"}},
-				Returns:     &JSParamSchema{Type: "string"},
+				Params:      []schema.ParamSchema{{Name: "path", Type: "string", Description: "File path relative to project storage"}},
+				Returns:     &schema.ParamSchema{Type: "string"},
 			},
 			{
 				Name:        "write",
 				Description: "Write string content to file",
-				Params: []JSParamSchema{
+				Params: []schema.ParamSchema{
 					{Name: "path", Type: "string", Description: "File path relative to project storage"},
 					{Name: "content", Type: "string", Description: "Content to write"},
 				},
-				Returns: &JSParamSchema{Type: "boolean"},
+				Returns: &schema.ParamSchema{Type: "boolean"},
 			},
 			{
 				Name:        "exists",
 				Description: "Check if file or directory exists",
-				Params:      []JSParamSchema{{Name: "path", Type: "string", Description: "File path to check"}},
-				Returns:     &JSParamSchema{Type: "boolean"},
+				Params:      []schema.ParamSchema{{Name: "path", Type: "string", Description: "File path to check"}},
+				Returns:     &schema.ParamSchema{Type: "boolean"},
 			},
 			{
 				Name:        "delete",
 				Description: "Delete file or directory",
-				Params:      []JSParamSchema{{Name: "path", Type: "string", Description: "File path to delete"}},
-				Returns:     &JSParamSchema{Type: "boolean"},
+				Params:      []schema.ParamSchema{{Name: "path", Type: "string", Description: "File path to delete"}},
+				Returns:     &schema.ParamSchema{Type: "boolean"},
 			},
 			{
 				Name:        "list",
 				Description: "List files in directory",
-				Params:      []JSParamSchema{{Name: "path", Type: "string", Description: "Directory path"}},
-				Returns:     &JSParamSchema{Type: "string[]"},
+				Params:      []schema.ParamSchema{{Name: "path", Type: "string", Description: "Directory path"}},
+				Returns:     &schema.ParamSchema{Type: "string[]"},
 			},
 			{
 				Name:        "mkdir",
 				Description: "Create directory",
-				Params:      []JSParamSchema{{Name: "path", Type: "string", Description: "Directory path to create"}},
-				Returns:     &JSParamSchema{Type: "boolean"},
+				Params:      []schema.ParamSchema{{Name: "path", Type: "string", Description: "Directory path to create"}},
+				Returns:     &schema.ParamSchema{Type: "boolean"},
 			},
 			{
 				Name:        "getPath",
 				Description: "Get absolute filesystem path for a file",
-				Params:      []JSParamSchema{{Name: "path", Type: "string", Description: "File path relative to project storage"}},
-				Returns:     &JSParamSchema{Type: "string"},
+				Params:      []schema.ParamSchema{{Name: "path", Type: "string", Description: "File path relative to project storage"}},
+				Returns:     &schema.ParamSchema{Type: "string"},
 			},
 		},
-		Nested: []JSNestedModuleSchema{
+		Nested: []schema.NestedModuleSchema{
 			{
 				Name:        "tmp",
 				Description: "Temporary storage operations (files stored in tmp/ directory)",
-				Methods: []JSMethodSchema{
+				Methods: []schema.MethodSchema{
 					{
 						Name:        "read",
 						Description: "Read file contents from tmp storage",
-						Params:      []JSParamSchema{{Name: "path", Type: "string", Description: "File path relative to tmp storage"}},
-						Returns:     &JSParamSchema{Type: "string"},
+						Params:      []schema.ParamSchema{{Name: "path", Type: "string", Description: "File path relative to tmp storage"}},
+						Returns:     &schema.ParamSchema{Type: "string"},
 					},
 					{
 						Name:        "readBase64",
 						Description: "Read file contents as base64 encoded string from tmp storage",
-						Params:      []JSParamSchema{{Name: "path", Type: "string", Description: "File path relative to tmp storage"}},
-						Returns:     &JSParamSchema{Type: "string"},
+						Params:      []schema.ParamSchema{{Name: "path", Type: "string", Description: "File path relative to tmp storage"}},
+						Returns:     &schema.ParamSchema{Type: "string"},
 					},
 					{
 						Name:        "write",
 						Description: "Write string content to tmp storage",
-						Params: []JSParamSchema{
+						Params: []schema.ParamSchema{
 							{Name: "path", Type: "string", Description: "File path relative to tmp storage"},
 							{Name: "content", Type: "string", Description: "Content to write"},
 						},
-						Returns: &JSParamSchema{Type: "boolean"},
+						Returns: &schema.ParamSchema{Type: "boolean"},
 					},
 					{
 						Name:        "exists",
 						Description: "Check if file exists in tmp storage",
-						Params:      []JSParamSchema{{Name: "path", Type: "string", Description: "File path to check"}},
-						Returns:     &JSParamSchema{Type: "boolean"},
+						Params:      []schema.ParamSchema{{Name: "path", Type: "string", Description: "File path to check"}},
+						Returns:     &schema.ParamSchema{Type: "boolean"},
 					},
 					{
 						Name:        "delete",
 						Description: "Delete file from tmp storage",
-						Params:      []JSParamSchema{{Name: "path", Type: "string", Description: "File path to delete"}},
-						Returns:     &JSParamSchema{Type: "boolean"},
+						Params:      []schema.ParamSchema{{Name: "path", Type: "string", Description: "File path to delete"}},
+						Returns:     &schema.ParamSchema{Type: "boolean"},
 					},
 					{
 						Name:        "list",
 						Description: "List files in tmp directory",
-						Params:      []JSParamSchema{{Name: "path", Type: "string", Description: "Directory path"}},
-						Returns:     &JSParamSchema{Type: "string[]"},
+						Params:      []schema.ParamSchema{{Name: "path", Type: "string", Description: "Directory path"}},
+						Returns:     &schema.ParamSchema{Type: "string[]"},
 					},
 					{
 						Name:        "mkdir",
 						Description: "Create directory in tmp storage",
-						Params:      []JSParamSchema{{Name: "path", Type: "string", Description: "Directory path to create"}},
-						Returns:     &JSParamSchema{Type: "boolean"},
+						Params:      []schema.ParamSchema{{Name: "path", Type: "string", Description: "Directory path to create"}},
+						Returns:     &schema.ParamSchema{Type: "boolean"},
 					},
 					{
 						Name:        "getPath",
 						Description: "Get absolute filesystem path for a file in tmp storage",
-						Params:      []JSParamSchema{{Name: "path", Type: "string", Description: "File path relative to tmp storage"}},
-						Returns:     &JSParamSchema{Type: "string"},
+						Params:      []schema.ParamSchema{{Name: "path", Type: "string", Description: "File path relative to tmp storage"}},
+						Returns:     &schema.ParamSchema{Type: "string"},
 					},
 				},
 			},
@@ -260,6 +261,6 @@ func (s *StorageModule) GetSchema() JSModuleSchema {
 }
 
 // GetStorageSchema returns the storage schema (static version)
-func GetStorageSchema() JSModuleSchema {
+func GetStorageSchema() schema.ModuleSchema {
 	return (&StorageModule{}).GetSchema()
 }

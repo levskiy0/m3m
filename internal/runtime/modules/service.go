@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/dop251/goja"
+	"m3m/pkg/schema"
 )
 
 // ServiceModule manages the lifecycle of a service
@@ -154,31 +155,31 @@ func (s *ServiceModule) Register(vm interface{}) {
 }
 
 // GetSchema implements JSSchemaProvider
-func (s *ServiceModule) GetSchema() JSModuleSchema {
-	return JSModuleSchema{
+func (s *ServiceModule) GetSchema() schema.ModuleSchema {
+	return schema.ModuleSchema{
 		Name:        "$service",
 		Description: "Service lifecycle management for boot, start, and shutdown phases",
-		Methods: []JSMethodSchema{
+		Methods: []schema.MethodSchema{
 			{
 				Name:        "boot",
 				Description: "Register a callback to run during service initialization",
-				Params:      []JSParamSchema{{Name: "callback", Type: "() => void", Description: "Function to execute during boot phase"}},
+				Params:      []schema.ParamSchema{{Name: "callback", Type: "() => void", Description: "Function to execute during boot phase"}},
 			},
 			{
 				Name:        "start",
 				Description: "Register a callback to run when service is ready",
-				Params:      []JSParamSchema{{Name: "callback", Type: "() => void", Description: "Function to execute when service starts"}},
+				Params:      []schema.ParamSchema{{Name: "callback", Type: "() => void", Description: "Function to execute when service starts"}},
 			},
 			{
 				Name:        "shutdown",
 				Description: "Register a callback to run when service is stopping",
-				Params:      []JSParamSchema{{Name: "callback", Type: "() => void", Description: "Function to execute during shutdown"}},
+				Params:      []schema.ParamSchema{{Name: "callback", Type: "() => void", Description: "Function to execute during shutdown"}},
 			},
 		},
 	}
 }
 
 // GetServiceSchema returns the service schema (static version)
-func GetServiceSchema() JSModuleSchema {
+func GetServiceSchema() schema.ModuleSchema {
 	return (&ServiceModule{}).GetSchema()
 }
