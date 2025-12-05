@@ -553,14 +553,6 @@ export function StoragePage() {
 
   return (
       <>
-        <div className="p-[110px] rounded-xl border !rounded-t-none">
-
-          {/* или !rounded-t-[0px] */}
-
-          Контент
-
-        </div>
-
         <Card className="flex flex-col gap-0" style={{height: 'calc(100vh - 85px)'}}>
           {/* Tabs Bar */}
           <div className="flex items-end border-b px-4">
