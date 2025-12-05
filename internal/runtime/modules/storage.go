@@ -145,12 +145,6 @@ func (s *StorageModule) GetSchema() JSModuleSchema {
 		Name:        "$storage",
 		Description: "File storage operations for the project",
 		Methods: []JSMethodSchema{
-// GetSchema implements JSSchemaProvider
-func (s *StorageModule) GetSchema() JSModuleSchema {
-	return JSModuleSchema{
-		Name:        "$storage",
-		Description: "File storage operations for the project",
-		Methods: []JSMethodSchema{
 			{
 				Name:        "read",
 				Description: "Read file contents as string",
@@ -195,6 +189,12 @@ func (s *StorageModule) GetSchema() JSModuleSchema {
 				Description: "Create directory",
 				Params:      []JSParamSchema{{Name: "path", Type: "string", Description: "Directory path to create"}},
 				Returns:     &JSParamSchema{Type: "boolean"},
+			},
+			{
+				Name:        "getPath",
+				Description: "Get absolute filesystem path for a file",
+				Params:      []JSParamSchema{{Name: "path", Type: "string", Description: "File path relative to project storage"}},
+				Returns:     &JSParamSchema{Type: "string"},
 			},
 		},
 		Nested: []JSNestedModuleSchema{
@@ -246,6 +246,12 @@ func (s *StorageModule) GetSchema() JSModuleSchema {
 						Description: "Create directory in tmp storage",
 						Params:      []JSParamSchema{{Name: "path", Type: "string", Description: "Directory path to create"}},
 						Returns:     &JSParamSchema{Type: "boolean"},
+					},
+					{
+						Name:        "getPath",
+						Description: "Get absolute filesystem path for a file in tmp storage",
+						Params:      []JSParamSchema{{Name: "path", Type: "string", Description: "File path relative to tmp storage"}},
+						Returns:     &JSParamSchema{Type: "string"},
 					},
 				},
 			},
