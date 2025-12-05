@@ -1,6 +1,8 @@
 package modules
 
 import (
+	"encoding/base64"
+
 	"m3m/internal/service"
 
 	"github.com/dop251/goja"
@@ -26,19 +28,21 @@ func (s *StorageModule) Name() string {
 // Register registers the module into the JavaScript VM
 func (s *StorageModule) Register(vm interface{}) {
 	vm.(*goja.Runtime).Set(s.Name(), map[string]interface{}{
-		"read":   s.Read,
-		"write":  s.Write,
-		"exists": s.Exists,
-		"delete": s.Delete,
-		"list":   s.List,
-		"mkdir":  s.MkDir,
+		"read":       s.Read,
+		"readBase64": s.ReadBase64,
+		"write":      s.Write,
+		"exists":     s.Exists,
+		"delete":     s.Delete,
+		"list":       s.List,
+		"mkdir":      s.MkDir,
 		"tmp": map[string]interface{}{
-			"read":   s.TmpRead,
-			"write":  s.TmpWrite,
-			"exists": s.TmpExists,
-			"delete": s.TmpDelete,
-			"list":   s.TmpList,
-			"mkdir":  s.TmpMkDir,
+			"read":       s.TmpRead,
+			"readBase64": s.TmpReadBase64,
+			"write":      s.TmpWrite,
+			"exists":     s.TmpExists,
+			"delete":     s.TmpDelete,
+			"list":       s.TmpList,
+			"mkdir":      s.TmpMkDir,
 		},
 	})
 }
@@ -49,6 +53,14 @@ func (s *StorageModule) Read(path string) string {
 		return ""
 	}
 	return string(data)
+}
+
+func (s *StorageModule) ReadBase64(path string) string {
+	data, err := s.storage.Read(s.projectID, path)
+	if err != nil {
+		return ""
+	}
+	return base64.StdEncoding.EncodeToString(data)
 }
 
 func (s *StorageModule) Write(path string, content string) bool {
@@ -89,6 +101,10 @@ func (s *StorageModule) TmpRead(path string) string {
 	return s.Read("tmp/" + path)
 }
 
+func (s *StorageModule) TmpReadBase64(path string) string {
+	return s.ReadBase64("tmp/" + path)
+}
+
 func (s *StorageModule) TmpWrite(path string, content string) bool {
 	return s.Write("tmp/"+path, content)
 }
@@ -118,6 +134,12 @@ func (s *StorageModule) GetSchema() JSModuleSchema {
 			{
 				Name:        "read",
 				Description: "Read file contents as string",
+				Params:      []JSParamSchema{{Name: "path", Type: "string", Description: "File path relative to project storage"}},
+				Returns:     &JSParamSchema{Type: "string"},
+			},
+			{
+				Name:        "readBase64",
+				Description: "Read file contents as base64 encoded string (for binary files like images)",
 				Params:      []JSParamSchema{{Name: "path", Type: "string", Description: "File path relative to project storage"}},
 				Returns:     &JSParamSchema{Type: "string"},
 			},
@@ -163,6 +185,12 @@ func (s *StorageModule) GetSchema() JSModuleSchema {
 					{
 						Name:        "read",
 						Description: "Read file contents from tmp storage",
+						Params:      []JSParamSchema{{Name: "path", Type: "string", Description: "File path relative to tmp storage"}},
+						Returns:     &JSParamSchema{Type: "string"},
+					},
+					{
+						Name:        "readBase64",
+						Description: "Read file contents as base64 encoded string from tmp storage",
 						Params:      []JSParamSchema{{Name: "path", Type: "string", Description: "File path relative to tmp storage"}},
 						Returns:     &JSParamSchema{Type: "string"},
 					},

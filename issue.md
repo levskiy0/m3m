@@ -321,8 +321,18 @@ service.shotdown(() => {
 
 
 
+------
 
+При удалении файла `Cannot read properties of null (reading 'path')`
 
+----
+
+Не работает ни лог ни цели!!!
+
+``` 
+    $logger.debug($goals.get("6931eac0-register"));
+    $logger.info('/health/...');
+```
 
 
 

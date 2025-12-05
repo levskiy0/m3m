@@ -33,7 +33,9 @@
       "Bash(./node_modules/.bin/tsc:*)",
       "Bash(ls:*)",
       "Bash(make build:*)",
-      "Bash(mongosh:*)"
+      "Bash(mongosh:*)",
+      "Bash(grep:*)",
+      "Bash(make build-plugin:*)"
     ],
     "deny": [],
     "ask": []
