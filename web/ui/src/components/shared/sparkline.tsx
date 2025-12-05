@@ -52,7 +52,7 @@ export function Sparkline({
     return `M0,${height} L${points.join(' L')} L${width},${height} Z`;
   }, [data, width, height]);
 
-  if (!data || data.length < 2) {
+  if (!data || data.length === 0) {
     return (
       <svg
         width={width}
@@ -67,6 +67,35 @@ export function Sparkline({
           stroke="currentColor"
           strokeWidth={1}
           strokeDasharray="2,2"
+        />
+      </svg>
+    );
+  }
+
+  // Show single point as a dot with dashed line
+  if (data.length === 1) {
+    return (
+      <svg
+        width={width}
+        height={height}
+        className={className}
+        style={{ color }}
+      >
+        <line
+          x1={0}
+          y1={height / 2}
+          x2={width}
+          y2={height / 2}
+          stroke="currentColor"
+          strokeWidth={1}
+          strokeDasharray="3,3"
+          opacity={0.3}
+        />
+        <circle
+          cx={width}
+          cy={height / 2}
+          r={3}
+          fill="currentColor"
         />
       </svg>
     );

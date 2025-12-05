@@ -449,16 +449,14 @@ export function ProjectDashboard() {
                         : 'No routes'}
                     </p>
                   </div>
-                  {stats?.history?.requests && stats.history.requests.length > 1 && (
-                    <Sparkline
-                      data={stats.history.requests}
-                      width={80}
-                      height={32}
-                      color="hsl(var(--primary))"
-                      strokeWidth={2}
-                      fillOpacity={0.15}
-                    />
-                  )}
+                  <Sparkline
+                    data={stats?.history?.requests || []}
+                    width={80}
+                    height={32}
+                    color="hsl(var(--primary))"
+                    strokeWidth={2}
+                    fillOpacity={0.15}
+                  />
                 </div>
               </CardContent>
             </Card>
@@ -493,16 +491,14 @@ export function ProjectDashboard() {
                     </div>
                     <p className="text-xs text-muted-foreground mt-1">Current usage</p>
                   </div>
-                  {stats?.history?.memory && stats.history.memory.length > 1 && (
-                    <Sparkline
-                      data={stats.history.memory}
-                      width={80}
-                      height={32}
-                      color="hsl(var(--chart-2))"
-                      strokeWidth={2}
-                      fillOpacity={0.15}
-                    />
-                  )}
+                  <Sparkline
+                    data={stats?.history?.memory || []}
+                    width={80}
+                    height={32}
+                    color="hsl(var(--chart-2))"
+                    strokeWidth={2}
+                    fillOpacity={0.15}
+                  />
                 </div>
               </CardContent>
             </Card>

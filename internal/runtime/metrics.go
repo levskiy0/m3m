@@ -8,9 +8,9 @@ import (
 
 const (
 	// MetricsInterval is the interval between metrics snapshots
-	MetricsInterval = 5 * time.Minute
-	// MetricsHistorySize is the number of snapshots to keep (24h / 5min = 288)
-	MetricsHistorySize = 288
+	MetricsInterval = 1 * time.Minute
+	// MetricsHistorySize is the number of snapshots to keep (24h / 1min = 1440)
+	MetricsHistorySize = 1440
 )
 
 // MetricsSnapshot represents a point-in-time metrics snapshot
