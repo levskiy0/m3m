@@ -300,57 +300,11 @@ service.shotdown(() => {
 
 ------------------------
 
-
-Сделай в `runtime api` `storage` доступ к `tmp` (`/storage/{project-id}/tmp`)
-
-`$storage.tmp.list()` (по сути мы просто подставляем путь временного хранилища м прокидываем в уже существующие методы)
-
 ---
 
 System Info нужно убрать и сделать просто Loaded Modules
 
 ---
-
-для `/plugins/` сделай единый make
-
----
-
-```
-// TypeDefinitions returns TypeScript declarations for Monaco
-func (p *TelegramPlugin) TypeDefinitions() string {
-```
-
-Кажется что мы иначе делаем определение схемы...
-
-И кажется `internal/runtime/modules/schema.go` нужно перетащить контракты в `pkg`
-
-
----
-
-`https://github.com/go-telegram/bot`
-
-Добавь новый `runtime api` через `plugins/telegram` / `$telegram` 
-
-Нужен прям полный нормальный функционал создания бота, отправки команд, отправки файлов из сторейджа и тд!
-
----
-
-
-в `plugins/telegram/example.js` напиши пример бота который гадает да или нет и отдает сообщение с картинкой (yes.png/no.png) и клавиатурой 
-
-``` 
-
-$telegram.startBot(TOKEN, ($instance) => {
-  $instance.handle("/start", () => {})
-  
-  $instance.sendMessage(...)
-})
-
-```
-
-
-
-
 
 
 
