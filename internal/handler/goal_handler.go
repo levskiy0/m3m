@@ -2,6 +2,9 @@ package handler
 
 import (
 	"net/http"
+	"sort"
+	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -10,6 +13,19 @@ import (
 	"m3m/internal/middleware"
 	"m3m/internal/service"
 )
+
+// GoalStatsResponse represents aggregated goal statistics for frontend
+type GoalStatsResponse struct {
+	GoalID     string          `json:"goalID"`
+	Value      int64           `json:"value"`
+	DailyStats []DailyStatItem `json:"dailyStats,omitempty"`
+}
+
+// DailyStatItem represents a single day's statistics
+type DailyStatItem struct {
+	Date  string `json:"date"`
+	Value int64  `json:"value"`
+}
 
 type GoalHandler struct {
 	goalService    *service.GoalService
@@ -32,6 +48,7 @@ func (h *GoalHandler) Register(r *gin.RouterGroup, authMiddleware *middleware.Au
 		goals.POST("", authMiddleware.RequirePermission("manage_users"), h.CreateGlobal)
 		goals.GET("/stats", h.GetStats)
 		goals.GET("/:id", h.Get)
+		goals.GET("/:id/stats", h.GetGoalStats)
 		goals.PUT("/:id", authMiddleware.RequirePermission("manage_users"), h.Update)
 		goals.DELETE("/:id", authMiddleware.RequirePermission("manage_users"), h.Delete)
 	}
@@ -127,19 +144,133 @@ func (h *GoalHandler) Delete(c *gin.Context) {
 }
 
 func (h *GoalHandler) GetStats(c *gin.Context) {
-	var query domain.GoalStatsQuery
-	if err := c.ShouldBindQuery(&query); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	// Parse goalIds from query (frontend sends comma-separated)
+	goalIdsParam := c.Query("goalIds")
+	if goalIdsParam == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "goalIds is required"})
 		return
 	}
 
-	stats, err := h.goalService.GetStats(c.Request.Context(), &query)
+	goalIds := strings.Split(goalIdsParam, ",")
+
+	// Calculate date range for last 14 days
+	endDate := time.Now()
+	startDate := endDate.AddDate(0, 0, -14)
+
+	query := &domain.GoalStatsQuery{
+		GoalIDs:   goalIds,
+		StartDate: startDate.Format("2006-01-02"),
+		EndDate:   endDate.Format("2006-01-02"),
+	}
+
+	stats, err := h.goalService.GetStats(c.Request.Context(), query)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusOK, stats)
+	// Aggregate stats by goal ID
+	goalStatsMap := make(map[string]*GoalStatsResponse)
+	today := time.Now().Format("2006-01-02")
+
+	for _, stat := range stats {
+		goalID := stat.GoalID.Hex()
+		if _, ok := goalStatsMap[goalID]; !ok {
+			goalStatsMap[goalID] = &GoalStatsResponse{
+				GoalID:     goalID,
+				DailyStats: []DailyStatItem{},
+			}
+		}
+
+		gs := goalStatsMap[goalID]
+		gs.DailyStats = append(gs.DailyStats, DailyStatItem{
+			Date:  stat.Date,
+			Value: stat.Value,
+		})
+
+		// Set current value (today's value for daily_counter, or total)
+		if stat.Date == today || stat.Date == "total" {
+			gs.Value = stat.Value
+		}
+	}
+
+	// Convert map to slice and sort dailyStats by date
+	result := make([]GoalStatsResponse, 0, len(goalStatsMap))
+	for _, gs := range goalStatsMap {
+		sort.Slice(gs.DailyStats, func(i, j int) bool {
+			return gs.DailyStats[i].Date < gs.DailyStats[j].Date
+		})
+		result = append(result, *gs)
+	}
+
+	// Add empty responses for goals with no stats
+	for _, goalID := range goalIds {
+		found := false
+		for _, gs := range result {
+			if gs.GoalID == goalID {
+				found = true
+				break
+			}
+		}
+		if !found {
+			result = append(result, GoalStatsResponse{
+				GoalID:     goalID,
+				Value:      0,
+				DailyStats: []DailyStatItem{},
+			})
+		}
+	}
+
+	c.JSON(http.StatusOK, result)
+}
+
+// GetGoalStats returns stats for a single goal
+func (h *GoalHandler) GetGoalStats(c *gin.Context) {
+	goalID := c.Param("id")
+	if goalID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "goal id is required"})
+		return
+	}
+
+	// Calculate date range for last 14 days
+	endDate := time.Now()
+	startDate := endDate.AddDate(0, 0, -14)
+
+	query := &domain.GoalStatsQuery{
+		GoalIDs:   []string{goalID},
+		StartDate: startDate.Format("2006-01-02"),
+		EndDate:   endDate.Format("2006-01-02"),
+	}
+
+	stats, err := h.goalService.GetStats(c.Request.Context(), query)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	response := GoalStatsResponse{
+		GoalID:     goalID,
+		Value:      0,
+		DailyStats: []DailyStatItem{},
+	}
+
+	today := time.Now().Format("2006-01-02")
+	for _, stat := range stats {
+		response.DailyStats = append(response.DailyStats, DailyStatItem{
+			Date:  stat.Date,
+			Value: stat.Value,
+		})
+		if stat.Date == today || stat.Date == "total" {
+			response.Value = stat.Value
+		}
+	}
+
+	// Sort dailyStats by date
+	sort.Slice(response.DailyStats, func(i, j int) bool {
+		return response.DailyStats[i].Date < response.DailyStats[j].Date
+	})
+
+	c.JSON(http.StatusOK, response)
 }
 
 // Project goals
