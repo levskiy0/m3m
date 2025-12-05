@@ -16,10 +16,14 @@ import {
   Plus,
   Globe,
   Package,
+  Sun,
+  Moon,
+  Monitor,
 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 
 import { useAuth } from '@/providers/auth-provider';
+import { useTheme } from '@/providers/theme-provider';
 import { projectsApi } from '@/api';
 import {
   DropdownMenu,
@@ -70,6 +74,7 @@ export function AppSidebar() {
   const { projectId: routeProjectId } = useParams();
   const { user, logout } = useAuth();
   const { isMobile } = useSidebar();
+  const { theme, setTheme } = useTheme();
 
   const { data: projects = [] } = useQuery({
     queryKey: ['projects'],
@@ -332,6 +337,27 @@ export function AppSidebar() {
                       <User />
                       Profile
                     </Link>
+                  </DropdownMenuItem>
+                </DropdownMenuGroup>
+                <DropdownMenuSeparator />
+                <DropdownMenuLabel className="text-muted-foreground text-xs">
+                  Theme
+                </DropdownMenuLabel>
+                <DropdownMenuGroup>
+                  <DropdownMenuItem onClick={() => setTheme('light')}>
+                    <Sun />
+                    Light
+                    {theme === 'light' && <span className="ml-auto text-xs">*</span>}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setTheme('dark')}>
+                    <Moon />
+                    Dark
+                    {theme === 'dark' && <span className="ml-auto text-xs">*</span>}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setTheme('system')}>
+                    <Monitor />
+                    System
+                    {theme === 'system' && <span className="ml-auto text-xs">*</span>}
                   </DropdownMenuItem>
                 </DropdownMenuGroup>
                 <DropdownMenuSeparator />
