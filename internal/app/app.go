@@ -173,6 +173,7 @@ func StartServer(lc fx.Lifecycle, r *gin.Engine, cfg *config.Config, logger *slo
 }
 
 // AutoStartRuntimes starts all projects that were running before shutdown
+// Projects that were running in debug mode (branch) are NOT auto-started
 func AutoStartRuntimes(
 	lc fx.Lifecycle,
 	logger *slog.Logger,
@@ -200,14 +201,36 @@ func AutoStartRuntimes(
 				logger.Info("Found projects to autostart", "count", len(projects))
 
 				for _, project := range projects {
-					// Get active release code
-					release, err := pipelineService.GetActiveRelease(ctx, project.ID)
-					if err != nil {
-						logger.Warn("Failed to get active release for project, skipping",
-							"project", project.Slug, "error", err)
-						// Set project status to stopped since we can't start it
+					// Skip projects that were running in debug mode
+					if strings.HasPrefix(project.RunningSource, "debug:") {
+						logger.Info("Skipping debug mode project, setting to stopped",
+							"project", project.Slug, "source", project.RunningSource)
 						projectService.UpdateStatus(ctx, project.ID, domain.ProjectStatusStopped)
+						projectService.SetRunningSource(ctx, project.ID, "")
 						continue
+					}
+
+					// Get release version from running source or use active release
+					var release *domain.Release
+					if strings.HasPrefix(project.RunningSource, "release:") {
+						version := strings.TrimPrefix(project.RunningSource, "release:")
+						release, err = pipelineService.GetRelease(ctx, project.ID, version)
+						if err != nil {
+							logger.Warn("Failed to get release for project, trying active release",
+								"project", project.Slug, "version", version, "error", err)
+						}
+					}
+
+					// Fallback to active release
+					if release == nil {
+						release, err = pipelineService.GetActiveRelease(ctx, project.ID)
+						if err != nil {
+							logger.Warn("Failed to get active release for project, skipping",
+								"project", project.Slug, "error", err)
+							projectService.UpdateStatus(ctx, project.ID, domain.ProjectStatusStopped)
+							projectService.SetRunningSource(ctx, project.ID, "")
+							continue
+						}
 					}
 
 					// Start runtime
@@ -215,6 +238,7 @@ func AutoStartRuntimes(
 						logger.Error("Failed to autostart project",
 							"project", project.Slug, "error", err)
 						projectService.UpdateStatus(ctx, project.ID, domain.ProjectStatusStopped)
+						projectService.SetRunningSource(ctx, project.ID, "")
 						continue
 					}
 
