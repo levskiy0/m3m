@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useLocation } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Save,
@@ -46,7 +46,11 @@ import { cn } from '@/lib/utils';
 
 export function PipelinePage() {
   const { projectId } = useParams<{ projectId: string }>();
+  const location = useLocation();
   const queryClient = useQueryClient();
+
+  // Get initial branch from location state (when coming from Overview)
+  const initialBranchName = (location.state as { branch?: string } | null)?.branch;
 
   const [selectedBranchId, setSelectedBranchId] = useState<string>('');
   const [code, setCode] = useState('');
@@ -120,9 +124,18 @@ export function PipelinePage() {
     }
   }, [logs, isDebugMode]);
 
-  // Auto-select develop branch on load
+  // Auto-select branch on load (prioritize initialBranchName from state)
   useEffect(() => {
     if (branches.length > 0 && !selectedBranchId) {
+      // First try to select the branch from location state
+      if (initialBranchName) {
+        const targetBranch = branches.find((b) => b.name === initialBranchName);
+        if (targetBranch) {
+          setSelectedBranchId(targetBranch.id);
+          return;
+        }
+      }
+      // Otherwise select develop branch
       const developBranch = branches.find((b) => b.name === 'develop');
       if (developBranch) {
         setSelectedBranchId(developBranch.id);
@@ -130,7 +143,7 @@ export function PipelinePage() {
         setSelectedBranchId(branches[0].id);
       }
     }
-  }, [branches, selectedBranchId]);
+  }, [branches, selectedBranchId, initialBranchName]);
 
   // Fetch full branch with code when selected
   const { data: currentBranch, isLoading: branchLoading } = useQuery({

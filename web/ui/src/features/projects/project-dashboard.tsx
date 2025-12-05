@@ -486,10 +486,10 @@ export function ProjectDashboard() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                {isRunning && project.runningSource ? (
+                {isRunning ? (
                   <div className="flex items-center justify-between">
                     <div>
-                      {project.runningSource.startsWith('debug:') ? (
+                      {project.runningSource?.startsWith('debug:') ? (
                         <>
                           <div className="flex items-center gap-2">
                             <Bug className="size-5 text-amber-500" />
@@ -499,7 +499,7 @@ export function ProjectDashboard() {
                             {project.runningSource.replace('debug:', '')}
                           </Badge>
                         </>
-                      ) : (
+                      ) : project.runningSource?.startsWith('release:') ? (
                         <>
                           <p className="text-2xl font-bold">
                             {project.runningSource.replace('release:', '')}
@@ -510,10 +510,27 @@ export function ProjectDashboard() {
                             </Badge>
                           )}
                         </>
+                      ) : activeRelease ? (
+                        <>
+                          <p className="text-2xl font-bold">{activeRelease.version}</p>
+                          {activeRelease.tag && (
+                            <Badge variant="secondary" className="mt-1 capitalize">
+                              {activeRelease.tag}
+                            </Badge>
+                          )}
+                        </>
+                      ) : (
+                        <p className="text-2xl font-bold text-green-500">Active</p>
                       )}
                     </div>
                     <Button variant="ghost" size="sm" asChild>
-                      <Link to={`/projects/${projectId}/pipeline`}>
+                      <Link
+                        to={`/projects/${projectId}/pipeline`}
+                        state={project.runningSource?.startsWith('debug:')
+                          ? { branch: project.runningSource.replace('debug:', '') }
+                          : undefined
+                        }
+                      >
                         View
                         <ChevronRight className="ml-1 size-4" />
                       </Link>
