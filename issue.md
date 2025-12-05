@@ -298,7 +298,7 @@ service.shotdown(() => {
 
 ```
 
----
+------------------------
 
 Active Release
 No active release
@@ -317,64 +317,6 @@ Pipeline в списке релизов вообще не видно какой 
 Удалить релиз если он запущен нельзя.
 
 ---
-
-Мониторинг приходит но в Overbiew пустооооо!!!!
-
-```json 
-{
-    "project_id": "6931eac04c717825bfe2307c",
-    "status": "running",
-    "started_at": "2025-12-05T13:50:21.084387+07:00",
-    "uptime_seconds": 1302,
-    "uptime_formatted": "21m 42s",
-    "routes_count": 1,
-    "routes_by_method": {
-        "GET": 1
-    },
-    "scheduled_jobs": 1,
-    "scheduler_active": false,
-    "memory": {
-        "alloc": 3337024,
-        "total_alloc": 37118520,
-        "sys": 19809544,
-        "num_gc": 44
-    }
-}
-```
-
-``` 
-project-dashboard.ts…t=1764915025382:588 Uncaught TypeError: Cannot read properties of undefined (reading 'toLocaleString')
-    at ProjectDashboard (project-dashboard.ts…764915025382:588:62)
-```
-
----
-
-Статистика в Overview не отображается.
-
----
-
-Отдельно нужно вынести пункт если есть запущенные инстансы рантайма,
-
-На нем:
-- Релиз [Стоп/Старт|Перезапуск]
-  - Логи
-- Отладка [Стоп/Старт|Перезапуск]
-  - Логи
-
-То есть удобное управление сервисом и дебагом
-
----
-
-Для эффективной отладки, нужно иметь возможность запускать не только релиз а текущий черновик!!!
-
-Для черновика роуты будут `/r/debug/,,,`
-
-Где то в нужно показывать какие у нас запущенные инстансы есть.
-
----
-
-
-
 
 
 
