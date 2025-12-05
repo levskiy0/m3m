@@ -26,10 +26,14 @@ import {
   Tag,
   Cpu,
   Plus,
+  Trash2,
+  LayoutGrid,
+  BarChart3,
+  Minus,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
-import { projectsApi, runtimeApi, pipelineApi, goalsApi } from '@/api';
+import { projectsApi, runtimeApi, pipelineApi, goalsApi, widgetsApi } from '@/api';
 import { config } from '@/lib/config';
 import { Button } from '@/components/ui/button';
 import {
@@ -60,8 +64,18 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
-import type { LogEntry, Goal, GoalStats } from '@/types';
+import type { LogEntry, Goal, GoalStats, Widget, WidgetVariant, CreateWidgetRequest } from '@/types';
 import type { StartOptions } from '@/api/runtime';
 
 type LogLevel = 'all' | 'debug' | 'info' | 'warn' | 'error';
@@ -138,6 +152,17 @@ export function ProjectDashboard() {
     refetchInterval: 10000,
   });
 
+  const { data: widgets = [] } = useQuery({
+    queryKey: ['project-widgets', projectId],
+    queryFn: () => widgetsApi.list(projectId!),
+    enabled: !!projectId,
+  });
+
+  // Add Widget Dialog state
+  const [addWidgetOpen, setAddWidgetOpen] = useState(false);
+  const [selectedGoalId, setSelectedGoalId] = useState<string>('');
+  const [selectedVariant, setSelectedVariant] = useState<WidgetVariant>('mini');
+
   const logs: LogEntry[] = Array.isArray(logsData) ? logsData : [];
 
   const filteredLogs = logs.filter((log) =>
@@ -190,6 +215,42 @@ export function ProjectDashboard() {
       toast.error(err instanceof Error ? err.message : 'Failed to restart');
     },
   });
+
+  const createWidgetMutation = useMutation({
+    mutationFn: (data: CreateWidgetRequest) => widgetsApi.create(projectId!, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['project-widgets', projectId] });
+      setAddWidgetOpen(false);
+      setSelectedGoalId('');
+      setSelectedVariant('mini');
+      toast.success('Widget added');
+    },
+    onError: (err) => {
+      toast.error(err instanceof Error ? err.message : 'Failed to add widget');
+    },
+  });
+
+  const deleteWidgetMutation = useMutation({
+    mutationFn: (widgetId: string) => widgetsApi.delete(projectId!, widgetId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['project-widgets', projectId] });
+      toast.success('Widget removed');
+    },
+    onError: (err) => {
+      toast.error(err instanceof Error ? err.message : 'Failed to remove widget');
+    },
+  });
+
+  const handleAddWidget = () => {
+    if (!selectedGoalId) {
+      toast.error('Please select a goal');
+      return;
+    }
+    createWidgetMutation.mutate({
+      goalId: selectedGoalId,
+      variant: selectedVariant,
+    });
+  };
 
   const copyApiKey = async () => {
     if (project?.apiKey) {
@@ -623,27 +684,49 @@ export function ProjectDashboard() {
           <div>
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold">Widgets</h2>
-              <Button variant="outline" size="sm">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setAddWidgetOpen(true)}
+                disabled={goals.length === 0}
+              >
                 <Plus className="mr-1.5 size-4" />
                 Add Widget
               </Button>
             </div>
-            {goals.length > 0 ? (
+            {widgets.length > 0 ? (
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {goals.map((goal) => {
-                  const stat = goalStatsMap.get(goal.id);
+                {widgets.map((widget) => {
+                  const goal = goals.find(g => g.id === widget.goalId);
+                  const stat = goal ? goalStatsMap.get(goal.id) : undefined;
+                  if (!goal) return null;
                   return (
-                    <GoalWidget key={goal.id} goal={goal} stats={stat} />
+                    <WidgetCard
+                      key={widget.id}
+                      widget={widget}
+                      goal={goal}
+                      stats={stat}
+                      onDelete={() => deleteWidgetMutation.mutate(widget.id)}
+                    />
                   );
                 })}
               </div>
             ) : (
               <Card>
                 <CardContent className="flex flex-col items-center justify-center py-8">
-                  <Target className="size-10 text-muted-foreground mb-3" />
+                  <LayoutGrid className="size-10 text-muted-foreground mb-3" />
                   <p className="text-muted-foreground text-center text-sm">
-                    No widgets added. Add widgets to display goal metrics.
+                    {goals.length === 0
+                      ? 'Create goals first to add widgets.'
+                      : 'No widgets added. Add widgets to display goal metrics.'}
                   </p>
+                  {goals.length === 0 && (
+                    <Button variant="outline" size="sm" className="mt-3" asChild>
+                      <Link to={`/projects/${projectId}/goals`}>
+                        Create Goals
+                      </Link>
+                    </Button>
+                  )}
                 </CardContent>
               </Card>
             )}
@@ -737,19 +820,239 @@ export function ProjectDashboard() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Add Widget Dialog */}
+      <Dialog open={addWidgetOpen} onOpenChange={setAddWidgetOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Add Widget</DialogTitle>
+            <DialogDescription>
+              Select a goal and display variant to add a widget to your dashboard.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            {/* Goal Selection */}
+            <div className="space-y-2">
+              <Label>Goal</Label>
+              <Select value={selectedGoalId} onValueChange={setSelectedGoalId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a goal" />
+                </SelectTrigger>
+                <SelectContent>
+                  {goals.map((goal) => (
+                    <SelectItem key={goal.id} value={goal.id}>
+                      <div className="flex items-center gap-2">
+                        <span
+                          className="size-2.5 rounded-full"
+                          style={{ backgroundColor: goal.color || '#6b7280' }}
+                        />
+                        {goal.name}
+                        <Badge variant="secondary" className="ml-auto text-xs">
+                          {goal.type === 'daily_counter' ? 'Daily' : 'Counter'}
+                        </Badge>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Variant Selection */}
+            <div className="space-y-2">
+              <Label>Display Variant</Label>
+              <RadioGroup
+                value={selectedVariant}
+                onValueChange={(v) => setSelectedVariant(v as WidgetVariant)}
+                className="grid grid-cols-3 gap-2"
+              >
+                <Label
+                  htmlFor="variant-mini"
+                  className={cn(
+                    "flex flex-col items-center justify-center rounded-md border-2 p-3 cursor-pointer hover:bg-accent",
+                    selectedVariant === 'mini' ? "border-primary" : "border-muted"
+                  )}
+                >
+                  <RadioGroupItem value="mini" id="variant-mini" className="sr-only" />
+                  <Minus className="size-5 mb-1" />
+                  <span className="text-xs">Mini</span>
+                </Label>
+                <Label
+                  htmlFor="variant-detailed"
+                  className={cn(
+                    "flex flex-col items-center justify-center rounded-md border-2 p-3 cursor-pointer hover:bg-accent",
+                    selectedVariant === 'detailed' ? "border-primary" : "border-muted"
+                  )}
+                >
+                  <RadioGroupItem value="detailed" id="variant-detailed" className="sr-only" />
+                  <BarChart3 className="size-5 mb-1" />
+                  <span className="text-xs">Detailed</span>
+                </Label>
+                <Label
+                  htmlFor="variant-simple"
+                  className={cn(
+                    "flex flex-col items-center justify-center rounded-md border-2 p-3 cursor-pointer hover:bg-accent",
+                    selectedVariant === 'simple' ? "border-primary" : "border-muted"
+                  )}
+                >
+                  <RadioGroupItem value="simple" id="variant-simple" className="sr-only" />
+                  <Target className="size-5 mb-1" />
+                  <span className="text-xs">Simple</span>
+                </Label>
+              </RadioGroup>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAddWidgetOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleAddWidget}
+              disabled={!selectedGoalId || createWidgetMutation.isPending}
+            >
+              Add Widget
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
 
-// Goal Widget Component with different display variants
-// - daily_counter: shows mini sparkline chart
-// - counter: shows simple value without chart
-function GoalWidget({ goal, stats }: { goal: Goal; stats?: GoalStats }) {
-  const isDailyCounter = goal.type === 'daily_counter';
-  const sparklineData = stats?.dailyStats?.slice(-14).map((d) => d.value) || [];
+// Widget Card Component - renders goal widget based on variant
+interface WidgetCardProps {
+  widget: Widget;
+  goal: Goal;
+  stats?: GoalStats;
+  onDelete: () => void;
+}
 
+function WidgetCard({ widget, goal, stats, onDelete }: WidgetCardProps) {
+  const sparklineData = stats?.dailyStats?.slice(-14).map((d) => d.value) || [];
+  const isDailyCounter = goal.type === 'daily_counter';
+
+  // Render based on variant
+  if (widget.variant === 'mini') {
+    // Mini variant - compact with sparkline for daily counters
+    return (
+      <Card className="group relative">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="absolute top-2 right-2 size-6 opacity-0 group-hover:opacity-100 transition-opacity"
+          onClick={onDelete}
+        >
+          <Trash2 className="size-3.5 text-muted-foreground hover:text-destructive" />
+        </Button>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <div className="flex items-center gap-2">
+            <span
+              className="size-2.5 rounded-full"
+              style={{ backgroundColor: goal.color || '#6b7280' }}
+            />
+            <CardDescription className="text-sm font-medium">{goal.name}</CardDescription>
+          </div>
+          <Target className="size-4 text-muted-foreground" />
+        </CardHeader>
+        <CardContent>
+          {isDailyCounter && sparklineData.length > 0 ? (
+            <div className="flex items-end justify-between gap-4">
+              <div>
+                <div className="text-2xl font-bold">
+                  {stats?.value?.toLocaleString() ?? 0}
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {goal.description || 'Daily counter'}
+                </p>
+              </div>
+              <Sparkline
+                data={sparklineData}
+                width={80}
+                height={32}
+                color={goal.color || '#6b7280'}
+                strokeWidth={2}
+                fillOpacity={0.15}
+              />
+            </div>
+          ) : (
+            <div>
+              <div className="text-2xl font-bold">
+                {stats?.value?.toLocaleString() ?? 0}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                {goal.description || 'Total count'}
+              </p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (widget.variant === 'detailed') {
+    // Detailed variant - larger card with more info
+    return (
+      <Card className="group relative">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="absolute top-2 right-2 size-6 opacity-0 group-hover:opacity-100 transition-opacity"
+          onClick={onDelete}
+        >
+          <Trash2 className="size-3.5 text-muted-foreground hover:text-destructive" />
+        </Button>
+        <CardHeader className="pb-2">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span
+                className="size-3 rounded-full"
+                style={{ backgroundColor: goal.color || '#6b7280' }}
+              />
+              <CardTitle className="text-sm font-medium">{goal.name}</CardTitle>
+            </div>
+            <Badge variant="secondary" className="text-xs">
+              {isDailyCounter ? 'Daily' : 'Counter'}
+            </Badge>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="text-3xl font-bold mb-1">
+            {stats?.value?.toLocaleString() ?? 0}
+          </div>
+          {goal.description && (
+            <p className="text-xs text-muted-foreground mb-3">
+              {goal.description}
+            </p>
+          )}
+          {isDailyCounter && sparklineData.length > 0 && (
+            <div className="h-12 mt-2">
+              <Sparkline
+                data={sparklineData}
+                width={280}
+                height={48}
+                color={goal.color || '#6b7280'}
+                strokeWidth={2}
+                fillOpacity={0.2}
+              />
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Simple variant - just the number
   return (
-    <Card>
+    <Card className="group relative">
+      <Button
+        variant="ghost"
+        size="icon"
+        className="absolute top-2 right-2 size-6 opacity-0 group-hover:opacity-100 transition-opacity"
+        onClick={onDelete}
+      >
+        <Trash2 className="size-3.5 text-muted-foreground hover:text-destructive" />
+      </Button>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <div className="flex items-center gap-2">
           <span
@@ -761,37 +1064,12 @@ function GoalWidget({ goal, stats }: { goal: Goal; stats?: GoalStats }) {
         <Target className="size-4 text-muted-foreground" />
       </CardHeader>
       <CardContent>
-        {isDailyCounter ? (
-          // Daily counter with sparkline
-          <div className="flex items-end justify-between gap-4">
-            <div>
-              <div className="text-2xl font-bold">
-                {stats?.value?.toLocaleString() ?? 0}
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                {goal.description || 'Daily counter'}
-              </p>
-            </div>
-            <Sparkline
-              data={sparklineData}
-              width={80}
-              height={32}
-              color={goal.color || '#6b7280'}
-              strokeWidth={2}
-              fillOpacity={0.15}
-            />
-          </div>
-        ) : (
-          // Simple counter without chart
-          <div>
-            <div className="text-2xl font-bold">
-              {stats?.value?.toLocaleString() ?? 0}
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              {goal.description || 'Total count'}
-            </p>
-          </div>
-        )}
+        <div className="text-2xl font-bold">
+          {stats?.value?.toLocaleString() ?? 0}
+        </div>
+        <p className="text-xs text-muted-foreground mt-1">
+          {goal.description || (isDailyCounter ? 'Daily counter' : 'Total count')}
+        </p>
       </CardContent>
     </Card>
   );

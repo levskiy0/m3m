@@ -69,6 +69,7 @@ func RegisterRoutes(
 	modelHandler *handler.ModelHandler,
 	envHandler *handler.EnvironmentHandler,
 	runtimeHandler *handler.RuntimeHandler,
+	widgetHandler *handler.WidgetHandler,
 ) {
 	// Health check
 	r.GET("/health", func(c *gin.Context) {
@@ -90,6 +91,7 @@ func RegisterRoutes(
 	modelHandler.Register(api, authMiddleware)
 	envHandler.Register(api, authMiddleware)
 	runtimeHandler.Register(api, authMiddleware)
+	widgetHandler.Register(api, authMiddleware)
 
 	// Public project routes (at root level, not under /api)
 	runtimeHandler.RegisterPublicRoutes(r)
@@ -244,6 +246,7 @@ func New(configPath string) *fx.App {
 			repository.NewPipelineRepository,
 			repository.NewEnvironmentRepository,
 			repository.NewModelRepository,
+			repository.NewWidgetRepository,
 
 			// Services
 			service.NewAuthService,
@@ -254,6 +257,7 @@ func New(configPath string) *fx.App {
 			service.NewEnvironmentService,
 			service.NewStorageService,
 			service.NewModelService,
+			service.NewWidgetService,
 
 			// Runtime
 			runtime.NewManager,
@@ -272,6 +276,7 @@ func New(configPath string) *fx.App {
 			handler.NewModelHandler,
 			handler.NewEnvironmentHandler,
 			handler.NewRuntimeHandler,
+			handler.NewWidgetHandler,
 		),
 		fx.Invoke(RegisterRoutes, StartServer, AutoStartRuntimes),
 	)

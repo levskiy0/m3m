@@ -152,6 +152,33 @@ export interface Goal {
 
 export type GoalType = 'counter' | 'daily_counter';
 
+// Widget types
+export interface Widget {
+  id: string;
+  projectId: string;
+  goalId: string;
+  variant: WidgetVariant;
+  order: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type WidgetVariant = 'mini' | 'detailed' | 'simple';
+
+export interface CreateWidgetRequest {
+  goalId: string;
+  variant: WidgetVariant;
+}
+
+export interface UpdateWidgetRequest {
+  variant?: WidgetVariant;
+  order?: number;
+}
+
+export interface ReorderWidgetsRequest {
+  widgetIds: string[];
+}
+
 export interface CreateGoalRequest {
   name: string;
   slug: string;
