@@ -32,7 +32,8 @@
       "Bash(make web-build:*)",
       "Bash(./node_modules/.bin/tsc:*)",
       "Bash(ls:*)",
-      "Bash(make build:*)"
+      "Bash(make build:*)",
+      "Bash(mongosh:*)"
     ],
     "deny": [],
     "ask": []

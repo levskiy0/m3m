@@ -493,16 +493,16 @@ export function ProjectDashboard() {
                         <>
                           <div className="flex items-center gap-2">
                             <Bug className="size-5 text-amber-500" />
-                            <p className="text-2xl font-bold text-amber-500">Debug</p>
+                            <p className="text-xl font-bold text-amber-500">Debug</p>
                           </div>
-                          <Badge variant="outline" className="mt-1 border-amber-500/50 text-amber-500">
+                          <code className="text-sm text-muted-foreground mt-1 block">
                             {project.runningSource.replace('debug:', '')}
-                          </Badge>
+                          </code>
                         </>
                       ) : project.runningSource?.startsWith('release:') ? (
                         <>
-                          <p className="text-2xl font-bold">
-                            {project.runningSource.replace('release:', '')}
+                          <p className="text-2xl font-bold font-mono">
+                            v{project.runningSource.replace('release:', '')}
                           </p>
                           {activeRelease?.tag && (
                             <Badge variant="secondary" className="mt-1 capitalize">
@@ -512,7 +512,7 @@ export function ProjectDashboard() {
                         </>
                       ) : activeRelease ? (
                         <>
-                          <p className="text-2xl font-bold">{activeRelease.version}</p>
+                          <p className="text-2xl font-bold font-mono">v{activeRelease.version}</p>
                           {activeRelease.tag && (
                             <Badge variant="secondary" className="mt-1 capitalize">
                               {activeRelease.tag}
@@ -520,7 +520,7 @@ export function ProjectDashboard() {
                           )}
                         </>
                       ) : (
-                        <p className="text-2xl font-bold text-green-500">Active</p>
+                        <p className="text-sm text-muted-foreground">Version unknown</p>
                       )}
                     </div>
                     <Button variant="ghost" size="sm" asChild>
