@@ -300,22 +300,6 @@ service.shotdown(() => {
 
 ---
 
-
-Форма "Create Release" имеет странные позиции полей, расположи их равномерно
-
-Source Branch | Version Bump | Tag
-Comment
-
----
-
-Create Branch - тоже самое!
-
-Branch name
-Source Type | Source Branch 
-
-
----
-
 Для эффективной отладки, нужно иметь возможность запускать не только релиз а текущий черновик!!!
 
 Для черновика роуты будут `/r/debug/,,,`
