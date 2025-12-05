@@ -21,6 +21,8 @@ import {
   ChevronRight,
   Home,
   ExternalLink,
+  X,
+  Save,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -47,6 +49,16 @@ import { Input } from '@/components/ui/input';
 import { Field, FieldLabel } from '@/components/ui/field';
 import { CodeEditor } from '@/components/shared/code-editor';
 import { ConfirmDialog } from '@/components/shared/confirm-dialog';
+import { cn } from '@/lib/utils';
+
+interface EditorTab {
+  id: string;
+  name: string;
+  path: string; // empty for new files
+  content: string;
+  originalContent: string;
+  isNew: boolean;
+}
 
 function getFileExtension(filename: string): string {
   return filename.split('.').pop()?.toLowerCase() || '';
@@ -65,6 +77,17 @@ function formatFileSize(bytes: number): string {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 }
 
+function getLanguageFromFilename(filename: string): string {
+  if (filename.endsWith('.json')) return 'json';
+  if (filename.endsWith('.yaml') || filename.endsWith('.yml')) return 'yaml';
+  if (filename.endsWith('.js')) return 'javascript';
+  if (filename.endsWith('.ts')) return 'typescript';
+  if (filename.endsWith('.html')) return 'html';
+  if (filename.endsWith('.css')) return 'css';
+  if (filename.endsWith('.md')) return 'markdown';
+  return 'plaintext';
+}
+
 export function StoragePage() {
   const { projectId } = useParams<{ projectId: string }>();
   const queryClient = useQueryClient();
@@ -73,18 +96,21 @@ export function StoragePage() {
   const [currentPath, setCurrentPath] = useState('');
   const [selectedItem, setSelectedItem] = useState<StorageItem | null>(null);
 
+  // Tabs
+  const [tabs, setTabs] = useState<EditorTab[]>([]);
+  const [activeTabId, setActiveTabId] = useState<string | null>(null);
+
   // Dialogs
   const [createFolderOpen, setCreateFolderOpen] = useState(false);
-  const [createFileOpen, setCreateFileOpen] = useState(false);
   const [renameOpen, setRenameOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
-  const [editOpen, setEditOpen] = useState(false);
+  const [closeTabConfirmOpen, setCloseTabConfirmOpen] = useState(false);
+  const [tabToClose, setTabToClose] = useState<string | null>(null);
 
   // Form state
   const [newName, setNewName] = useState('');
-  const [newFileName, setNewFileName] = useState('');
-  const [newFileContent, setNewFileContent] = useState('');
-  const [editContent, setEditContent] = useState('');
+
+  const activeTab = tabs.find((t) => t.id === activeTabId);
 
   const { data: items = [], isLoading } = useQuery({
     queryKey: ['storage', projectId, currentPath],
@@ -104,25 +130,6 @@ export function StoragePage() {
     },
     onError: (err) => {
       toast.error(err instanceof Error ? err.message : 'Failed to create folder');
-    },
-  });
-
-  const createFileMutation = useMutation({
-    mutationFn: () =>
-      storageApi.createFile(projectId!, {
-        path: currentPath,
-        name: newFileName,
-        content: newFileContent,
-      }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['storage', projectId] });
-      setCreateFileOpen(false);
-      setNewFileName('');
-      setNewFileContent('');
-      toast.success('File created');
-    },
-    onError: (err) => {
-      toast.error(err instanceof Error ? err.message : 'Failed to create file');
     },
   });
 
@@ -165,19 +172,42 @@ export function StoragePage() {
     },
   });
 
-  const updateFileMutation = useMutation({
-    mutationFn: () =>
-      storageApi.updateFile(projectId!, selectedItem!.path, editContent),
-    onSuccess: () => {
+  const [savingTabId, setSavingTabId] = useState<string | null>(null);
+
+  const handleSaveTab = async (tab: EditorTab) => {
+    setSavingTabId(tab.id);
+    try {
+      if (tab.isNew) {
+        await storageApi.createFile(projectId!, {
+          path: currentPath,
+          name: tab.name,
+          content: tab.content,
+        });
+        // Update tab to not be new anymore
+        const newPath = currentPath ? `${currentPath}/${tab.name}` : tab.name;
+        setTabs((prev) =>
+          prev.map((t) =>
+            t.id === tab.id
+              ? { ...t, isNew: false, path: newPath, originalContent: tab.content }
+              : t
+          )
+        );
+      } else {
+        await storageApi.updateFile(projectId!, tab.path, tab.content);
+        setTabs((prev) =>
+          prev.map((t) =>
+            t.id === tab.id ? { ...t, originalContent: tab.content } : t
+          )
+        );
+      }
       queryClient.invalidateQueries({ queryKey: ['storage', projectId] });
-      setEditOpen(false);
-      setSelectedItem(null);
       toast.success('File saved');
-    },
-    onError: (err) => {
+    } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Save failed');
-    },
-  });
+    } finally {
+      setSavingTabId(null);
+    }
+  };
 
   const handleFileUpload = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -196,16 +226,72 @@ export function StoragePage() {
     }
   };
 
+  const handleCreateFile = () => {
+    const newTab: EditorTab = {
+      id: `new-${Date.now()}`,
+      name: 'untitled.txt',
+      path: '',
+      content: '',
+      originalContent: '',
+      isNew: true,
+    };
+    setTabs((prev) => [...prev, newTab]);
+    setActiveTabId(newTab.id);
+  };
+
   const handleEditFile = async (item: StorageItem) => {
+    // Check if already open
+    const existing = tabs.find((t) => t.path === item.path);
+    if (existing) {
+      setActiveTabId(existing.id);
+      return;
+    }
+
     try {
       const blob = await storageApi.download(projectId!, item.path);
       const text = await blob.text();
-      setSelectedItem(item);
-      setEditContent(text);
-      setEditOpen(true);
-    } catch (err) {
+      const newTab: EditorTab = {
+        id: `edit-${Date.now()}`,
+        name: item.name,
+        path: item.path,
+        content: text,
+        originalContent: text,
+        isNew: false,
+      };
+      setTabs((prev) => [...prev, newTab]);
+      setActiveTabId(newTab.id);
+    } catch {
       toast.error('Failed to load file');
     }
+  };
+
+  const handleCloseTab = (tabId: string, force = false) => {
+    const tab = tabs.find((t) => t.id === tabId);
+    if (!tab) return;
+
+    const isDirty = tab.content !== tab.originalContent;
+    if (isDirty && !force) {
+      setTabToClose(tabId);
+      setCloseTabConfirmOpen(true);
+      return;
+    }
+
+    setTabs((prev) => prev.filter((t) => t.id !== tabId));
+    if (activeTabId === tabId) {
+      setActiveTabId(null);
+    }
+  };
+
+  const handleTabContentChange = (tabId: string, content: string) => {
+    setTabs((prev) =>
+      prev.map((t) => (t.id === tabId ? { ...t, content } : t))
+    );
+  };
+
+  const handleTabNameChange = (tabId: string, name: string) => {
+    setTabs((prev) =>
+      prev.map((t) => (t.id === tabId ? { ...t, name } : t))
+    );
   };
 
   const handleDownload = (item: StorageItem) => {
@@ -301,170 +387,274 @@ export function StoragePage() {
 
   return (
     <>
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-1 text-sm text-muted-foreground">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-6 p-2"
-                onClick={() => setCurrentPath('')}
+      <Card className="flex flex-col h-[calc(100vh-12rem)]">
+        {/* Tabs Bar */}
+        <div className="flex items-center border-b bg-muted/30 px-2">
+          {/* Files tab */}
+          <button
+            onClick={() => setActiveTabId(null)}
+            className={cn(
+              'flex items-center gap-2 px-3 py-2 text-sm border-b-2 -mb-px transition-colors',
+              activeTabId === null
+                ? 'border-primary text-foreground'
+                : 'border-transparent text-muted-foreground hover:text-foreground'
+            )}
+          >
+            <Folder className="size-4" />
+            Files
+          </button>
+
+          {/* Open file tabs */}
+          {tabs.map((tab) => {
+            const isDirty = tab.content !== tab.originalContent;
+            return (
+              <div
+                key={tab.id}
+                className={cn(
+                  'flex items-center gap-1 px-3 py-2 text-sm border-b-2 -mb-px transition-colors group',
+                  activeTabId === tab.id
+                    ? 'border-primary text-foreground'
+                    : 'border-transparent text-muted-foreground hover:text-foreground'
+                )}
               >
-                <Home className="size-3" />
-              </Button>
-              {pathSegments.map((segment, index) => (
-                <div key={index} className="flex items-center">
-                  <ChevronRight className="size-3" />
+                <button
+                  onClick={() => setActiveTabId(tab.id)}
+                  className="flex items-center gap-2"
+                >
+                  <FileCode className="size-4" />
+                  <span>{tab.name}</span>
+                  {isDirty && <span className="text-primary">*</span>}
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleCloseTab(tab.id);
+                  }}
+                  className="p-0.5 rounded hover:bg-muted opacity-0 group-hover:opacity-100 transition-opacity"
+                >
+                  <X className="size-3" />
+                </button>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Content */}
+        {activeTabId === null ? (
+          <>
+            {/* File Browser */}
+            <CardHeader className="pb-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1 text-sm text-muted-foreground">
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="h-6 px-2"
-                    onClick={() => navigateToPath(index)}
-                    disabled={index === pathSegments.length - 1}
+                    className="h-6 p-2"
+                    onClick={() => setCurrentPath('')}
                   >
-                    {segment}
+                    <Home className="size-3" />
                   </Button>
+                  {pathSegments.map((segment, index) => (
+                    <div key={index} className="flex items-center">
+                      <ChevronRight className="size-3" />
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 px-2"
+                        onClick={() => navigateToPath(index)}
+                        disabled={index === pathSegments.length - 1}
+                      >
+                        {segment}
+                      </Button>
+                    </div>
+                  ))}
                 </div>
-              ))}
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => queryClient.invalidateQueries({ queryKey: ['storage', projectId] })}
+                    title="Refresh"
+                  >
+                    <RefreshCw className="size-4" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setCreateFolderOpen(true)}
+                    title="New folder"
+                  >
+                    <FolderPlus className="size-4" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={handleCreateFile}
+                    title="New file"
+                  >
+                    <FilePlus className="size-4" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploadMutation.isPending}
+                  >
+                    <Upload className="mr-2 size-4" />
+                    {uploadMutation.isPending ? 'Uploading...' : 'Upload'}
+                  </Button>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    className="hidden"
+                    onChange={handleFileUpload}
+                    multiple
+                  />
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="flex-1 overflow-auto">
+              {isLoading ? (
+                <div className="flex items-center justify-center h-48">
+                  <p className="text-muted-foreground">Loading...</p>
+                </div>
+              ) : sortedItems.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-48 text-center">
+                  <Folder className="size-12 text-muted-foreground/50 mb-4" />
+                  <p className="text-muted-foreground mb-2">This folder is empty</p>
+                  <p className="text-sm text-muted-foreground">
+                    Upload files or create a new folder to get started
+                  </p>
+                </div>
+              ) : (
+                <div className="border rounded-lg divide-y">
+                  {sortedItems.map((item) => (
+                    <ContextMenu key={item.path}>
+                      <ContextMenuTrigger>
+                        <div
+                          className={`flex items-center justify-between gap-3 p-3 hover:bg-muted/50 ${
+                            item.is_dir ? 'cursor-pointer' : ''
+                          }`}
+                          onDoubleClick={() => {
+                            if (item.is_dir) {
+                              handleItemClick(item);
+                            } else if (EDITABLE_MIME_TYPES.includes(item.mime_type || '')) {
+                              handleEditFile(item);
+                            }
+                          }}
+                        >
+                          <div className="flex items-center gap-3 flex-1 min-w-0">
+                            {getFileIcon(item)}
+                            <span className="truncate">{item.name}</span>
+                          </div>
+                          {!item.is_dir && (
+                            <div className="flex items-center gap-6 text-sm text-muted-foreground">
+                              <span className="w-20 text-right">{formatFileSize(item.size)}</span>
+                              <span className="w-24">
+                                {new Date(item.updated_at).toLocaleDateString()}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      </ContextMenuTrigger>
+                      <ContextMenuContent>
+                        {item.is_dir ? (
+                          <ContextMenuItem onClick={() => handleItemClick(item)}>
+                            <Folder className="mr-2 size-4" />
+                            Open
+                          </ContextMenuItem>
+                        ) : (
+                          <>
+                            <ContextMenuItem onClick={() => handleOpenInNewTab(item)}>
+                              <ExternalLink className="mr-2 size-4" />
+                              Open in new tab
+                            </ContextMenuItem>
+                            <ContextMenuItem onClick={() => handleCopyLink(item)}>
+                              <Link className="mr-2 size-4" />
+                              Copy link
+                            </ContextMenuItem>
+                            <ContextMenuItem onClick={() => handleDownload(item)}>
+                              <Download className="mr-2 size-4" />
+                              Download
+                            </ContextMenuItem>
+                            {EDITABLE_MIME_TYPES.includes(item.mime_type || '') && (
+                              <ContextMenuItem onClick={() => handleEditFile(item)}>
+                                <FileCode className="mr-2 size-4" />
+                                Edit
+                              </ContextMenuItem>
+                            )}
+                          </>
+                        )}
+                        <ContextMenuSeparator />
+                        <ContextMenuItem
+                          onClick={() => {
+                            setSelectedItem(item);
+                            setNewName(item.name);
+                            setRenameOpen(true);
+                          }}
+                        >
+                          <Pencil className="mr-2 size-4" />
+                          Rename
+                        </ContextMenuItem>
+                        <ContextMenuSeparator />
+                        <ContextMenuItem
+                          variant="destructive"
+                          onClick={() => {
+                            setSelectedItem(item);
+                            setDeleteOpen(true);
+                          }}
+                        >
+                          <Trash2 className="mr-2 size-4" />
+                          Delete
+                        </ContextMenuItem>
+                      </ContextMenuContent>
+                    </ContextMenu>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </>
+        ) : activeTab ? (
+          <>
+            {/* Editor View */}
+            <div className="flex items-center justify-between px-4 py-2 border-b">
+              <div className="flex items-center gap-2">
+                {activeTab.isNew && (
+                  <Input
+                    value={activeTab.name}
+                    onChange={(e) => handleTabNameChange(activeTab.id, e.target.value)}
+                    className="h-8 w-48"
+                    placeholder="filename.txt"
+                  />
+                )}
+                {!activeTab.isNew && (
+                  <span className="text-sm text-muted-foreground">
+                    {activeTab.path}
+                  </span>
+                )}
+              </div>
+              <Button
+                size="sm"
+                onClick={() => handleSaveTab(activeTab)}
+                disabled={
+                  savingTabId === activeTab.id ||
+                  (activeTab.content === activeTab.originalContent && !activeTab.isNew) ||
+                  (activeTab.isNew && !activeTab.name)
+                }
+              >
+                <Save className="mr-2 size-4" />
+                {savingTabId === activeTab.id ? 'Saving...' : 'Save'}
+              </Button>
             </div>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={() => queryClient.invalidateQueries({ queryKey: ['storage', projectId] })}
-                title="Refresh"
-              >
-                <RefreshCw className="size-4" />
-              </Button>
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={() => setCreateFolderOpen(true)}
-                title="New folder"
-              >
-                <FolderPlus className="size-4" />
-              </Button>
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={() => setCreateFileOpen(true)}
-                title="New file"
-              >
-                <FilePlus className="size-4" />
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={uploadMutation.isPending}
-              >
-                <Upload className="mr-2 size-4" />
-                {uploadMutation.isPending ? 'Uploading...' : 'Upload'}
-              </Button>
-              <input
-                ref={fileInputRef}
-                type="file"
-                className="hidden"
-                onChange={handleFileUpload}
-                multiple
+            <div className="flex-1 min-h-0">
+              <CodeEditor
+                value={activeTab.content}
+                onChange={(value) => handleTabContentChange(activeTab.id, value)}
+                language={getLanguageFromFilename(activeTab.name)}
+                height="100%"
               />
             </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <div className="flex items-center justify-center h-48">
-              <p className="text-muted-foreground">Loading...</p>
-            </div>
-          ) : sortedItems.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-48 text-center">
-              <Folder className="size-12 text-muted-foreground/50 mb-4" />
-              <p className="text-muted-foreground mb-2">This folder is empty</p>
-              <p className="text-sm text-muted-foreground">
-                Upload files or create a new folder to get started
-              </p>
-            </div>
-          ) : (
-            <div className="border rounded-lg divide-y">
-              {sortedItems.map((item) => (
-                <ContextMenu key={item.path}>
-                  <ContextMenuTrigger>
-                    <div
-                      className={`flex items-center justify-between gap-3 p-3 hover:bg-muted/50 ${
-                        item.is_dir ? 'cursor-pointer' : ''
-                      }`}
-                      onDoubleClick={() => handleItemClick(item)}
-                    >
-                      <div className="flex items-center gap-3 flex-1 min-w-0">
-                        {getFileIcon(item)}
-                        <span className="truncate">{item.name}</span>
-                      </div>
-                      {!item.is_dir && (
-                        <div className="flex items-center gap-6 text-sm text-muted-foreground">
-                          <span className="w-20 text-right">{formatFileSize(item.size)}</span>
-                          <span className="w-24">
-                            {new Date(item.updated_at).toLocaleDateString()}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  </ContextMenuTrigger>
-                  <ContextMenuContent>
-                    {item.is_dir ? (
-                      <ContextMenuItem onClick={() => handleItemClick(item)}>
-                        <Folder className="mr-2 size-4" />
-                        Open
-                      </ContextMenuItem>
-                    ) : (
-                      <>
-                        <ContextMenuItem onClick={() => handleOpenInNewTab(item)}>
-                          <ExternalLink className="mr-2 size-4" />
-                          Open in new tab
-                        </ContextMenuItem>
-                        <ContextMenuItem onClick={() => handleCopyLink(item)}>
-                          <Link className="mr-2 size-4" />
-                          Copy link
-                        </ContextMenuItem>
-                        <ContextMenuItem onClick={() => handleDownload(item)}>
-                          <Download className="mr-2 size-4" />
-                          Download
-                        </ContextMenuItem>
-                        {EDITABLE_MIME_TYPES.includes(item.mime_type || '') && (
-                          <ContextMenuItem onClick={() => handleEditFile(item)}>
-                            <FileCode className="mr-2 size-4" />
-                            Edit
-                          </ContextMenuItem>
-                        )}
-                      </>
-                    )}
-                    <ContextMenuSeparator />
-                    <ContextMenuItem
-                      onClick={() => {
-                        setSelectedItem(item);
-                        setNewName(item.name);
-                        setRenameOpen(true);
-                      }}
-                    >
-                      <Pencil className="mr-2 size-4" />
-                      Rename
-                    </ContextMenuItem>
-                    <ContextMenuSeparator />
-                    <ContextMenuItem
-                      variant="destructive"
-                      onClick={() => {
-                        setSelectedItem(item);
-                        setDeleteOpen(true);
-                      }}
-                    >
-                      <Trash2 className="mr-2 size-4" />
-                      Delete
-                    </ContextMenuItem>
-                  </ContextMenuContent>
-                </ContextMenu>
-              ))}
-            </div>
-          )}
-        </CardContent>
+          </>
+        ) : null}
       </Card>
 
       {/* Create Folder Dialog */}
@@ -488,58 +678,6 @@ export function StoragePage() {
             <Button
               onClick={() => createFolderMutation.mutate(newName)}
               disabled={!newName || createFolderMutation.isPending}
-            >
-              Create
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Create File Dialog */}
-      <Dialog open={createFileOpen} onOpenChange={setCreateFileOpen}>
-        <DialogContent className="max-w-6xl h-[90vh] flex flex-col">
-          <DialogHeader>
-            <DialogTitle>Create File</DialogTitle>
-          </DialogHeader>
-          <Field>
-            <FieldLabel>File Name</FieldLabel>
-            <Input
-              value={newFileName}
-              onChange={(e) => setNewFileName(e.target.value)}
-              placeholder="config.json"
-            />
-          </Field>
-          <div className="h-[400px] border rounded-md overflow-hidden">
-            <CodeEditor
-              value={newFileContent}
-              onChange={setNewFileContent}
-              language={
-                newFileName.endsWith('.json')
-                  ? 'json'
-                  : newFileName.endsWith('.yaml') || newFileName.endsWith('.yml')
-                  ? 'yaml'
-                  : newFileName.endsWith('.js')
-                  ? 'javascript'
-                  : newFileName.endsWith('.ts')
-                  ? 'typescript'
-                  : newFileName.endsWith('.html')
-                  ? 'html'
-                  : newFileName.endsWith('.css')
-                  ? 'css'
-                  : newFileName.endsWith('.md')
-                  ? 'markdown'
-                  : 'plaintext'
-              }
-              height="100%"
-            />
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setCreateFileOpen(false)}>
-              Cancel
-            </Button>
-            <Button
-              onClick={() => createFileMutation.mutate()}
-              disabled={!newFileName || createFileMutation.isPending}
             >
               Create
             </Button>
@@ -574,51 +712,6 @@ export function StoragePage() {
         </DialogContent>
       </Dialog>
 
-      {/* Edit File Dialog */}
-      <Dialog open={editOpen} onOpenChange={setEditOpen}>
-        <DialogContent className="max-w-6xl h-[90vh] flex flex-col">
-          <DialogHeader>
-            <DialogTitle>Edit: {selectedItem?.name}</DialogTitle>
-          </DialogHeader>
-          <div className="h-[400px] border rounded-md overflow-hidden">
-            <CodeEditor
-              value={editContent}
-              onChange={setEditContent}
-              language={
-                selectedItem?.name?.endsWith('.json')
-                  ? 'json'
-                  : selectedItem?.name?.endsWith('.yaml') ||
-                    selectedItem?.name?.endsWith('.yml')
-                  ? 'yaml'
-                  : selectedItem?.name?.endsWith('.js')
-                  ? 'javascript'
-                  : selectedItem?.name?.endsWith('.ts')
-                  ? 'typescript'
-                  : selectedItem?.name?.endsWith('.html')
-                  ? 'html'
-                  : selectedItem?.name?.endsWith('.css')
-                  ? 'css'
-                  : selectedItem?.name?.endsWith('.md')
-                  ? 'markdown'
-                  : 'plaintext'
-              }
-              height="100%"
-            />
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setEditOpen(false)}>
-              Cancel
-            </Button>
-            <Button
-              onClick={() => updateFileMutation.mutate()}
-              disabled={updateFileMutation.isPending}
-            >
-              Save
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
       {/* Delete Confirm */}
       <ConfirmDialog
         open={deleteOpen}
@@ -631,6 +724,23 @@ export function StoragePage() {
         variant="destructive"
         onConfirm={() => deleteMutation.mutate()}
         isLoading={deleteMutation.isPending}
+      />
+
+      {/* Close Tab Confirm */}
+      <ConfirmDialog
+        open={closeTabConfirmOpen}
+        onOpenChange={setCloseTabConfirmOpen}
+        title="Unsaved Changes"
+        description="You have unsaved changes. Are you sure you want to close this file?"
+        confirmLabel="Close without saving"
+        variant="destructive"
+        onConfirm={() => {
+          if (tabToClose) {
+            handleCloseTab(tabToClose, true);
+            setTabToClose(null);
+          }
+          setCloseTabConfirmOpen(false);
+        }}
       />
     </>
   );
