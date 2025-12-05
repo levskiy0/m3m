@@ -58,6 +58,7 @@ func (l *LoggerModule) log(level string, args ...interface{}) {
 	logLine := fmt.Sprintf("[%s] [%s] %s\n", timestamp, level, message)
 
 	l.file.WriteString(logLine)
+	l.file.Sync() // Flush buffer to disk immediately
 }
 
 func (l *LoggerModule) Debug(args ...interface{}) {

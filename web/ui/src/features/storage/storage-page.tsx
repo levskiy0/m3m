@@ -1014,7 +1014,7 @@ export function StoragePage() {
         onConfirm={() => {
           if (selectedPaths.size > 1 || (selectedPaths.size === 1 && !selectedItem)) {
             deleteSelectedMutation.mutate();
-          } else {
+          } else if (selectedItem) {
             deleteMutation.mutate();
           }
         }}
