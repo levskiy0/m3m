@@ -387,7 +387,7 @@ export function StoragePage() {
 
   return (
     <>
-      <Card className="flex flex-col h-[calc(100vh-12rem)]">
+      <Card className="flex flex-col" style={{ height: 'calc(100vh - 85px)' }}>
         {/* Tabs Bar */}
         <div className="flex items-center border-b bg-muted/30 px-2">
           {/* Files tab */}
@@ -443,7 +443,7 @@ export function StoragePage() {
         {activeTabId === null ? (
           <>
             {/* File Browser */}
-            <CardHeader className="pb-2">
+            <CardHeader className="pb-0 grid-rows-[none]">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-1 text-sm text-muted-foreground">
                   <Button
@@ -512,13 +512,13 @@ export function StoragePage() {
                 </div>
               </div>
             </CardHeader>
-            <CardContent className="flex-1 overflow-auto">
+            <CardContent className="flex-1 overflow-hidden">
               {isLoading ? (
                 <div className="flex items-center justify-center h-48">
                   <p className="text-muted-foreground">Loading...</p>
                 </div>
               ) : sortedItems.length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-48 text-center">
+                <div className="flex flex-col items-center justify-center h-48 text-center h-full">
                   <Folder className="size-12 text-muted-foreground/50 mb-4" />
                   <p className="text-muted-foreground mb-2">This folder is empty</p>
                   <p className="text-sm text-muted-foreground">
@@ -526,7 +526,7 @@ export function StoragePage() {
                   </p>
                 </div>
               ) : (
-                <div className="border rounded-lg divide-y">
+                <div className="divide-y">
                   {sortedItems.map((item) => (
                     <ContextMenu key={item.path}>
                       <ContextMenuTrigger>
