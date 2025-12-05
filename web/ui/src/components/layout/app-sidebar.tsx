@@ -12,7 +12,6 @@ import {
   HardDrive,
   Database,
   Variable,
-  ScrollText,
   ChevronsUpDown,
   Plus,
   Globe,
@@ -110,7 +109,6 @@ export function AppSidebar() {
         { title: 'Models', url: `/projects/${selectedProjectId}/models`, icon: Database },
         { title: 'Goals', url: `/projects/${selectedProjectId}/goals`, icon: Target },
         { title: 'Environment', url: `/projects/${selectedProjectId}/environment`, icon: Variable },
-        { title: 'Logs', url: `/projects/${selectedProjectId}/logs`, icon: ScrollText },
         { title: 'Settings', url: `/projects/${selectedProjectId}/settings`, icon: Settings2 },
       ]
     : [];

@@ -614,7 +614,7 @@ export function StoragePage() {
             })}
           </div>
 
-          <Card className="flex flex-col gap-0 rounded-t-none py-0 overflow-hidden" style={{height: 'calc(100vh - 125px)'}}>
+          <Card className="flex flex-col gap-0 rounded-t-none py-0 overflow-hidden" style={{height: 'calc(100vh - 120px)'}}>
             {/* Content */}
             {activeTabId === null ? (
                 <>

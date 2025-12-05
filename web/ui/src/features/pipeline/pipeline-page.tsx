@@ -10,6 +10,8 @@ import {
   RotateCcw,
   Square,
   Bug,
+  Code,
+  ScrollText,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -17,7 +19,7 @@ import { pipelineApi, runtimeApi, projectsApi } from '@/api';
 import { DEFAULT_SERVICE_CODE, RELEASE_TAGS } from '@/lib/constants';
 import type { CreateBranchRequest, CreateReleaseRequest, LogEntry } from '@/types';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   Dialog,
@@ -44,6 +46,8 @@ import { EmptyState } from '@/components/shared/empty-state';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 
+type PipelineTab = 'editor' | 'logs' | 'releases';
+
 export function PipelinePage() {
   const { projectId } = useParams<{ projectId: string }>();
   const location = useLocation();
@@ -55,6 +59,7 @@ export function PipelinePage() {
   const [selectedBranchId, setSelectedBranchId] = useState<string>('');
   const [code, setCode] = useState('');
   const [hasChanges, setHasChanges] = useState(false);
+  const [activeTab, setActiveTab] = useState<PipelineTab>('editor');
 
   // Dialogs
   const [createBranchOpen, setCreateBranchOpen] = useState(false);
@@ -328,236 +333,293 @@ export function PipelinePage() {
   }
 
   return (
-    <div className="flex flex-col h-[calc(100vh-8rem)] gap-4">
-      {/* Header */}
-      <div className="flex items-center justify-between flex-shrink-0">
-        <div className="flex items-center gap-4">
-          <Select value={selectedBranchId} onValueChange={setSelectedBranchId}>
-            <SelectTrigger className="w-48">
-              <GitBranch className="mr-2 size-4" />
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {branches.map((branch) => (
-                <SelectItem key={branch.id} value={branch.id}>
-                  {branch.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setCreateBranchOpen(true)}
+    <>
+      {/* Tabs */}
+      <div className="w-full">
+        <div className="flex items-end px-4">
+          {/* Editor tab */}
+          <button
+            onClick={() => setActiveTab('editor')}
+            className={cn(
+              'flex items-center gap-2 px-4 py-2 text-sm border-t border-l border-r rounded-t-xl',
+              activeTab === 'editor'
+                ? 'border-border bg-card'
+                : 'border-transparent text-muted-foreground hover:text-foreground'
+            )}
+            style={{
+              marginBottom: activeTab === 'editor' ? -1 : 0,
+            }}
           >
-            <Plus className="mr-2 size-4" />
-            New Branch
-          </Button>
-          {!isDevelopBranch && (
+            <Code className="size-4" />
+            Editor
+            {hasChanges && <span className="text-orange-500">*</span>}
+          </button>
+
+          {/* Logs tab - only show when debug mode is active */}
+          {isDebugMode && runningBranch === currentBranch?.name && (
+            <button
+              onClick={() => setActiveTab('logs')}
+              className={cn(
+                'flex items-center gap-2 px-4 py-2 text-sm border-t border-l border-r rounded-t-xl',
+                activeTab === 'logs'
+                  ? 'border-border bg-card'
+                  : 'border-transparent text-muted-foreground hover:text-foreground'
+              )}
+              style={{
+                marginBottom: activeTab === 'logs' ? -1 : 0,
+              }}
+            >
+              <ScrollText className="size-4" />
+              Logs
+              <Badge variant="outline" className="ml-1 border-amber-500/50 text-amber-500 text-xs">
+                {runningBranch}
+              </Badge>
+            </button>
+          )}
+
+          {/* Releases tab */}
+          <button
+            onClick={() => setActiveTab('releases')}
+            className={cn(
+              'flex items-center gap-2 px-4 py-2 text-sm border-t border-l border-r rounded-t-xl',
+              activeTab === 'releases'
+                ? 'border-border bg-card'
+                : 'border-transparent text-muted-foreground hover:text-foreground'
+            )}
+            style={{
+              marginBottom: activeTab === 'releases' ? -1 : 0,
+            }}
+          >
+            <Tag className="size-4" />
+            Releases
+            {releases.length > 0 && (
+              <Badge variant="secondary" className="ml-1 text-xs">
+                {releases.length}
+              </Badge>
+            )}
+          </button>
+        </div>
+
+        <Card className="flex flex-col gap-0 rounded-t-none py-0 overflow-hidden" style={{ height: 'calc(100vh - 120px)' }}>
+          {/* Editor Content */}
+          {activeTab === 'editor' && (
             <>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setResetBranchOpen(true)}
-              >
-                <RotateCcw className="mr-2 size-4" />
-                Reset
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setDeleteBranchOpen(true)}
-              >
-                <Trash2 className="mr-2 size-4" />
-                Delete
-              </Button>
+              {/* Editor Header */}
+              <div className="flex items-center justify-between flex-shrink-0 px-4 py-3 border-b">
+                <div className="flex items-center gap-4">
+                  <Select value={selectedBranchId} onValueChange={setSelectedBranchId}>
+                    <SelectTrigger className="w-48">
+                      <GitBranch className="mr-2 size-4" />
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {branches.map((branch) => (
+                        <SelectItem key={branch.id} value={branch.id}>
+                          {branch.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCreateBranchOpen(true)}
+                  >
+                    <Plus className="mr-2 size-4" />
+                    New Branch
+                  </Button>
+                  {!isDevelopBranch && (
+                    <>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setResetBranchOpen(true)}
+                      >
+                        <RotateCcw className="mr-2 size-4" />
+                        Reset
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setDeleteBranchOpen(true)}
+                      >
+                        <Trash2 className="mr-2 size-4" />
+                        Delete
+                      </Button>
+                    </>
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  {/* Debug Run/Stop Button */}
+                  {currentBranch && (
+                    runningBranch === currentBranch.name ? (
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => stopDebugMutation.mutate()}
+                        disabled={stopDebugMutation.isPending}
+                      >
+                        <Square className="mr-2 size-4" />
+                        Stop Debug
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          if (hasChanges) {
+                            saveMutation.mutate();
+                          }
+                          startDebugMutation.mutate(currentBranch.name);
+                        }}
+                        disabled={startDebugMutation.isPending || (isRunning && !isDebugMode)}
+                        className="border-amber-500/50 text-amber-600 hover:bg-amber-500/10"
+                      >
+                        <Bug className="mr-2 size-4" />
+                        Run Debug
+                      </Button>
+                    )
+                  )}
+                  <Button onClick={() => saveMutation.mutate()} disabled={!hasChanges || saveMutation.isPending}>
+                    <Save className="mr-2 size-4" />
+                    {saveMutation.isPending ? 'Saving...' : 'Save'}
+                  </Button>
+                </div>
+              </div>
+              {/* Code Editor */}
+              <div className="flex-1 min-h-0">
+                <CodeEditor
+                  value={code}
+                  onChange={handleCodeChange}
+                  language="javascript"
+                  typeDefinitions={runtimeTypes}
+                />
+              </div>
             </>
           )}
-        </div>
-        <div className="flex items-center gap-2">
-          {/* Debug Run/Stop Button */}
-          {currentBranch && (
-            runningBranch === currentBranch.name ? (
-              <Button
-                variant="destructive"
-                size="sm"
-                onClick={() => stopDebugMutation.mutate()}
-                disabled={stopDebugMutation.isPending}
-              >
-                <Square className="mr-2 size-4" />
-                Stop Debug
-              </Button>
-            ) : (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  if (hasChanges) {
-                    saveMutation.mutate();
-                  }
-                  startDebugMutation.mutate(currentBranch.name);
-                }}
-                disabled={startDebugMutation.isPending || (isRunning && !isDebugMode)}
-                className="border-amber-500/50 text-amber-600 hover:bg-amber-500/10"
-              >
-                <Bug className="mr-2 size-4" />
-                Run Debug
-              </Button>
-            )
+
+          {/* Logs Content */}
+          {activeTab === 'logs' && isDebugMode && runningBranch === currentBranch?.name && (
+            <ScrollArea
+              ref={logsRef}
+              className="flex-1 bg-zinc-950 font-mono text-xs"
+            >
+              {logs.length === 0 ? (
+                <div className="flex items-center justify-center h-full text-muted-foreground py-12">
+                  Waiting for logs...
+                </div>
+              ) : (
+                <div className="space-y-0.5 p-4">
+                  {logs.slice(-500).map((log, index) => (
+                    <div key={index} className="flex gap-2 text-gray-300">
+                      <span className="text-gray-500 shrink-0">
+                        {new Date(log.timestamp).toLocaleTimeString()}
+                      </span>
+                      <span
+                        className={cn(
+                          'shrink-0 uppercase w-12',
+                          log.level === 'error' && 'text-red-400',
+                          log.level === 'warn' && 'text-amber-400',
+                          log.level === 'info' && 'text-blue-400',
+                          log.level === 'debug' && 'text-gray-400'
+                        )}
+                      >
+                        [{log.level}]
+                      </span>
+                      <span className="text-gray-200 break-all">{log.message}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </ScrollArea>
           )}
-          <Button
-            variant="outline"
-            onClick={() => setCreateReleaseOpen(true)}
-            disabled={branches.length === 0}
-          >
-            <Tag className="mr-2 size-4" />
-            Create Release
-          </Button>
-          <Button onClick={() => saveMutation.mutate()} disabled={!hasChanges || saveMutation.isPending}>
-            <Save className="mr-2 size-4" />
-            {saveMutation.isPending ? 'Saving...' : 'Save'}
-          </Button>
-        </div>
-      </div>
 
-      {/* Main Content */}
-      <div className="flex gap-4 flex-1 min-h-0">
-        {/* Code Editor + Logs */}
-        <div className="flex-1 flex flex-col gap-4 min-h-0">
-          {/* Code Editor */}
-          <div className={cn(
-            "border rounded-lg overflow-hidden",
-            isDebugMode ? "flex-1" : "h-full"
-          )}>
-            <CodeEditor
-              value={code}
-              onChange={handleCodeChange}
-              language="javascript"
-              typeDefinitions={runtimeTypes}
-            />
-          </div>
-
-          {/* Debug Logs Panel */}
-          {isDebugMode && runningBranch === currentBranch?.name && (
-            <Card className="h-48 flex-shrink-0 border-amber-500/50">
-              <CardHeader className="py-2 px-4">
-                <CardTitle className="text-sm font-medium flex items-center gap-2">
-                  <Bug className="size-4 text-amber-500" />
-                  Debug Logs
-                  <Badge variant="outline" className="ml-auto border-amber-500/50 text-amber-500">
-                    {runningBranch}
-                  </Badge>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-0">
-                <ScrollArea
-                  ref={logsRef}
-                  className="h-32 bg-zinc-950 font-mono text-xs px-4"
+          {/* Releases Content */}
+          {activeTab === 'releases' && (
+            <>
+              {/* Releases Header */}
+              <div className="flex items-center justify-between flex-shrink-0 px-4 py-3 border-b">
+                <span className="text-sm text-muted-foreground">
+                  {releases.length} release{releases.length !== 1 ? 's' : ''}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCreateReleaseOpen(true)}
+                  disabled={branches.length === 0}
                 >
-                  {logs.length === 0 ? (
-                    <div className="flex items-center justify-center h-full text-muted-foreground">
-                      Waiting for logs...
-                    </div>
-                  ) : (
-                    <div className="space-y-0.5 py-2">
-                      {logs.slice(-100).map((log, index) => (
-                        <div key={index} className="flex gap-2 text-gray-300">
-                          <span className="text-gray-500 shrink-0">
-                            {new Date(log.timestamp).toLocaleTimeString()}
-                          </span>
-                          <span
-                            className={cn(
-                              'shrink-0 uppercase w-12',
-                              log.level === 'error' && 'text-red-400',
-                              log.level === 'warn' && 'text-amber-400',
-                              log.level === 'info' && 'text-blue-400',
-                              log.level === 'debug' && 'text-gray-400'
-                            )}
-                          >
-                            [{log.level}]
-                          </span>
-                          <span className="text-gray-200 break-all">{log.message}</span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </ScrollArea>
-              </CardContent>
-            </Card>
-          )}
-        </div>
-
-        {/* Releases Panel */}
-        <Card className="w-80 flex-shrink-0 flex flex-col">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Tag className="size-4" />
-              Releases
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="flex-1 overflow-auto">
-            {releases.length === 0 ? (
-              <EmptyState
-                title="No releases"
-                description="Create a release to deploy your code"
-                className="py-8"
-              />
-            ) : (
-              <div className="space-y-2">
-                {releases.map((release) => {
-                  const isReleaseRunning = runningRelease === release.version;
-                  return (
-                    <div
-                      key={release.id}
-                      className={cn(
-                        'flex items-center justify-between p-2 rounded-lg border',
-                        isReleaseRunning && 'border-green-500/50 bg-green-500/5'
-                      )}
-                    >
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className="font-mono font-medium">
-                            {release.version}
-                          </span>
-                          {isReleaseRunning && (
-                            <Badge variant="default" className="text-xs bg-green-600">
-                              Running
-                            </Badge>
-                          )}
-                          {release.tag && (
-                            <Badge variant="outline" className="text-xs capitalize">
-                              {release.tag}
-                            </Badge>
-                          )}
-                        </div>
-                        {release.comment && (
-                          <p className="text-xs text-muted-foreground truncate">
-                            {release.comment}
-                          </p>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-1">
-                        {!isReleaseRunning && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="size-8"
-                            title="Delete release"
-                            onClick={() => {
-                              setReleaseToDelete(release.id);
-                              setDeleteReleaseOpen(true);
-                            }}
-                          >
-                            <Trash2 className="size-4" />
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
+                  <Tag className="mr-2 size-4" />
+                  Create Release
+                </Button>
               </div>
-            )}
-          </CardContent>
+              <CardContent className="flex-1 overflow-auto p-6">
+                {releases.length === 0 ? (
+                  <EmptyState
+                    title="No releases"
+                    description="Create a release to deploy your code"
+                    className="py-8"
+                  />
+                ) : (
+                <div className="space-y-2">
+                  {releases.map((release) => {
+                    const isReleaseRunning = runningRelease === release.version;
+                    return (
+                      <div
+                        key={release.id}
+                        className={cn(
+                          'flex items-center justify-between p-3 rounded-lg border',
+                          isReleaseRunning && 'border-green-500/50 bg-green-500/5'
+                        )}
+                      >
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono font-medium">
+                              {release.version}
+                            </span>
+                            {isReleaseRunning && (
+                              <Badge variant="default" className="text-xs bg-green-600">
+                                Running
+                              </Badge>
+                            )}
+                            {release.tag && (
+                              <Badge variant="outline" className="text-xs capitalize">
+                                {release.tag}
+                              </Badge>
+                            )}
+                          </div>
+                          {release.comment && (
+                            <p className="text-sm text-muted-foreground mt-1">
+                              {release.comment}
+                            </p>
+                          )}
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {new Date(release.createdAt).toLocaleString()}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          {!isReleaseRunning && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="size-8"
+                              title="Delete release"
+                              onClick={() => {
+                                setReleaseToDelete(release.id);
+                                setDeleteReleaseOpen(true);
+                              }}
+                            >
+                              <Trash2 className="size-4" />
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                )}
+              </CardContent>
+            </>
+          )}
         </Card>
       </div>
 
@@ -784,6 +846,6 @@ export function PipelinePage() {
         onConfirm={() => releaseToDelete && deleteReleaseMutation.mutate(releaseToDelete)}
         isLoading={deleteReleaseMutation.isPending}
       />
-    </div>
+    </>
   );
 }
