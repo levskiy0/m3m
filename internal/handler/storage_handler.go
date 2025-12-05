@@ -26,8 +26,9 @@ func NewStorageHandler(storageService *service.StorageService, projectService *s
 }
 
 func (h *StorageHandler) Register(r *gin.RouterGroup, authMiddleware *middleware.AuthMiddleware) {
-	// Public CDN route - direct file access without auth
+	// Public routes - direct file access without auth
 	r.GET("/cdn/:id/*path", h.CDN)
+	r.GET("/download/:id/*path", h.PublicDownload)
 
 	storage := r.Group("/projects/:id/storage")
 	storage.Use(authMiddleware.Authenticate())
@@ -261,7 +262,7 @@ func (h *StorageHandler) Thumbnail(c *gin.Context) {
 	c.Data(http.StatusOK, "image/jpeg", data)
 }
 
-// CDN serves files publicly without authentication
+// CDN serves files publicly without authentication (inline)
 func (h *StorageHandler) CDN(c *gin.Context) {
 	projectID := c.Param("id")
 	path := c.Param("path")
@@ -278,4 +279,23 @@ func (h *StorageHandler) CDN(c *gin.Context) {
 	}
 
 	c.File(filePath)
+}
+
+// PublicDownload serves files with Content-Disposition: attachment (force download)
+func (h *StorageHandler) PublicDownload(c *gin.Context) {
+	projectID := c.Param("id")
+	path := c.Param("path")
+	path = strings.TrimPrefix(path, "/")
+
+	filePath, err := h.storageService.Download(projectID, path)
+	if err != nil {
+		if err == service.ErrFileNotFound {
+			c.JSON(http.StatusNotFound, gin.H{"error": "file not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.FileAttachment(filePath, filepath.Base(path))
 }

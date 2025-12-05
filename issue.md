@@ -375,10 +375,11 @@ Pipeline в списке релизов вообще не видно какой 
 - https://github.com/shadcn-examples/shadcn-examples/tree/main/examples/file-manager
 
 
+Я просил другой путь!!! Не `download_url → /api/download/{id}/*path` а `/cdn/download/{project-id}/path/to/file.ext`
 
+слово `api` я не просил!!!
 
-
-
+Если это картинка, нужно делать `/cdn/50x50/{project-id}/path/to/file.ext` что сделает ресайз картинки в `/storage/{project-id}/tmp/resize/50x50/.../...` если там уже есть ресайз то возвращем его, если нет то желаем новый. Картинка должна помещаться как object-contain.   
 
 
 

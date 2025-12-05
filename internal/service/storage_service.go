@@ -26,13 +26,14 @@ var (
 )
 
 type FileInfo struct {
-	Name      string    `json:"name"`
-	Path      string    `json:"path"`
-	IsDir     bool      `json:"is_dir"`
-	Size      int64     `json:"size"`
-	MimeType  string    `json:"mime_type"`
-	UpdatedAt time.Time `json:"updated_at"`
-	URL       string    `json:"url,omitempty"`
+	Name        string    `json:"name"`
+	Path        string    `json:"path"`
+	IsDir       bool      `json:"is_dir"`
+	Size        int64     `json:"size"`
+	MimeType    string    `json:"mime_type"`
+	UpdatedAt   time.Time `json:"updated_at"`
+	URL         string    `json:"url,omitempty"`
+	DownloadURL string    `json:"download_url,omitempty"`
 }
 
 type StorageService struct {
@@ -93,8 +94,9 @@ func (s *StorageService) List(projectID, relativePath string) ([]FileInfo, error
 
 		if !entry.IsDir() {
 			fileInfo.MimeType = getMimeType(entry.Name())
-			// Generate public CDN URL
+			// Generate public URLs
 			fileInfo.URL = fmt.Sprintf("%s/api/cdn/%s%s", s.config.Server.URI, projectID, filePath)
+			fileInfo.DownloadURL = fmt.Sprintf("%s/api/download/%s%s", s.config.Server.URI, projectID, filePath)
 		}
 
 		files = append(files, fileInfo)

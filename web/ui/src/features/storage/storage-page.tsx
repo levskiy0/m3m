@@ -209,17 +209,9 @@ export function StoragePage() {
     }
   };
 
-  const handleDownload = async (item: StorageItem) => {
-    try {
-      const blob = await storageApi.download(projectId!, item.path);
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = item.name;
-      a.click();
-      URL.revokeObjectURL(url);
-    } catch (err) {
-      toast.error('Download failed');
+  const handleDownload = (item: StorageItem) => {
+    if (item.download_url) {
+      window.open(item.download_url, '_blank');
     }
   };
 
@@ -257,7 +249,7 @@ export function StoragePage() {
 
   const getFileIcon = (item: StorageItem) => {
     if (item.is_dir) {
-      return <Folder className="size-5 text-blue-500 shrink-0" />;
+      return <Folder className="size-6 text-blue-500 shrink-0" />;
     }
 
     const ext = getFileExtension(item.name);
@@ -265,7 +257,7 @@ export function StoragePage() {
     // Images - show thumbnail
     if (isImageFile(item.name) && item.url) {
       return (
-        <div className="size-8 shrink-0 rounded overflow-hidden bg-muted flex items-center justify-center">
+        <div className="size-6 shrink-0 rounded overflow-hidden bg-muted flex items-center justify-center">
           <img
             src={item.url}
             alt={item.name}
@@ -275,37 +267,37 @@ export function StoragePage() {
               e.currentTarget.parentElement?.classList.add('fallback');
             }}
           />
-          <FileImage className="size-4 text-muted-foreground hidden" />
+          <FileImage className="size-6 text-muted-foreground hidden" />
         </div>
       );
     }
 
     // Text/documents
     if (['txt', 'md', 'doc', 'docx', 'pdf', 'rtf'].includes(ext)) {
-      return <FileText className="size-5 text-orange-500 shrink-0" />;
+      return <FileText className="size-6 text-orange-500 shrink-0" />;
     }
 
     // Code
     if (['js', 'ts', 'jsx', 'tsx', 'json', 'html', 'css', 'py', 'go', 'rs', 'java', 'c', 'cpp', 'h', 'yml', 'yaml', 'xml', 'sh', 'bash'].includes(ext)) {
-      return <FileCode className="size-5 text-green-500 shrink-0" />;
+      return <FileCode className="size-6 text-green-500 shrink-0" />;
     }
 
     // Archives
     if (['zip', 'rar', '7z', 'tar', 'gz', 'bz2'].includes(ext)) {
-      return <FileArchive className="size-5 text-yellow-500 shrink-0" />;
+      return <FileArchive className="size-6 text-yellow-500 shrink-0" />;
     }
 
     // Audio
     if (['mp3', 'wav', 'ogg', 'flac', 'm4a', 'aac'].includes(ext)) {
-      return <FileAudio className="size-5 text-purple-500 shrink-0" />;
+      return <FileAudio className="size-6 text-purple-500 shrink-0" />;
     }
 
     // Video
     if (['mp4', 'webm', 'mkv', 'avi', 'mov', 'wmv'].includes(ext)) {
-      return <FileVideo className="size-5 text-pink-500 shrink-0" />;
+      return <FileVideo className="size-8 text-pink-500 shrink-0" />;
     }
 
-    return <File className="size-5 text-muted-foreground shrink-0" />;
+    return <File className="size-6 text-muted-foreground shrink-0" />;
   };
 
   return (

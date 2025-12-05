@@ -336,6 +336,7 @@ export interface StorageItem {
   mime_type?: string;
   updated_at: string;
   url?: string;
+  download_url?: string;
 }
 
 export interface CreateDirRequest {
