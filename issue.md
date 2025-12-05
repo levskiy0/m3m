@@ -326,18 +326,11 @@ service.shotdown(() => {
 
 ------
 
-При удалении файла `Cannot read properties of null (reading 'path')`
-
-----
-
-Не работает ни лог ни цели!!!
-
-``` 
-    $logger.debug($goals.get("6931eac0-register"));
-    $logger.info('/health/...');
-```
+Тут вкладками сделано нормально `web/ui/src/features/storage/storage-page.tsx`
+Переделай редактор пайплайна что бы в одной вкладке редактор, в другой лок если дебаг и в третьей релизы
 
 
+Из сайдбара нужно удалить лог, он уже на Overview есть
 
 
 
