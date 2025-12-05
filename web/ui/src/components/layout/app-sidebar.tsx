@@ -249,12 +249,12 @@ export function AppSidebar() {
             <SidebarMenuItem>
               <SidebarMenuButton
                 asChild
-                isActive={location.pathname === '/system'}
-                tooltip="System Info"
+                isActive={location.pathname === '/modules'}
+                tooltip="Modules"
               >
-                <Link to="/system">
-                  <Server />
-                  <span>System Info</span>
+                <Link to="/modules">
+                  <Package />
+                  <span>Modules</span>
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
