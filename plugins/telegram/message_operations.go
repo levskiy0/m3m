@@ -81,13 +81,17 @@ func (uctx *UpdateContext) createReplyPhoto() func(string, string) (map[string]i
 	}
 }
 
-func (uctx *UpdateContext) createReplyWithKeyboard() func(string, [][]map[string]interface{}, map[string]interface{}) (map[string]interface{}, error) {
-	return func(text string, keyboard [][]map[string]interface{}, options map[string]interface{}) (map[string]interface{}, error) {
+func (uctx *UpdateContext) createReplyWithKeyboard() func(string, interface{}, map[string]interface{}) (map[string]interface{}, error) {
+	return func(text string, keyboardRaw interface{}, options map[string]interface{}) (map[string]interface{}, error) {
 		chatID := uctx.getChatID()
 		if chatID == 0 {
 			return nil, fmt.Errorf("no chat ID available")
 		}
 
+		keyboard := convertToKeyboardRows(keyboardRaw)
+		if keyboard == nil {
+			return nil, fmt.Errorf("invalid keyboard format")
+		}
 		kb := buildReplyKeyboard(keyboard, options)
 
 		msg, err := uctx.instance.bot.SendMessage(uctx.instance.ctx, &bot.SendMessageParams{
@@ -103,13 +107,17 @@ func (uctx *UpdateContext) createReplyWithKeyboard() func(string, [][]map[string
 	}
 }
 
-func (uctx *UpdateContext) createReplyWithInlineKeyboard() func(string, [][]map[string]interface{}) (map[string]interface{}, error) {
-	return func(text string, keyboard [][]map[string]interface{}) (map[string]interface{}, error) {
+func (uctx *UpdateContext) createReplyWithInlineKeyboard() func(string, interface{}) (map[string]interface{}, error) {
+	return func(text string, keyboardRaw interface{}) (map[string]interface{}, error) {
 		chatID := uctx.getChatID()
 		if chatID == 0 {
 			return nil, fmt.Errorf("no chat ID available")
 		}
 
+		keyboard := convertToKeyboardRows(keyboardRaw)
+		if keyboard == nil {
+			return nil, fmt.Errorf("invalid keyboard format")
+		}
 		kb := buildInlineKeyboard(keyboard)
 
 		msg, err := uctx.instance.bot.SendMessage(uctx.instance.ctx, &bot.SendMessageParams{
@@ -162,8 +170,10 @@ func (uctx *UpdateContext) createEditMessage() func(string, map[string]interface
 		}
 
 		// Handle inline keyboard in options
-		if keyboard, ok := options["inlineKeyboard"].([][]map[string]interface{}); ok {
-			params.ReplyMarkup = buildInlineKeyboard(keyboard)
+		if kb := options["inlineKeyboard"]; kb != nil {
+			if keyboard := convertToKeyboardRows(kb); keyboard != nil {
+				params.ReplyMarkup = buildInlineKeyboard(keyboard)
+			}
 		}
 
 		msg, err := uctx.instance.bot.EditMessageText(uctx.instance.ctx, params)
@@ -211,17 +221,21 @@ func (instance *BotInstance) createSendMessage() func(int64, string, map[string]
 		}
 
 		if options != nil {
-			if keyboard, ok := options["inlineKeyboard"].([][]map[string]interface{}); ok {
-				params.ReplyMarkup = buildInlineKeyboard(keyboard)
-			} else if keyboard, ok := options["keyboard"].([][]map[string]interface{}); ok {
-				keyboardOpts := make(map[string]interface{})
-				if resize, ok := options["resizeKeyboard"].(bool); ok {
-					keyboardOpts["resize"] = resize
+			if kb := options["inlineKeyboard"]; kb != nil {
+				if keyboard := convertToKeyboardRows(kb); keyboard != nil {
+					params.ReplyMarkup = buildInlineKeyboard(keyboard)
 				}
-				if oneTime, ok := options["oneTimeKeyboard"].(bool); ok {
-					keyboardOpts["oneTime"] = oneTime
+			} else if kb := options["keyboard"]; kb != nil {
+				if keyboard := convertToKeyboardRows(kb); keyboard != nil {
+					keyboardOpts := make(map[string]interface{})
+					if resize, ok := options["resizeKeyboard"].(bool); ok {
+						keyboardOpts["resize"] = resize
+					}
+					if oneTime, ok := options["oneTimeKeyboard"].(bool); ok {
+						keyboardOpts["oneTime"] = oneTime
+					}
+					params.ReplyMarkup = buildReplyKeyboard(keyboard, keyboardOpts)
 				}
-				params.ReplyMarkup = buildReplyKeyboard(keyboard, keyboardOpts)
 			} else if removeKb, ok := options["removeKeyboard"].(bool); ok && removeKb {
 				params.ReplyMarkup = &models.ReplyKeyboardRemove{RemoveKeyboard: true}
 			}
@@ -256,8 +270,10 @@ func (p *TelegramPlugin) createSendPhoto(instance *BotInstance) func(int64, stri
 			if caption, ok := options["caption"].(string); ok {
 				params.Caption = caption
 			}
-			if keyboard, ok := options["inlineKeyboard"].([][]map[string]interface{}); ok {
-				params.ReplyMarkup = buildInlineKeyboard(keyboard)
+			if kb := options["inlineKeyboard"]; kb != nil {
+				if keyboard := convertToKeyboardRows(kb); keyboard != nil {
+					params.ReplyMarkup = buildInlineKeyboard(keyboard)
+				}
 			}
 		}
 
@@ -308,8 +324,10 @@ func (p *TelegramPlugin) createSendDocument(instance *BotInstance) func(int64, s
 			if fn, ok := options["filename"].(string); ok {
 				filename = fn
 			}
-			if keyboard, ok := options["inlineKeyboard"].([][]map[string]interface{}); ok {
-				params.ReplyMarkup = buildInlineKeyboard(keyboard)
+			if kb := options["inlineKeyboard"]; kb != nil {
+				if keyboard := convertToKeyboardRows(kb); keyboard != nil {
+					params.ReplyMarkup = buildInlineKeyboard(keyboard)
+				}
 			}
 		}
 
@@ -352,8 +370,10 @@ func (instance *BotInstance) createSendSticker() func(int64, string, map[string]
 		}
 
 		if options != nil {
-			if keyboard, ok := options["inlineKeyboard"].([][]map[string]interface{}); ok {
-				params.ReplyMarkup = buildInlineKeyboard(keyboard)
+			if kb := options["inlineKeyboard"]; kb != nil {
+				if keyboard := convertToKeyboardRows(kb); keyboard != nil {
+					params.ReplyMarkup = buildInlineKeyboard(keyboard)
+				}
 			}
 		}
 
@@ -376,8 +396,10 @@ func (p *TelegramPlugin) createSendVideo(instance *BotInstance) func(int64, stri
 			if caption, ok := options["caption"].(string); ok {
 				params.Caption = caption
 			}
-			if keyboard, ok := options["inlineKeyboard"].([][]map[string]interface{}); ok {
-				params.ReplyMarkup = buildInlineKeyboard(keyboard)
+			if kb := options["inlineKeyboard"]; kb != nil {
+				if keyboard := convertToKeyboardRows(kb); keyboard != nil {
+					params.ReplyMarkup = buildInlineKeyboard(keyboard)
+				}
 			}
 		}
 
@@ -414,8 +436,10 @@ func (p *TelegramPlugin) createSendAudio(instance *BotInstance) func(int64, stri
 			if caption, ok := options["caption"].(string); ok {
 				params.Caption = caption
 			}
-			if keyboard, ok := options["inlineKeyboard"].([][]map[string]interface{}); ok {
-				params.ReplyMarkup = buildInlineKeyboard(keyboard)
+			if kb := options["inlineKeyboard"]; kb != nil {
+				if keyboard := convertToKeyboardRows(kb); keyboard != nil {
+					params.ReplyMarkup = buildInlineKeyboard(keyboard)
+				}
 			}
 		}
 
@@ -452,8 +476,10 @@ func (p *TelegramPlugin) createSendVoice(instance *BotInstance) func(int64, stri
 			if caption, ok := options["caption"].(string); ok {
 				params.Caption = caption
 			}
-			if keyboard, ok := options["inlineKeyboard"].([][]map[string]interface{}); ok {
-				params.ReplyMarkup = buildInlineKeyboard(keyboard)
+			if kb := options["inlineKeyboard"]; kb != nil {
+				if keyboard := convertToKeyboardRows(kb); keyboard != nil {
+					params.ReplyMarkup = buildInlineKeyboard(keyboard)
+				}
 			}
 		}
 
@@ -489,8 +515,10 @@ func (instance *BotInstance) createEditMessage() func(int64, int, string, map[st
 		}
 
 		if options != nil {
-			if keyboard, ok := options["inlineKeyboard"].([][]map[string]interface{}); ok {
-				params.ReplyMarkup = buildInlineKeyboard(keyboard)
+			if kb := options["inlineKeyboard"]; kb != nil {
+				if keyboard := convertToKeyboardRows(kb); keyboard != nil {
+					params.ReplyMarkup = buildInlineKeyboard(keyboard)
+				}
 			}
 		}
 
@@ -526,8 +554,10 @@ func (p *TelegramPlugin) createEditMessageMedia(instance *BotInstance) func(int6
 		}
 
 		if options != nil {
-			if keyboard, ok := options["inlineKeyboard"].([][]map[string]interface{}); ok {
-				params.ReplyMarkup = buildInlineKeyboard(keyboard)
+			if kb := options["inlineKeyboard"]; kb != nil {
+				if keyboard := convertToKeyboardRows(kb); keyboard != nil {
+					params.ReplyMarkup = buildInlineKeyboard(keyboard)
+				}
 			}
 		}
 

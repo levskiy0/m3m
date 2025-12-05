@@ -6,6 +6,33 @@ import (
 	"m3m/pkg/plugin"
 )
 
+// convertToKeyboardRows converts GOJA array to typed keyboard rows
+func convertToKeyboardRows(value interface{}) [][]map[string]interface{} {
+	rows, ok := value.([]interface{})
+	if !ok {
+		// Try direct type (might work in some cases)
+		if typed, ok := value.([][]map[string]interface{}); ok {
+			return typed
+		}
+		return nil
+	}
+
+	result := make([][]map[string]interface{}, len(rows))
+	for i, row := range rows {
+		rowSlice, ok := row.([]interface{})
+		if !ok {
+			continue
+		}
+		result[i] = make([]map[string]interface{}, len(rowSlice))
+		for j, btn := range rowSlice {
+			if btnMap, ok := btn.(map[string]interface{}); ok {
+				result[i][j] = btnMap
+			}
+		}
+	}
+	return result
+}
+
 // buildInlineKeyboard builds an inline keyboard markup from JS array
 func buildInlineKeyboard(keyboard [][]map[string]interface{}) *models.InlineKeyboardMarkup {
 	rows := make([][]models.InlineKeyboardButton, len(keyboard))
