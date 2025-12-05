@@ -194,6 +194,9 @@ func (s *StorageService) Rename(projectID, oldPath, newPath string) error {
 		return err
 	}
 
+	// Clean up resize cache for old path
+	s.cleanupResizeCache(projectID, oldPath)
+
 	return os.Rename(oldFullPath, newFullPath)
 }
 
@@ -202,6 +205,9 @@ func (s *StorageService) Delete(projectID, relativePath string) error {
 	if err != nil {
 		return err
 	}
+
+	// Clean up resize cache
+	s.cleanupResizeCache(projectID, relativePath)
 
 	return os.RemoveAll(fullPath)
 }
@@ -214,6 +220,25 @@ func (s *StorageService) Exists(projectID, relativePath string) bool {
 
 	_, err = os.Stat(fullPath)
 	return err == nil
+}
+
+// cleanupResizeCache removes all cached resized versions of a file or directory
+func (s *StorageService) cleanupResizeCache(projectID, relativePath string) {
+	tmpDir := filepath.Join(s.config.Storage.Path, projectID, "tmp", "resize")
+
+	// Read all size directories (e.g., 64x64, 100x100)
+	entries, err := os.ReadDir(tmpDir)
+	if err != nil {
+		return // No cache directory exists
+	}
+
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+		cachePath := filepath.Join(tmpDir, entry.Name(), relativePath)
+		os.RemoveAll(cachePath) // Remove file or directory
+	}
 }
 
 // GetResizedImage returns path to resized image, creating it if needed
