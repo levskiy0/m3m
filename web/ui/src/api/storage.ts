@@ -4,8 +4,6 @@ import type {
   CreateDirRequest,
   RenameRequest,
   CreateFileRequest,
-  GenerateLinkRequest,
-  PublicLink,
 } from '@/types';
 
 export const storageApi = {
@@ -75,16 +73,5 @@ export const storageApi = {
 
   getThumbnail: async (projectId: string, path: string): Promise<Blob> => {
     return api.download(`/api/projects/${projectId}/storage/thumbnail/${path}`);
-  },
-
-  generateLink: async (
-    projectId: string,
-    data: GenerateLinkRequest
-  ): Promise<PublicLink> => {
-    return api.post<PublicLink>(`/api/projects/${projectId}/storage/link`, data);
-  },
-
-  getDownloadUrl: (projectId: string, path: string): string => {
-    return api.getDownloadURL(`/api/projects/${projectId}/storage/download/${path}`);
   },
 };

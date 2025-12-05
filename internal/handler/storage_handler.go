@@ -26,8 +26,8 @@ func NewStorageHandler(storageService *service.StorageService, projectService *s
 }
 
 func (h *StorageHandler) Register(r *gin.RouterGroup, authMiddleware *middleware.AuthMiddleware) {
-	// Public route for file access
-	r.GET("/storage/public/:token/:filename", h.PublicDownload)
+	// Public CDN route - direct file access without auth
+	r.GET("/cdn/:id/*path", h.CDN)
 
 	storage := r.Group("/projects/:id/storage")
 	storage.Use(authMiddleware.Authenticate())
@@ -41,7 +41,6 @@ func (h *StorageHandler) Register(r *gin.RouterGroup, authMiddleware *middleware
 		storage.POST("/file", h.CreateFile)
 		storage.PUT("/file/*path", h.UpdateFile)
 		storage.GET("/thumbnail/*path", h.Thumbnail)
-		storage.POST("/link", h.GenerateLink)
 	}
 }
 
@@ -262,40 +261,21 @@ func (h *StorageHandler) Thumbnail(c *gin.Context) {
 	c.Data(http.StatusOK, "image/jpeg", data)
 }
 
-func (h *StorageHandler) GenerateLink(c *gin.Context) {
-	projectID, ok := h.checkAccess(c)
-	if !ok {
-		return
-	}
+// CDN serves files publicly without authentication
+func (h *StorageHandler) CDN(c *gin.Context) {
+	projectID := c.Param("id")
+	path := c.Param("path")
+	path = strings.TrimPrefix(path, "/")
 
-	var req struct {
-		Path string `json:"path" binding:"required"`
-	}
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	url, token, err := h.storageService.GeneratePublicLink(projectID, req.Path)
+	filePath, err := h.storageService.Download(projectID, path)
 	if err != nil {
+		if err == service.ErrFileNotFound {
+			c.JSON(http.StatusNotFound, gin.H{"error": "file not found"})
+			return
+		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"url":   url,
-		"token": token,
-	})
-}
-
-func (h *StorageHandler) PublicDownload(c *gin.Context) {
-	// Note: In production, you'd validate the token against a stored mapping
-	// For now, this is a simplified implementation
-	_ = c.Param("token")
-	filename := c.Param("filename")
-
-	c.JSON(http.StatusNotImplemented, gin.H{
-		"error":    "public download requires token validation implementation",
-		"filename": filename,
-	})
+	c.File(filePath)
 }

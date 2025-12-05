@@ -7,64 +7,63 @@ import {
   FilePlus,
   Download,
   Trash2,
-  Edit,
+  Pencil,
   Link,
   Folder,
   File,
   FileText,
   FileCode,
   FileImage,
-  MoreHorizontal,
+  FileArchive,
+  FileAudio,
+  FileVideo,
+  RefreshCw,
   ChevronRight,
-  Grid,
-  List,
   Home,
+  ExternalLink,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { storageApi } from '@/api';
-import { EDITABLE_MIME_TYPES, IMAGE_MIME_TYPES } from '@/lib/constants';
+import { EDITABLE_MIME_TYPES } from '@/lib/constants';
 import type { StorageItem } from '@/types';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuSeparator,
+  ContextMenuTrigger,
+} from '@/components/ui/context-menu';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { CodeEditor } from '@/components/shared/code-editor';
 import { ConfirmDialog } from '@/components/shared/confirm-dialog';
-import { EmptyState } from '@/components/shared/empty-state';
-import { Skeleton } from '@/components/ui/skeleton';
-import { cn } from '@/lib/utils';
 
-function getFileIcon(item: StorageItem) {
-  if (item.isDir) return Folder;
-  if (IMAGE_MIME_TYPES.includes(item.mimeType || '')) return FileImage;
-  if (EDITABLE_MIME_TYPES.includes(item.mimeType || '')) return FileCode;
-  if (item.mimeType?.startsWith('text/')) return FileText;
-  return File;
+function getFileExtension(filename: string): string {
+  return filename.split('.').pop()?.toLowerCase() || '';
+}
+
+function isImageFile(filename: string): boolean {
+  const ext = getFileExtension(filename);
+  return ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'ico', 'bmp'].includes(ext);
 }
 
 function formatFileSize(bytes: number): string {
-  if (bytes === 0) return '0 B';
+  if (bytes === 0) return '-';
   const k = 1024;
   const sizes = ['B', 'KB', 'MB', 'GB'];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 }
 
 export function StoragePage() {
@@ -73,7 +72,6 @@ export function StoragePage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [currentPath, setCurrentPath] = useState('');
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [selectedItem, setSelectedItem] = useState<StorageItem | null>(null);
 
   // Dialogs
@@ -81,16 +79,13 @@ export function StoragePage() {
   const [createFileOpen, setCreateFileOpen] = useState(false);
   const [renameOpen, setRenameOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
-  const [previewOpen, setPreviewOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
-  const [linkOpen, setLinkOpen] = useState(false);
 
   // Form state
   const [newName, setNewName] = useState('');
   const [newFileName, setNewFileName] = useState('');
   const [newFileContent, setNewFileContent] = useState('');
   const [editContent, setEditContent] = useState('');
-  const [publicLink, setPublicLink] = useState('');
 
   const { data: items = [], isLoading } = useQuery({
     queryKey: ['storage', projectId, currentPath],
@@ -185,18 +180,6 @@ export function StoragePage() {
     },
   });
 
-  const generateLinkMutation = useMutation({
-    mutationFn: () =>
-      storageApi.generateLink(projectId!, { path: selectedItem!.path }),
-    onSuccess: (data) => {
-      setPublicLink(data.url);
-      setLinkOpen(true);
-    },
-    onError: (err) => {
-      toast.error(err instanceof Error ? err.message : 'Failed to generate link');
-    },
-  });
-
   const handleFileUpload = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
@@ -209,13 +192,8 @@ export function StoragePage() {
   );
 
   const handleItemClick = (item: StorageItem) => {
-    if (item.isDir) {
+    if (item.is_dir) {
       setCurrentPath(item.path);
-    } else if (IMAGE_MIME_TYPES.includes(item.mimeType || '')) {
-      setSelectedItem(item);
-      setPreviewOpen(true);
-    } else if (EDITABLE_MIME_TYPES.includes(item.mimeType || '')) {
-      handleEditFile(item);
     }
   };
 
@@ -256,270 +234,245 @@ export function StoragePage() {
   };
 
   const sortedItems = [...items].sort((a, b) => {
-    if (a.isDir && !b.isDir) return -1;
-    if (!a.isDir && b.isDir) return 1;
+    if (a.is_dir && !b.is_dir) return -1;
+    if (!a.is_dir && b.is_dir) return 1;
     return a.name.localeCompare(b.name);
   });
 
-  return (
-    <div className="space-y-4">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Storage</h1>
-          <p className="text-muted-foreground">Manage project files and assets</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={() => setCreateFolderOpen(true)}>
-            <FolderPlus className="mr-2 size-4" />
-            New Folder
-          </Button>
-          <Button variant="outline" onClick={() => setCreateFileOpen(true)}>
-            <FilePlus className="mr-2 size-4" />
-            New File
-          </Button>
-          <Button onClick={() => fileInputRef.current?.click()}>
-            <Upload className="mr-2 size-4" />
-            Upload
-          </Button>
-          <input
-            ref={fileInputRef}
-            type="file"
-            className="hidden"
-            onChange={handleFileUpload}
-          />
-        </div>
-      </div>
+  const handleOpenInNewTab = (item: StorageItem) => {
+    if (item.url) {
+      window.open(item.url, '_blank');
+    }
+  };
 
-      {/* Breadcrumb & View Toggle */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-1 text-sm">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-7"
-            onClick={() => setCurrentPath('')}
-          >
-            <Home className="size-4" />
-          </Button>
-          {pathSegments.map((segment, index) => (
-            <div key={index} className="flex items-center">
-              <ChevronRight className="size-4 text-muted-foreground" />
+  const handleCopyLink = async (item: StorageItem) => {
+    if (!item.url) return;
+    try {
+      await navigator.clipboard.writeText(item.url);
+      toast.success('Link copied');
+    } catch {
+      toast.error('Failed to copy link');
+    }
+  };
+
+  const getFileIcon = (item: StorageItem) => {
+    if (item.is_dir) {
+      return <Folder className="size-5 text-blue-500 shrink-0" />;
+    }
+
+    const ext = getFileExtension(item.name);
+
+    // Images - show thumbnail
+    if (isImageFile(item.name) && item.url) {
+      return (
+        <div className="size-8 shrink-0 rounded overflow-hidden bg-muted flex items-center justify-center">
+          <img
+            src={item.url}
+            alt={item.name}
+            className="h-full w-full object-cover"
+            onError={(e) => {
+              e.currentTarget.style.display = 'none';
+              e.currentTarget.parentElement?.classList.add('fallback');
+            }}
+          />
+          <FileImage className="size-4 text-muted-foreground hidden" />
+        </div>
+      );
+    }
+
+    // Text/documents
+    if (['txt', 'md', 'doc', 'docx', 'pdf', 'rtf'].includes(ext)) {
+      return <FileText className="size-5 text-orange-500 shrink-0" />;
+    }
+
+    // Code
+    if (['js', 'ts', 'jsx', 'tsx', 'json', 'html', 'css', 'py', 'go', 'rs', 'java', 'c', 'cpp', 'h', 'yml', 'yaml', 'xml', 'sh', 'bash'].includes(ext)) {
+      return <FileCode className="size-5 text-green-500 shrink-0" />;
+    }
+
+    // Archives
+    if (['zip', 'rar', '7z', 'tar', 'gz', 'bz2'].includes(ext)) {
+      return <FileArchive className="size-5 text-yellow-500 shrink-0" />;
+    }
+
+    // Audio
+    if (['mp3', 'wav', 'ogg', 'flac', 'm4a', 'aac'].includes(ext)) {
+      return <FileAudio className="size-5 text-purple-500 shrink-0" />;
+    }
+
+    // Video
+    if (['mp4', 'webm', 'mkv', 'avi', 'mov', 'wmv'].includes(ext)) {
+      return <FileVideo className="size-5 text-pink-500 shrink-0" />;
+    }
+
+    return <File className="size-5 text-muted-foreground shrink-0" />;
+  };
+
+  return (
+    <>
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-1 text-sm text-muted-foreground">
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-7"
-                onClick={() => navigateToPath(index)}
+                className="h-6 px-2"
+                onClick={() => setCurrentPath('')}
               >
-                {segment}
+                <Home className="size-3" />
               </Button>
-            </div>
-          ))}
-        </div>
-        <div className="flex items-center gap-1 border rounded-md p-1">
-          <Button
-            variant={viewMode === 'grid' ? 'secondary' : 'ghost'}
-            size="icon"
-            className="size-7"
-            onClick={() => setViewMode('grid')}
-          >
-            <Grid className="size-4" />
-          </Button>
-          <Button
-            variant={viewMode === 'list' ? 'secondary' : 'ghost'}
-            size="icon"
-            className="size-7"
-            onClick={() => setViewMode('list')}
-          >
-            <List className="size-4" />
-          </Button>
-        </div>
-      </div>
-
-      {/* Content */}
-      {isLoading ? (
-        <div className={cn('grid gap-4', viewMode === 'grid' && 'md:grid-cols-4 lg:grid-cols-6')}>
-          {[1, 2, 3, 4, 5, 6].map((i) => (
-            <Skeleton key={i} className="h-24" />
-          ))}
-        </div>
-      ) : sortedItems.length === 0 ? (
-        <EmptyState
-          icon={<Folder className="size-12" />}
-          title="This folder is empty"
-          description="Upload files or create a new folder to get started"
-        />
-      ) : viewMode === 'grid' ? (
-        <div className="grid gap-4 md:grid-cols-4 lg:grid-cols-6">
-          {sortedItems.map((item) => {
-            const Icon = getFileIcon(item);
-            return (
-              <Card
-                key={item.path}
-                className="cursor-pointer transition-colors hover:bg-muted/50"
-                onClick={() => handleItemClick(item)}
-              >
-                <CardContent className="p-4">
-                  <div className="flex flex-col items-center gap-2">
-                    <Icon
-                      className={cn(
-                        'size-10',
-                        item.isDir ? 'text-amber-500' : 'text-muted-foreground'
-                      )}
-                    />
-                    <span className="text-sm font-medium truncate w-full text-center">
-                      {item.name}
-                    </span>
-                    {!item.isDir && (
-                      <span className="text-xs text-muted-foreground">
-                        {formatFileSize(item.size)}
-                      </span>
-                    )}
-                  </div>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="absolute top-2 right-2 size-7 opacity-0 group-hover:opacity-100"
-                      >
-                        <MoreHorizontal className="size-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent>
-                      {!item.isDir && (
-                        <>
-                          <DropdownMenuItem
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDownload(item);
-                            }}
-                          >
-                            <Download className="mr-2 size-4" />
-                            Download
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setSelectedItem(item);
-                              generateLinkMutation.mutate();
-                            }}
-                          >
-                            <Link className="mr-2 size-4" />
-                            Get Link
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                        </>
-                      )}
-                      <DropdownMenuItem
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setSelectedItem(item);
-                          setNewName(item.name);
-                          setRenameOpen(true);
-                        }}
-                      >
-                        <Edit className="mr-2 size-4" />
-                        Rename
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        className="text-destructive"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setSelectedItem(item);
-                          setDeleteOpen(true);
-                        }}
-                      >
-                        <Trash2 className="mr-2 size-4" />
-                        Delete
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
-      ) : (
-        <Card>
-          <CardContent className="p-0">
-            <div className="divide-y">
-              {sortedItems.map((item) => {
-                const Icon = getFileIcon(item);
-                return (
-                  <div
-                    key={item.path}
-                    className="flex items-center gap-4 p-3 cursor-pointer hover:bg-muted/50"
-                    onClick={() => handleItemClick(item)}
+              {pathSegments.map((segment, index) => (
+                <div key={index} className="flex items-center">
+                  <ChevronRight className="size-3" />
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 px-2"
+                    onClick={() => navigateToPath(index)}
+                    disabled={index === pathSegments.length - 1}
                   >
-                    <Icon
-                      className={cn(
-                        'size-5',
-                        item.isDir ? 'text-amber-500' : 'text-muted-foreground'
-                      )}
-                    />
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium truncate">{item.name}</p>
-                    </div>
-                    {!item.isDir && (
-                      <span className="text-sm text-muted-foreground">
-                        {formatFileSize(item.size)}
-                      </span>
-                    )}
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                        <Button variant="ghost" size="icon" className="size-8">
-                          <MoreHorizontal className="size-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        {!item.isDir && (
-                          <>
-                            <DropdownMenuItem onClick={() => handleDownload(item)}>
-                              <Download className="mr-2 size-4" />
-                              Download
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() => {
-                                setSelectedItem(item);
-                                generateLinkMutation.mutate();
-                              }}
-                            >
-                              <Link className="mr-2 size-4" />
-                              Get Link
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                          </>
-                        )}
-                        <DropdownMenuItem
-                          onClick={() => {
-                            setSelectedItem(item);
-                            setNewName(item.name);
-                            setRenameOpen(true);
-                          }}
-                        >
-                          <Edit className="mr-2 size-4" />
-                          Rename
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          className="text-destructive"
-                          onClick={() => {
-                            setSelectedItem(item);
-                            setDeleteOpen(true);
-                          }}
-                        >
-                          <Trash2 className="mr-2 size-4" />
-                          Delete
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-                );
-              })}
+                    {segment}
+                  </Button>
+                </div>
+              ))}
             </div>
-          </CardContent>
-        </Card>
-      )}
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => queryClient.invalidateQueries({ queryKey: ['storage', projectId] })}
+                title="Refresh"
+              >
+                <RefreshCw className="size-4" />
+              </Button>
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => setCreateFolderOpen(true)}
+                title="New folder"
+              >
+                <FolderPlus className="size-4" />
+              </Button>
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => setCreateFileOpen(true)}
+                title="New file"
+              >
+                <FilePlus className="size-4" />
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploadMutation.isPending}
+              >
+                <Upload className="mr-2 size-4" />
+                {uploadMutation.isPending ? 'Uploading...' : 'Upload'}
+              </Button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                className="hidden"
+                onChange={handleFileUpload}
+                multiple
+              />
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {isLoading ? (
+            <div className="flex items-center justify-center h-48">
+              <p className="text-muted-foreground">Loading...</p>
+            </div>
+          ) : sortedItems.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-48 text-center">
+              <Folder className="size-12 text-muted-foreground/50 mb-4" />
+              <p className="text-muted-foreground mb-2">This folder is empty</p>
+              <p className="text-sm text-muted-foreground">
+                Upload files or create a new folder to get started
+              </p>
+            </div>
+          ) : (
+            <div className="border rounded-lg divide-y">
+              {sortedItems.map((item) => (
+                <ContextMenu key={item.path}>
+                  <ContextMenuTrigger>
+                    <div
+                      className={`flex items-center justify-between gap-3 p-3 hover:bg-muted/50 ${
+                        item.is_dir ? 'cursor-pointer' : ''
+                      }`}
+                      onDoubleClick={() => handleItemClick(item)}
+                    >
+                      <div className="flex items-center gap-3 flex-1 min-w-0">
+                        {getFileIcon(item)}
+                        <span className="truncate">{item.name}</span>
+                      </div>
+                      <div className="flex items-center gap-6 text-sm text-muted-foreground">
+                        <span className="w-20 text-right">{formatFileSize(item.size)}</span>
+                        <span className="w-24">
+                          {new Date(item.updated_at).toLocaleDateString()}
+                        </span>
+                      </div>
+                    </div>
+                  </ContextMenuTrigger>
+                  <ContextMenuContent>
+                    {item.is_dir ? (
+                      <ContextMenuItem onClick={() => handleItemClick(item)}>
+                        <Folder className="mr-2 size-4" />
+                        Open
+                      </ContextMenuItem>
+                    ) : (
+                      <>
+                        <ContextMenuItem onClick={() => handleOpenInNewTab(item)}>
+                          <ExternalLink className="mr-2 size-4" />
+                          Open in new tab
+                        </ContextMenuItem>
+                        <ContextMenuItem onClick={() => handleCopyLink(item)}>
+                          <Link className="mr-2 size-4" />
+                          Copy link
+                        </ContextMenuItem>
+                        <ContextMenuItem onClick={() => handleDownload(item)}>
+                          <Download className="mr-2 size-4" />
+                          Download
+                        </ContextMenuItem>
+                        {EDITABLE_MIME_TYPES.includes(item.mime_type || '') && (
+                          <ContextMenuItem onClick={() => handleEditFile(item)}>
+                            <FileCode className="mr-2 size-4" />
+                            Edit
+                          </ContextMenuItem>
+                        )}
+                      </>
+                    )}
+                    <ContextMenuSeparator />
+                    <ContextMenuItem
+                      onClick={() => {
+                        setSelectedItem(item);
+                        setNewName(item.name);
+                        setRenameOpen(true);
+                      }}
+                    >
+                      <Pencil className="mr-2 size-4" />
+                      Rename
+                    </ContextMenuItem>
+                    <ContextMenuSeparator />
+                    <ContextMenuItem
+                      variant="destructive"
+                      onClick={() => {
+                        setSelectedItem(item);
+                        setDeleteOpen(true);
+                      }}
+                    >
+                      <Trash2 className="mr-2 size-4" />
+                      Delete
+                    </ContextMenuItem>
+                  </ContextMenuContent>
+                </ContextMenu>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Create Folder Dialog */}
       <Dialog open={createFolderOpen} onOpenChange={setCreateFolderOpen}>
@@ -651,75 +604,19 @@ export function StoragePage() {
         </DialogContent>
       </Dialog>
 
-      {/* Preview Dialog */}
-      <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
-        <DialogContent className="max-w-4xl">
-          <DialogHeader>
-            <DialogTitle>{selectedItem?.name}</DialogTitle>
-          </DialogHeader>
-          {selectedItem && IMAGE_MIME_TYPES.includes(selectedItem.mimeType || '') && (
-            <div className="flex items-center justify-center">
-              <img
-                src={storageApi.getDownloadUrl(projectId!, selectedItem.path)}
-                alt={selectedItem.name}
-                className="max-h-[60vh] object-contain"
-              />
-            </div>
-          )}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setPreviewOpen(false)}>
-              Close
-            </Button>
-            <Button onClick={() => selectedItem && handleDownload(selectedItem)}>
-              <Download className="mr-2 size-4" />
-              Download
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Link Dialog */}
-      <Dialog open={linkOpen} onOpenChange={setLinkOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Public Link</DialogTitle>
-            <DialogDescription>
-              Share this link to allow others to download the file
-            </DialogDescription>
-          </DialogHeader>
-          <div className="flex items-center gap-2">
-            <Input value={publicLink} readOnly className="font-mono text-sm" />
-            <Button
-              variant="outline"
-              onClick={() => {
-                navigator.clipboard.writeText(publicLink);
-                toast.success('Link copied');
-              }}
-            >
-              Copy
-            </Button>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setLinkOpen(false)}>
-              Close
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
       {/* Delete Confirm */}
       <ConfirmDialog
         open={deleteOpen}
         onOpenChange={setDeleteOpen}
-        title={`Delete ${selectedItem?.isDir ? 'Folder' : 'File'}`}
+        title={`Delete ${selectedItem?.is_dir ? 'Folder' : 'File'}`}
         description={`Are you sure you want to delete "${selectedItem?.name}"?${
-          selectedItem?.isDir ? ' All contents will be deleted.' : ''
+          selectedItem?.is_dir ? ' All contents will be deleted.' : ''
         }`}
         confirmLabel="Delete"
         variant="destructive"
         onConfirm={() => deleteMutation.mutate()}
         isLoading={deleteMutation.isPending}
       />
-    </div>
+    </>
   );
 }

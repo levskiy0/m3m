@@ -331,11 +331,11 @@ export interface PaginatedResponse<T> {
 export interface StorageItem {
   name: string;
   path: string;
-  isDir: boolean;
+  is_dir: boolean;
   size: number;
-  mimeType?: string;
-  modTime: string;
-  thumbnail?: string;
+  mime_type?: string;
+  updated_at: string;
+  url?: string;
 }
 
 export interface CreateDirRequest {
@@ -352,16 +352,6 @@ export interface CreateFileRequest {
   path: string;
   name: string;
   content: string;
-}
-
-export interface GenerateLinkRequest {
-  path: string;
-  expiresIn?: number;
-}
-
-export interface PublicLink {
-  url: string;
-  expiresAt: string;
 }
 
 // Runtime types

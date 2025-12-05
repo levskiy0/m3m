@@ -1,8 +1,6 @@
 package service
 
 import (
-	"crypto/sha256"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"image"
@@ -34,6 +32,7 @@ type FileInfo struct {
 	Size      int64     `json:"size"`
 	MimeType  string    `json:"mime_type"`
 	UpdatedAt time.Time `json:"updated_at"`
+	URL       string    `json:"url,omitempty"`
 }
 
 type StorageService struct {
@@ -83,9 +82,10 @@ func (s *StorageService) List(projectID, relativePath string) ([]FileInfo, error
 			continue
 		}
 
+		filePath := filepath.Join(relativePath, entry.Name())
 		fileInfo := FileInfo{
 			Name:      entry.Name(),
-			Path:      filepath.Join(relativePath, entry.Name()),
+			Path:      filePath,
 			IsDir:     entry.IsDir(),
 			Size:      info.Size(),
 			UpdatedAt: info.ModTime(),
@@ -93,6 +93,8 @@ func (s *StorageService) List(projectID, relativePath string) ([]FileInfo, error
 
 		if !entry.IsDir() {
 			fileInfo.MimeType = getMimeType(entry.Name())
+			// Generate public CDN URL
+			fileInfo.URL = fmt.Sprintf("%s/api/cdn/%s%s", s.config.Server.URI, projectID, filePath)
 		}
 
 		files = append(files, fileInfo)
@@ -205,27 +207,6 @@ func (s *StorageService) Exists(projectID, relativePath string) bool {
 
 	_, err = os.Stat(fullPath)
 	return err == nil
-}
-
-func (s *StorageService) GeneratePublicLink(projectID, relativePath string) (string, string, error) {
-	fullPath, err := s.resolvePath(projectID, relativePath)
-	if err != nil {
-		return "", "", err
-	}
-
-	if _, err := os.Stat(fullPath); os.IsNotExist(err) {
-		return "", "", ErrFileNotFound
-	}
-
-	// Generate token from path + secret + timestamp
-	data := fmt.Sprintf("%s:%s:%d", projectID, relativePath, time.Now().UnixNano())
-	hash := sha256.Sum256([]byte(data))
-	token := hex.EncodeToString(hash[:16])
-
-	filename := filepath.Base(relativePath)
-	url := fmt.Sprintf("%s/api/storage/public/%s/%s", s.config.Server.URI, token, filename)
-
-	return url, token, nil
 }
 
 func (s *StorageService) GenerateThumbnail(projectID, relativePath string, width, height int) ([]byte, error) {
