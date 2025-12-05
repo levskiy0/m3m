@@ -35,6 +35,7 @@ func (s *StorageModule) Register(vm interface{}) {
 		"delete":     s.Delete,
 		"list":       s.List,
 		"mkdir":      s.MkDir,
+		"getPath":    s.GetPath,
 		"tmp": map[string]interface{}{
 			"read":       s.TmpRead,
 			"readBase64": s.TmpReadBase64,
@@ -43,6 +44,7 @@ func (s *StorageModule) Register(vm interface{}) {
 			"delete":     s.TmpDelete,
 			"list":       s.TmpList,
 			"mkdir":      s.TmpMkDir,
+			"getPath":    s.TmpGetPath,
 		},
 	})
 }
@@ -125,6 +127,24 @@ func (s *StorageModule) TmpMkDir(path string) bool {
 	return s.MkDir("tmp/" + path)
 }
 
+func (s *StorageModule) GetPath(path string) string {
+	fullPath, err := s.storage.GetPath(s.projectID, path)
+	if err != nil {
+		return ""
+	}
+	return fullPath
+}
+
+func (s *StorageModule) TmpGetPath(path string) string {
+	return s.GetPath("tmp/" + path)
+}
+
+// GetSchema implements JSSchemaProvider
+func (s *StorageModule) GetSchema() JSModuleSchema {
+	return JSModuleSchema{
+		Name:        "$storage",
+		Description: "File storage operations for the project",
+		Methods: []JSMethodSchema{
 // GetSchema implements JSSchemaProvider
 func (s *StorageModule) GetSchema() JSModuleSchema {
 	return JSModuleSchema{
