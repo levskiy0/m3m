@@ -461,106 +461,104 @@ function GoalCard({
       <CardContent className="space-y-4">
         {/* Value, sparkline and trend */}
         <div className="flex items-end justify-between gap-4">
-          <div className="flex-1">
-            <p className="text-3xl font-bold">
-              {formatNumber(stats?.value ?? 0)}
-            </p>
-            <div className="flex items-center gap-2 mt-1">
-              <Badge variant="secondary">
-                {goal.type === 'counter' ? 'Total Counter' : 'Daily Counter'}
-              </Badge>
-              {trend !== null && (
-                <div className={cn(
-                  "flex items-center gap-1 text-xs font-medium",
-                  trend > 0 ? "text-green-500" : trend < 0 ? "text-red-500" : "text-muted-foreground"
-                )}>
-                  {trend > 0 ? (
-                    <TrendingUp className="size-3" />
-                  ) : trend < 0 ? (
-                    <TrendingDown className="size-3" />
-                  ) : null}
-                  {trend > 0 ? '+' : ''}{trend.toFixed(0)}%
-                </div>
-              )}
-            </div>
-          </div>
           {/* 7-day sparkline for quick overview */}
           {goal.type === 'daily_counter' && stats?.dailyStats && stats.dailyStats.length > 1 && (
-            <Sparkline
-              data={stats.dailyStats.slice(-7).map(d => d.value)}
-              width={80}
-              height={36}
-              color={goal.color || '#6b7280'}
-              strokeWidth={2}
-              fillOpacity={0.2}
-            />
+              <Sparkline
+                  data={stats.dailyStats.slice(-7).map(d => d.value)}
+                  width={80}
+                  height={36}
+                  color={goal.color || '#6b7280'}
+                  strokeWidth={2}
+                  fillOpacity={0.2}
+              />
           )}
         </div>
 
         {/* Chart */}
         {chartData.length > 0 && (
-          <div className="h-32">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={chartData}>
-                <defs>
-                  <linearGradient id={`gradient-${goal.id}`} x1="0" y1="0" x2="0" y2="1">
-                    <stop
-                      offset="0%"
-                      stopColor={goal.color || '#6b7280'}
-                      stopOpacity={0.3}
-                    />
-                    <stop
-                      offset="100%"
-                      stopColor={goal.color || '#6b7280'}
-                      stopOpacity={0}
-                    />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                <XAxis
-                  dataKey="date"
-                  tick={{ fontSize: 10 }}
-                  tickLine={false}
-                  axisLine={false}
-                  className="text-muted-foreground"
-                />
-                <YAxis
-                  tick={{ fontSize: 10 }}
-                  tickLine={false}
-                  axisLine={false}
-                  width={30}
-                  className="text-muted-foreground"
-                />
-                <RechartsTooltip
-                  contentStyle={{
-                    backgroundColor: 'hsl(var(--popover))',
-                    border: '1px solid hsl(var(--border))',
-                    borderRadius: '6px',
-                    fontSize: '12px',
-                  }}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="value"
-                  stroke={goal.color || '#6b7280'}
-                  fill={`url(#gradient-${goal.id})`}
-                  strokeWidth={2}
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
+            <div className="h-32">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={chartData}>
+                  <defs>
+                    <linearGradient id={`gradient-${goal.id}`} x1="0" y1="0" x2="0" y2="1">
+                      <stop
+                          offset="0%"
+                          stopColor={goal.color || '#6b7280'}
+                          stopOpacity={0.3}
+                      />
+                      <stop
+                          offset="100%"
+                          stopColor={goal.color || '#6b7280'}
+                          stopOpacity={0}
+                      />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted"/>
+                  <XAxis
+                      dataKey="date"
+                      tick={{fontSize: 10}}
+                      tickLine={false}
+                      axisLine={false}
+                      className="text-muted-foreground"
+                  />
+                  <YAxis
+                      tick={{fontSize: 10}}
+                      tickLine={false}
+                      axisLine={false}
+                      width={30}
+                      className="text-muted-foreground"
+                  />
+                  <RechartsTooltip
+                      contentStyle={{
+                        backgroundColor: 'hsl(var(--popover))',
+                        border: '1px solid hsl(var(--border))',
+                        borderRadius: '6px',
+                        fontSize: '12px',
+                      }}
+                  />
+                  <Area
+                      type="monotone"
+                      dataKey="value"
+                      stroke={goal.color || '#6b7280'}
+                      fill={`url(#gradient-${goal.id})`}
+                      strokeWidth={2}
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
         )}
 
-        {goal.description && (
-          <p className="text-sm text-muted-foreground">
-            {goal.description}
+        <div className="flex-1">
+          <p className="text-3xl font-bold">
+            {formatNumber(stats?.value ?? 0)}
           </p>
+          <div className="flex items-center gap-2 mt-1">
+            {trend !== null && (
+                <div className={cn(
+                    "flex items-center gap-1 text-xs font-medium",
+                    trend > 0 ? "text-green-500" : trend < 0 ? "text-red-500" : "text-muted-foreground"
+                )}>
+                  {trend > 0 ? (
+                      <TrendingUp className="size-3"/>
+                  ) : trend < 0 ? (
+                      <TrendingDown className="size-3"/>
+                  ) : null}
+                  {trend > 0 ? '+' : ''}{trend.toFixed(0)}%
+                </div>
+            )}
+          </div>
+        </div>
+
+        {goal.description && (
+            <p className="text-sm text-muted-foreground">
+              {goal.description}
+            </p>
         )}
 
         {/* Usage hint */}
         <div className="rounded-md bg-muted/50 p-2">
           <code className="text-xs text-muted-foreground">
-            goals.increment("{goal.slug}")
+            $goals.increment("{goal.slug}")
           </code>
         </div>
       </CardContent>
