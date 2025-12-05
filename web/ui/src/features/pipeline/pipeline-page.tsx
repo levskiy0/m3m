@@ -84,12 +84,17 @@ export function PipelinePage() {
     enabled: !!projectId,
   });
 
+  // Fetch full branch with code when selected
+  const { data: currentBranch, isLoading: branchLoading } = useQuery({
+    queryKey: ['branch', projectId, selectedBranch],
+    queryFn: () => pipelineApi.getBranch(projectId!, selectedBranch),
+    enabled: !!projectId && !!selectedBranch && branches.length > 0,
+  });
+
   const { data: runtimeTypes } = useQuery({
     queryKey: ['runtime-types'],
     queryFn: runtimeApi.getTypes,
   });
-
-  const currentBranch = branches.find((b) => b.name === selectedBranch);
 
   // Load branch code
   useEffect(() => {
@@ -106,7 +111,7 @@ export function PipelinePage() {
   const saveMutation = useMutation({
     mutationFn: () => pipelineApi.updateBranch(projectId!, selectedBranch, { code }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['branches', projectId] });
+      queryClient.invalidateQueries({ queryKey: ['branch', projectId, selectedBranch] });
       setHasChanges(false);
       toast.success('Code saved');
     },
@@ -149,7 +154,7 @@ export function PipelinePage() {
         target_version: resetTargetVersion,
       }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['branches', projectId] });
+      queryClient.invalidateQueries({ queryKey: ['branch', projectId, selectedBranch] });
       setResetBranchOpen(false);
       setResetTargetVersion('');
       toast.success('Branch reset');
@@ -233,7 +238,7 @@ export function PipelinePage() {
     setHasChanges(value !== (currentBranch?.code || DEFAULT_SERVICE_CODE));
   };
 
-  const isLoading = branchesLoading || releasesLoading;
+  const isLoading = branchesLoading || releasesLoading || branchLoading;
 
   if (isLoading) {
     return (
