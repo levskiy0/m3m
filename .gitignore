@@ -5,6 +5,7 @@
 ./internal/app/dist/
 ./server
 storage
+logs
 issue.md
 
 web/ui/dist
