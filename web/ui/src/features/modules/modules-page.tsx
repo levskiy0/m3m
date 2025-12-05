@@ -5,9 +5,9 @@ import { runtimeApi } from '@/api';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 
-export function SystemInfoPage() {
-  const { data: systemInfo, isLoading } = useQuery({
-    queryKey: ['system-info'],
+export function ModulesPage() {
+  const { data: modulesInfo, isLoading } = useQuery({
+    queryKey: ['modules-info'],
     queryFn: runtimeApi.getSystemInfo,
   });
 
@@ -31,13 +31,13 @@ export function SystemInfoPage() {
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Loaded Modules</h1>
         <p className="text-muted-foreground">
-          {systemInfo?.plugins?.length || 0} modules loaded
+          {modulesInfo?.plugins?.length || 0} modules loaded
         </p>
       </div>
 
-      {systemInfo?.plugins && systemInfo.plugins.length > 0 ? (
+      {modulesInfo?.plugins && modulesInfo.plugins.length > 0 ? (
         <div className="space-y-3">
-          {systemInfo.plugins.map((plugin) => (
+          {modulesInfo.plugins.map((plugin) => (
             <div
               key={plugin.name}
               className="flex items-center justify-between rounded-lg border p-4"

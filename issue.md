@@ -302,9 +302,18 @@ service.shotdown(() => {
 
 ---
 
-System Info нужно убрать и сделать просто Loaded Modules
+```
+4:39:18 AM
+[warn]
+Image not found, sending text only: failed to read file: open yes.png: no such file or directory
+4:39:21 AM
+[warn]
+Image not found, sending text only: failed to read file: open yes.png: no such file or directory
+```
 
----
+
+
+
 
 
 

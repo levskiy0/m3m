@@ -12,7 +12,7 @@ import { ModelSchemaPage } from '@/features/models/model-schema-page';
 import { ModelDataPage } from '@/features/models/model-data-page';
 import { GoalsPage } from '@/features/goals/goals-page';
 import { GlobalGoalsPage } from '@/features/goals/global-goals-page';
-import { SystemInfoPage } from '@/features/system/system-info-page';
+import { ModulesPage } from '@/features/modules/modules-page';
 import { EnvironmentPage } from '@/features/environment/environment-page';
 import { UsersPage } from '@/features/users/users-page';
 import { ProfilePage } from '@/features/users/profile-page';
@@ -98,7 +98,7 @@ export function AppRouter() {
 
             {/* Global */}
             <Route path="/goals" element={<GlobalGoalsPage />} />
-            <Route path="/system" element={<SystemInfoPage />} />
+            <Route path="/modules" element={<ModulesPage />} />
 
             {/* Settings */}
             <Route path="/settings/users" element={<UsersPage />} />
