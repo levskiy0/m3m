@@ -43,19 +43,19 @@ type Loader struct {
 }
 
 // NewLoader creates a new plugin loader
-func NewLoader(cfg *config.Config, logger *slog.Logger) *Loader {
+func NewLoader(cfg *config.Config, logger *slog.Logger) (*Loader, error) {
 	loader := &Loader{
 		plugins: make(map[string]Plugin),
 		config:  cfg,
 		logger:  logger,
 	}
 
-	// Load plugins on creation
+	// Load plugins on creation - fail if any plugin fails to load
 	if err := loader.LoadAll(); err != nil {
-		logger.Error("Failed to load plugins", "error", err)
+		return nil, fmt.Errorf("failed to load plugins: %w", err)
 	}
 
-	return loader
+	return loader, nil
 }
 
 // LoadAll loads all .so plugins from the plugins directory
@@ -84,7 +84,7 @@ func (l *Loader) LoadAll() error {
 		pluginPath := filepath.Join(pluginsPath, entry.Name())
 		if err := l.Load(pluginPath); err != nil {
 			l.logger.Error("Failed to load plugin", "path", pluginPath, "error", err)
-			continue
+			return fmt.Errorf("failed to load plugin %s: %w", entry.Name(), err)
 		}
 	}
 
@@ -108,14 +108,18 @@ func (l *Loader) Load(path string) error {
 		return fmt.Errorf("plugin does not export NewPlugin: %w", err)
 	}
 
-	// Cast to function
-	newPluginFunc, ok := newPluginSym.(func() Plugin)
+	// Cast to function - plugins return interface{} for compatibility
+	newPluginFunc, ok := newPluginSym.(func() interface{})
 	if !ok {
-		return fmt.Errorf("NewPlugin has wrong signature")
+		return fmt.Errorf("NewPlugin has wrong signature, expected func() interface{}")
 	}
 
-	// Create plugin instance
-	pluginInstance := newPluginFunc()
+	// Create plugin instance and cast to Plugin interface
+	rawPlugin := newPluginFunc()
+	pluginInstance, ok := rawPlugin.(Plugin)
+	if !ok {
+		return fmt.Errorf("plugin does not implement Plugin interface")
+	}
 
 	// Initialize plugin with config
 	// Plugin config can be stored in main config under plugins.config.<name>
