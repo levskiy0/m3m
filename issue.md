@@ -322,21 +322,15 @@ service.shotdown(() => {
 
 в `plugins/telegram/example.js` напиши пример бота который гадает да или нет и отдает сообщение с картинкой (yes.png/no.png) и клавиатурой 
 
+``` 
 
+$telegram.startBot(TOKEN, ($instance) => {
+  $instance.handle("/start", () => {})
+  
+  $instance.sendMessage(...)
+})
 
-------
-
-Тут вкладками сделано нормально `web/ui/src/features/storage/storage-page.tsx`
-Переделай редактор пайплайна что бы в одной вкладке редактор, в другой лок если дебаг и в третьей релизы
-
-
-Из сайдбара нужно удалить лог, он уже на Overview есть
-
-
-
-
-
-
+```
 
 
 
