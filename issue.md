@@ -338,18 +338,12 @@ type Plugin interface {
 
 ---
 
-telegram
 
-Хотя картинки есть в storage
 
-```
-4:39:18 AM
-[warn]
-Image not found, sending text only: failed to read file: open yes.png: no such file or directory
-4:39:21 AM
-[warn]
-Image not found, sending text only: failed to read file: open yes.png: no such file or directory
-```
+
+
+
+
 
 
 
