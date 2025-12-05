@@ -56,7 +56,13 @@ export const storageApi = {
   },
 
   rename: async (projectId: string, data: RenameRequest): Promise<void> => {
-    return api.put(`/api/projects/${projectId}/storage/rename`, data);
+    // Backend expects {old_path, new_path}
+    const dir = data.path.substring(0, data.path.lastIndexOf('/')) || '';
+    const newPath = dir ? `${dir}/${data.newName}` : data.newName;
+    return api.put(`/api/projects/${projectId}/storage/rename`, {
+      old_path: data.path,
+      new_path: newPath,
+    });
   },
 
   delete: async (projectId: string, path: string): Promise<void> => {
