@@ -325,9 +325,9 @@ Pipeline в списке релизов вообще не видно какой 
 - `Requests`
 - `Scheduled Jobs` / Тоже мини свг график выполнения
 - `Storage` / Место в фаловом хранилище проекта
-- `Database` / Размер базы проекта
-- `Memory` / Сквозное
-- `CPU` / Сквозное
+- `Database`
+- `Memory` 
+- `CPU` 
 
 - `Public URL`
 - `API Key`

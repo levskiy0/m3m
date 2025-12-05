@@ -415,7 +415,7 @@ export function ProjectDashboard() {
 
         {/* Instance Tab */}
         <TabsContent value="instance" className="space-y-6">
-          {/* Runtime Stats */}
+          {/* Runtime Stats - Row 1 */}
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             {/* Uptime */}
             <Card>
@@ -512,7 +512,10 @@ export function ProjectDashboard() {
                 </p>
               </CardContent>
             </Card>
+          </div>
 
+          {/* Runtime Stats - Row 2 */}
+          <div className="grid gap-4 md:grid-cols-3">
             {/* Database */}
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
