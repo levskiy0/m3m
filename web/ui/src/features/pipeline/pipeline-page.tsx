@@ -418,42 +418,44 @@ export function PipelinePage() {
                 placeholder="feature/my-feature"
               />
             </Field>
-            <Field>
-              <FieldLabel>Source Type</FieldLabel>
-              <Select
-                value={newBranchSource}
-                onValueChange={(v) => setNewBranchSource(v as 'branch' | 'release')}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="branch">Branch</SelectItem>
-                  <SelectItem value="release">Release</SelectItem>
-                </SelectContent>
-              </Select>
-            </Field>
-            <Field>
-              <FieldLabel>Source {newBranchSource === 'branch' ? 'Branch' : 'Release'}</FieldLabel>
-              <Select value={newBranchSourceName} onValueChange={setNewBranchSourceName}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select source" />
-                </SelectTrigger>
-                <SelectContent>
-                  {newBranchSource === 'branch'
-                    ? branches.map((b) => (
-                        <SelectItem key={b.name} value={b.name}>
-                          {b.name}
-                        </SelectItem>
-                      ))
-                    : releases.map((r) => (
-                        <SelectItem key={r.version} value={r.version}>
-                          {r.version}
-                        </SelectItem>
-                      ))}
-                </SelectContent>
-              </Select>
-            </Field>
+            <div className="grid grid-cols-2 gap-4">
+              <Field>
+                <FieldLabel>Source Type</FieldLabel>
+                <Select
+                  value={newBranchSource}
+                  onValueChange={(v) => setNewBranchSource(v as 'branch' | 'release')}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="branch">Branch</SelectItem>
+                    <SelectItem value="release">Release</SelectItem>
+                  </SelectContent>
+                </Select>
+              </Field>
+              <Field>
+                <FieldLabel>Source {newBranchSource === 'branch' ? 'Branch' : 'Release'}</FieldLabel>
+                <Select value={newBranchSourceName} onValueChange={setNewBranchSourceName}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select source" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {newBranchSource === 'branch'
+                      ? branches.map((b) => (
+                          <SelectItem key={b.name} value={b.name}>
+                            {b.name}
+                          </SelectItem>
+                        ))
+                      : releases.map((r) => (
+                          <SelectItem key={r.version} value={r.version}>
+                            {r.version}
+                          </SelectItem>
+                        ))}
+                  </SelectContent>
+                </Select>
+              </Field>
+            </div>
           </FieldGroup>
           <DialogFooter>
             <Button variant="outline" onClick={() => setCreateBranchOpen(false)}>
@@ -471,7 +473,7 @@ export function PipelinePage() {
 
       {/* Create Release Dialog */}
       <Dialog open={createReleaseOpen} onOpenChange={setCreateReleaseOpen}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>Create Release</DialogTitle>
             <DialogDescription>
@@ -479,60 +481,62 @@ export function PipelinePage() {
             </DialogDescription>
           </DialogHeader>
           <FieldGroup>
-            <Field>
-              <FieldLabel>Source Branch</FieldLabel>
-              <Select value={releaseBranch} onValueChange={setReleaseBranch}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select branch" />
-                </SelectTrigger>
-                <SelectContent>
-                  {branches.map((b) => (
-                    <SelectItem key={b.name} value={b.name}>
-                      {b.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </Field>
-            <Field>
-              <FieldLabel>Version Bump</FieldLabel>
-              <Select value={bumpType} onValueChange={(v) => setBumpType(v as 'minor' | 'major')}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="minor">Minor (X.+1)</SelectItem>
-                  <SelectItem value="major">Major (+1.0)</SelectItem>
-                </SelectContent>
-              </Select>
-              <FieldDescription>
-                Current: {releases[0]?.version || '0.0'} → Next:{' '}
-                {releases[0]?.version
-                  ? bumpType === 'minor'
-                    ? `${releases[0].version.split('.')[0]}.${
-                        parseInt(releases[0].version.split('.')[1]) + 1
-                      }`
-                    : `${parseInt(releases[0].version.split('.')[0]) + 1}.0`
-                  : bumpType === 'minor'
-                  ? '0.1'
-                  : '1.0'}
-              </FieldDescription>
-            </Field>
-            <Field>
-              <FieldLabel>Tag</FieldLabel>
-              <Select value={releaseTag} onValueChange={setReleaseTag}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select tag" />
-                </SelectTrigger>
-                <SelectContent>
-                  {RELEASE_TAGS.map((tag) => (
-                    <SelectItem key={tag.value} value={tag.value}>
-                      {tag.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </Field>
+            <div className="grid grid-cols-3 gap-4">
+              <Field>
+                <FieldLabel>Source Branch</FieldLabel>
+                <Select value={releaseBranch} onValueChange={setReleaseBranch}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select branch" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {branches.map((b) => (
+                      <SelectItem key={b.name} value={b.name}>
+                        {b.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </Field>
+              <Field>
+                <FieldLabel>Version Bump</FieldLabel>
+                <Select value={bumpType} onValueChange={(v) => setBumpType(v as 'minor' | 'major')}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="minor">Minor (X.+1)</SelectItem>
+                    <SelectItem value="major">Major (+1.0)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </Field>
+              <Field>
+                <FieldLabel>Tag</FieldLabel>
+                <Select value={releaseTag} onValueChange={setReleaseTag}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select tag" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {RELEASE_TAGS.map((tag) => (
+                      <SelectItem key={tag.value} value={tag.value}>
+                        {tag.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </Field>
+            </div>
+            <FieldDescription className="text-center">
+              Current: {releases[0]?.version || '0.0'} → Next:{' '}
+              {releases[0]?.version
+                ? bumpType === 'minor'
+                  ? `${releases[0].version.split('.')[0]}.${
+                      parseInt(releases[0].version.split('.')[1]) + 1
+                    }`
+                  : `${parseInt(releases[0].version.split('.')[0]) + 1}.0`
+                : bumpType === 'minor'
+                ? '0.1'
+                : '1.0'}
+            </FieldDescription>
             <Field>
               <FieldLabel>Comment (optional)</FieldLabel>
               <Textarea
