@@ -65,6 +65,10 @@ func (s *PipelineService) GetBranches(ctx context.Context, projectID primitive.O
 	return s.pipelineRepo.FindBranchesByProject(ctx, projectID)
 }
 
+func (s *PipelineService) GetBranchSummaries(ctx context.Context, projectID primitive.ObjectID) ([]*domain.BranchSummary, error) {
+	return s.pipelineRepo.FindBranchSummariesByProject(ctx, projectID)
+}
+
 func (s *PipelineService) UpdateBranch(ctx context.Context, projectID primitive.ObjectID, name string, req *domain.UpdateBranchRequest) (*domain.Branch, error) {
 	branch, err := s.pipelineRepo.FindBranchByName(ctx, projectID, name)
 	if err != nil {
@@ -139,6 +143,10 @@ func (s *PipelineService) CreateRelease(ctx context.Context, projectID primitive
 
 func (s *PipelineService) GetReleases(ctx context.Context, projectID primitive.ObjectID) ([]*domain.Release, error) {
 	return s.pipelineRepo.FindReleasesByProject(ctx, projectID)
+}
+
+func (s *PipelineService) GetReleaseSummaries(ctx context.Context, projectID primitive.ObjectID) ([]*domain.ReleaseSummary, error) {
+	return s.pipelineRepo.FindReleaseSummariesByProject(ctx, projectID)
 }
 
 func (s *PipelineService) GetRelease(ctx context.Context, projectID primitive.ObjectID, version string) (*domain.Release, error) {

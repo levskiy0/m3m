@@ -26,11 +26,33 @@ type Branch struct {
 	UpdatedAt          time.Time          `bson:"updated_at" json:"updated_at"`
 }
 
+// BranchSummary is a lightweight version of Branch without Code for list operations
+type BranchSummary struct {
+	ID                 primitive.ObjectID `bson:"_id,omitempty" json:"id"`
+	ProjectID          primitive.ObjectID `bson:"project_id" json:"project_id"`
+	Name               string             `bson:"name" json:"name"`
+	ParentBranch       *string            `bson:"parent_branch" json:"parent_branch"`
+	CreatedFromRelease *string            `bson:"created_from_release" json:"created_from_release"`
+	CreatedAt          time.Time          `bson:"created_at" json:"created_at"`
+	UpdatedAt          time.Time          `bson:"updated_at" json:"updated_at"`
+}
+
 type Release struct {
 	ID        primitive.ObjectID `bson:"_id,omitempty" json:"id"`
 	ProjectID primitive.ObjectID `bson:"project_id" json:"project_id"`
 	Version   string             `bson:"version" json:"version"`
 	Code      string             `bson:"code" json:"code"`
+	Comment   string             `bson:"comment" json:"comment"`
+	Tag       ReleaseTag         `bson:"tag" json:"tag"`
+	IsActive  bool               `bson:"is_active" json:"is_active"`
+	CreatedAt time.Time          `bson:"created_at" json:"created_at"`
+}
+
+// ReleaseSummary is a lightweight version of Release without Code for list operations
+type ReleaseSummary struct {
+	ID        primitive.ObjectID `bson:"_id,omitempty" json:"id"`
+	ProjectID primitive.ObjectID `bson:"project_id" json:"project_id"`
+	Version   string             `bson:"version" json:"version"`
 	Comment   string             `bson:"comment" json:"comment"`
 	Tag       ReleaseTag         `bson:"tag" json:"tag"`
 	IsActive  bool               `bson:"is_active" json:"is_active"`

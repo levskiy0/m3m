@@ -73,6 +73,19 @@ export interface Branch {
   projectID: string;
   name: string;
   code: string;
+  parentBranch?: string;
+  createdFromRelease?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Lightweight version without code for list operations
+export interface BranchSummary {
+  id: string;
+  projectID: string;
+  name: string;
+  parentBranch?: string;
+  createdFromRelease?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -96,6 +109,17 @@ export interface Release {
   projectID: string;
   version: string;
   code: string;
+  comment?: string;
+  tag?: ReleaseTag;
+  isActive: boolean;
+  createdAt: string;
+}
+
+// Lightweight version without code for list operations
+export interface ReleaseSummary {
+  id: string;
+  projectID: string;
+  version: string;
   comment?: string;
   tag?: ReleaseTag;
   isActive: boolean;

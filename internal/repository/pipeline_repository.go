@@ -102,6 +102,21 @@ func (r *PipelineRepository) FindBranchesByProject(ctx context.Context, projectI
 	return branches, nil
 }
 
+func (r *PipelineRepository) FindBranchSummariesByProject(ctx context.Context, projectID primitive.ObjectID) ([]*domain.BranchSummary, error) {
+	opts := options.Find().SetProjection(bson.M{"code": 0})
+	cursor, err := r.branchesCollection.Find(ctx, bson.M{"project_id": projectID}, opts)
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(ctx)
+
+	branches := make([]*domain.BranchSummary, 0)
+	if err := cursor.All(ctx, &branches); err != nil {
+		return nil, err
+	}
+	return branches, nil
+}
+
 func (r *PipelineRepository) UpdateBranch(ctx context.Context, branch *domain.Branch) error {
 	branch.UpdatedAt = time.Now()
 	_, err := r.branchesCollection.UpdateOne(
@@ -165,6 +180,21 @@ func (r *PipelineRepository) FindReleasesByProject(ctx context.Context, projectI
 	defer cursor.Close(ctx)
 
 	releases := make([]*domain.Release, 0)
+	if err := cursor.All(ctx, &releases); err != nil {
+		return nil, err
+	}
+	return releases, nil
+}
+
+func (r *PipelineRepository) FindReleaseSummariesByProject(ctx context.Context, projectID primitive.ObjectID) ([]*domain.ReleaseSummary, error) {
+	opts := options.Find().SetSort(bson.D{{Key: "created_at", Value: -1}}).SetProjection(bson.M{"code": 0})
+	cursor, err := r.releasesCollection.Find(ctx, bson.M{"project_id": projectID}, opts)
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(ctx)
+
+	releases := make([]*domain.ReleaseSummary, 0)
 	if err := cursor.All(ctx, &releases); err != nil {
 		return nil, err
 	}

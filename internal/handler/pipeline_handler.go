@@ -67,7 +67,7 @@ func (h *PipelineHandler) ListBranches(c *gin.Context) {
 		return
 	}
 
-	branches, err := h.pipelineService.GetBranches(c.Request.Context(), projectID)
+	branches, err := h.pipelineService.GetBranchSummaries(c.Request.Context(), projectID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -185,7 +185,7 @@ func (h *PipelineHandler) ListReleases(c *gin.Context) {
 		return
 	}
 
-	releases, err := h.pipelineService.GetReleases(c.Request.Context(), projectID)
+	releases, err := h.pipelineService.GetReleaseSummaries(c.Request.Context(), projectID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return

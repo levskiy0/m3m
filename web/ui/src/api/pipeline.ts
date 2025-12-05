@@ -1,7 +1,9 @@
 import { api } from './client';
 import type {
   Branch,
+  BranchSummary,
   Release,
+  ReleaseSummary,
   CreateBranchRequest,
   UpdateBranchRequest,
   ResetBranchRequest,
@@ -10,8 +12,8 @@ import type {
 
 export const pipelineApi = {
   // Branches
-  listBranches: async (projectId: string): Promise<Branch[]> => {
-    return api.get<Branch[]>(`/api/projects/${projectId}/pipeline/branches`);
+  listBranches: async (projectId: string): Promise<BranchSummary[]> => {
+    return api.get<BranchSummary[]>(`/api/projects/${projectId}/pipeline/branches`);
   },
 
   getBranch: async (projectId: string, name: string): Promise<Branch> => {
@@ -46,8 +48,8 @@ export const pipelineApi = {
   },
 
   // Releases
-  listReleases: async (projectId: string): Promise<Release[]> => {
-    return api.get<Release[]>(`/api/projects/${projectId}/pipeline/releases`);
+  listReleases: async (projectId: string): Promise<ReleaseSummary[]> => {
+    return api.get<ReleaseSummary[]>(`/api/projects/${projectId}/pipeline/releases`);
   },
 
   createRelease: async (projectId: string, data: CreateReleaseRequest): Promise<Release> => {
