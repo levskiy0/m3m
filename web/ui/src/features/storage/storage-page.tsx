@@ -527,13 +527,15 @@ export function StoragePage() {
                 </div>
               ) : (
                 <div className="divide-y">
-                  {sortedItems.map((item) => (
+                  {sortedItems.map((item, index) => (
                     <ContextMenu key={item.path}>
                       <ContextMenuTrigger>
                         <div
-                          className={`flex items-center justify-between gap-3 p-3 hover:bg-muted/50 ${
-                            item.is_dir ? 'cursor-pointer' : ''
-                          }`}
+                          className={cn(
+                            'flex items-center justify-between gap-3 p-3 hover:bg-muted/50',
+                            item.is_dir && 'cursor-pointer',
+                            index % 2 === 1 && 'bg-muted/30'
+                          )}
                           onDoubleClick={() => {
                             if (item.is_dir) {
                               handleItemClick(item);
