@@ -487,13 +487,12 @@ export function ProjectDashboard() {
               </CardHeader>
               <CardContent>
                 {isRunning ? (
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-end justify-between">
                     <div>
                       {project.runningSource?.startsWith('debug:') ? (
                         <>
                           <div className="flex items-center gap-2">
                             <Bug className="size-5 text-amber-500" />
-                            <p className="text-xl font-bold text-amber-500">Debug</p>
                           </div>
                           <code className="text-sm text-muted-foreground mt-1 block">
                             {project.runningSource.replace('debug:', '')}
