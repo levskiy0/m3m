@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import {
-  ChevronRight,
   FolderCode,
   Settings2,
   Target,
@@ -16,16 +15,12 @@ import {
   ScrollText,
   ChevronsUpDown,
   Plus,
+  Globe,
 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 
 import { useAuth } from '@/providers/auth-provider';
 import { projectsApi } from '@/api';
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from '@/components/ui/collapsible';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -40,13 +35,11 @@ import {
   SidebarContent,
   SidebarFooter,
   SidebarGroup,
+  SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarMenuSub,
-  SidebarMenuSubButton,
-  SidebarMenuSubItem,
   SidebarRail,
   useSidebar,
 } from '@/components/ui/sidebar';
@@ -69,10 +62,12 @@ function getInitials(name: string): string {
     .slice(0, 2);
 }
 
+const LAST_PROJECT_KEY = 'm3m_last_project';
+
 export function AppSidebar() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { projectId } = useParams();
+  const { projectId: routeProjectId } = useParams();
   const { user, logout } = useAuth();
   const { isMobile } = useSidebar();
 
@@ -81,33 +76,50 @@ export function AppSidebar() {
     queryFn: projectsApi.list,
   });
 
-  const [openSettings, setOpenSettings] = useState(false);
+  // Use route projectId or fallback to last selected project from localStorage
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(() => {
+    return routeProjectId || localStorage.getItem(LAST_PROJECT_KEY);
+  });
 
-  const currentProject = projects?.find((p) => p.id === projectId);
+  // Update selected project when route changes
+  useEffect(() => {
+    if (routeProjectId) {
+      setSelectedProjectId(routeProjectId);
+      localStorage.setItem(LAST_PROJECT_KEY, routeProjectId);
+    }
+  }, [routeProjectId]);
+
+  // Also update from localStorage when projects load (in case the stored project still exists)
+  useEffect(() => {
+    if (!routeProjectId && projects.length > 0) {
+      const storedId = localStorage.getItem(LAST_PROJECT_KEY);
+      if (storedId && projects.some(p => p.id === storedId)) {
+        setSelectedProjectId(storedId);
+      }
+    }
+  }, [projects, routeProjectId]);
+
+  const currentProject = projects?.find((p) => p.id === selectedProjectId);
 
   // Navigation items for current project
   const projectNavItems: NavItem[] = currentProject
     ? [
-        { title: 'Overview', url: `/projects/${projectId}`, icon: Box },
-        { title: 'Pipeline', url: `/projects/${projectId}/pipeline`, icon: Code },
-        { title: 'Storage', url: `/projects/${projectId}/storage`, icon: HardDrive },
-        { title: 'Models', url: `/projects/${projectId}/models`, icon: Database },
-        { title: 'Goals', url: `/projects/${projectId}/goals`, icon: Target },
-        { title: 'Environment', url: `/projects/${projectId}/environment`, icon: Variable },
-        { title: 'Logs', url: `/projects/${projectId}/logs`, icon: ScrollText },
-        { title: 'Settings', url: `/projects/${projectId}/settings`, icon: Settings2 },
+        { title: 'Overview', url: `/projects/${selectedProjectId}`, icon: Box },
+        { title: 'Pipeline', url: `/projects/${selectedProjectId}/pipeline`, icon: Code },
+        { title: 'Storage', url: `/projects/${selectedProjectId}/storage`, icon: HardDrive },
+        { title: 'Models', url: `/projects/${selectedProjectId}/models`, icon: Database },
+        { title: 'Goals', url: `/projects/${selectedProjectId}/goals`, icon: Target },
+        { title: 'Environment', url: `/projects/${selectedProjectId}/environment`, icon: Variable },
+        { title: 'Logs', url: `/projects/${selectedProjectId}/logs`, icon: ScrollText },
+        { title: 'Settings', url: `/projects/${selectedProjectId}/settings`, icon: Settings2 },
       ]
     : [];
 
   const isAdmin = user?.permissions?.manageUsers || user?.isRoot;
 
-  useEffect(() => {
-    if (location.pathname.includes('/settings')) {
-      setOpenSettings(true);
-    }
-  }, [location.pathname]);
-
   const handleProjectSelect = (id: string) => {
+    setSelectedProjectId(id);
+    localStorage.setItem(LAST_PROJECT_KEY, id);
     navigate(`/projects/${id}`);
   };
 
@@ -199,6 +211,7 @@ export function AppSidebar() {
         {/* Current Project Navigation */}
         {currentProject && projectNavItems.length > 0 && (
           <SidebarGroup>
+            <SidebarGroupLabel>Project</SidebarGroupLabel>
             <SidebarMenu>
               {projectNavItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
@@ -218,17 +231,18 @@ export function AppSidebar() {
           </SidebarGroup>
         )}
 
-        {/* Global Goals */}
+        {/* Global Section */}
         <SidebarGroup>
+          <SidebarGroupLabel>Global</SidebarGroupLabel>
           <SidebarMenu>
             <SidebarMenuItem>
               <SidebarMenuButton
                 asChild
                 isActive={location.pathname === '/goals'}
-                tooltip="Goals"
+                tooltip="Global Goals"
               >
                 <Link to="/goals">
-                  <Target />
+                  <Globe />
                   <span>Global Goals</span>
                 </Link>
               </SidebarMenuButton>
@@ -236,48 +250,26 @@ export function AppSidebar() {
           </SidebarMenu>
         </SidebarGroup>
 
-        {/* Settings */}
-        <SidebarGroup>
-          <Collapsible open={openSettings} onOpenChange={setOpenSettings}>
-            <SidebarMenuItem>
-              <CollapsibleTrigger asChild>
-                <SidebarMenuButton tooltip="Settings">
-                  <Settings2 />
-                  <span>Settings</span>
-                  <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
+        {/* Admin Settings - only show if user is admin */}
+        {isAdmin && (
+          <SidebarGroup>
+            <SidebarGroupLabel>Admin</SidebarGroupLabel>
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  asChild
+                  isActive={location.pathname === '/settings/users'}
+                  tooltip="Users"
+                >
+                  <Link to="/settings/users">
+                    <Users />
+                    <span>Users</span>
+                  </Link>
                 </SidebarMenuButton>
-              </CollapsibleTrigger>
-              <CollapsibleContent>
-                <SidebarMenuSub>
-                  {isAdmin && (
-                    <SidebarMenuSubItem>
-                      <SidebarMenuSubButton
-                        asChild
-                        isActive={location.pathname === '/settings/users'}
-                      >
-                        <Link to="/settings/users">
-                          <Users className="size-4" />
-                          <span>Users</span>
-                        </Link>
-                      </SidebarMenuSubButton>
-                    </SidebarMenuSubItem>
-                  )}
-                  <SidebarMenuSubItem>
-                    <SidebarMenuSubButton
-                      asChild
-                      isActive={location.pathname === '/settings/profile'}
-                    >
-                      <Link to="/settings/profile">
-                        <User className="size-4" />
-                        <span>Profile</span>
-                      </Link>
-                    </SidebarMenuSubButton>
-                  </SidebarMenuSubItem>
-                </SidebarMenuSub>
-              </CollapsibleContent>
-            </SidebarMenuItem>
-          </Collapsible>
-        </SidebarGroup>
+              </SidebarMenuItem>
+            </SidebarMenu>
+          </SidebarGroup>
+        )}
       </SidebarContent>
 
       <SidebarFooter>
