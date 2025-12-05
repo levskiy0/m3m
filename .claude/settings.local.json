@@ -29,7 +29,8 @@
       "Bash(wc:*)",
       "Bash(go get:*)",
       "Bash(make dev:*)",
-      "Bash(make web-build:*)"
+      "Bash(make web-build:*)",
+      "Bash(./node_modules/.bin/tsc:*)"
     ],
     "deny": [],
     "ask": []

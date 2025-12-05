@@ -8,7 +8,7 @@ import {
   Plus,
   Trash2,
   RotateCcw,
-  Play,
+  CheckCircle,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -395,10 +395,11 @@ export function PipelinePage() {
                           variant="ghost"
                           size="icon"
                           className="size-8"
+                          title="Set as active release"
                           onClick={() => activateReleaseMutation.mutate(release.id)}
                           disabled={activateReleaseMutation.isPending}
                         >
-                          <Play className="size-4" />
+                          <CheckCircle className="size-4" />
                         </Button>
                       )}
                       {!release.isActive && (

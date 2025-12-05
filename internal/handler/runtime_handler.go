@@ -92,10 +92,8 @@ func (h *RuntimeHandler) Start(c *gin.Context) {
 	var req struct {
 		Version string `json:"version"`
 	}
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
+	// Body is optional - ignore EOF errors
+	c.ShouldBindJSON(&req)
 
 	// Get release code
 	var code string
