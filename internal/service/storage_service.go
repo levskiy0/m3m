@@ -222,6 +222,11 @@ func (s *StorageService) Exists(projectID, relativePath string) bool {
 	return err == nil
 }
 
+// GetPath returns the absolute filesystem path for a file in project storage
+func (s *StorageService) GetPath(projectID, relativePath string) (string, error) {
+	return s.resolvePath(projectID, relativePath)
+}
+
 // cleanupResizeCache removes all cached resized versions of a file or directory
 func (s *StorageService) cleanupResizeCache(projectID, relativePath string) {
 	tmpDir := filepath.Join(s.config.Storage.Path, projectID, "tmp", "resize")
