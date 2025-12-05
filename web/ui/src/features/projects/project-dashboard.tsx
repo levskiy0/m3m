@@ -235,7 +235,6 @@ export function ProjectDashboard() {
     return <div>Project not found</div>;
   }
 
-  const activeRelease = releases.find((r) => r.isActive);
   const publicUrl = `${config.apiURL}/r/${project.slug}`;
   const isRunning = project.status === 'running';
   const isPending = startMutation.isPending || stopMutation.isPending || restartMutation.isPending;
@@ -269,6 +268,19 @@ export function ProjectDashboard() {
             <div className="flex items-center gap-2 mt-0.5">
               <code className="text-muted-foreground text-sm">{project.slug}</code>
               <StatusBadge status={project.status} />
+              {isRunning && project.runningSource && (
+                project.runningSource.startsWith('debug:') ? (
+                  <Badge className="bg-amber-500 hover:bg-amber-600 text-white border-transparent">
+                    <span className="mr-1.5 size-1.5 rounded-full bg-amber-200 animate-pulse" />
+                    {project.runningSource.replace('debug:', '')}
+                  </Badge>
+                ) : project.runningSource.startsWith('release:') ? (
+                  <Badge className="bg-green-500 hover:bg-green-600 text-white border-transparent">
+                    <span className="mr-1.5 size-1.5 rounded-full bg-green-200 animate-pulse" />
+                    v{project.runningSource.replace('release:', '')}
+                  </Badge>
+                ) : null
+              )}
             </div>
           </div>
         </div>
@@ -505,86 +517,7 @@ export function ProjectDashboard() {
           </div>
 
           {/* Project Info Cards */}
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            <Card className={cn(isRunning && project.runningSource?.startsWith('debug:') && "border-amber-500/50")}>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">
-                  {isRunning ? 'Running' : 'Active Release'}
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {isRunning ? (
-                  <div className="flex items-end justify-between">
-                    <div>
-                      {project.runningSource?.startsWith('debug:') ? (
-                        <>
-                          <div className="flex items-center gap-2">
-                            <Bug className="size-5 text-amber-500" />
-                          </div>
-                          <code className="text-sm text-muted-foreground mt-1 block">
-                            {project.runningSource.replace('debug:', '')}
-                          </code>
-                        </>
-                      ) : project.runningSource?.startsWith('release:') ? (
-                        <>
-                          <p className="text-2xl font-bold font-mono">
-                            v{project.runningSource.replace('release:', '')}
-                          </p>
-                          {activeRelease?.tag && (
-                            <Badge variant="secondary" className="mt-1 capitalize">
-                              {activeRelease.tag}
-                            </Badge>
-                          )}
-                        </>
-                      ) : activeRelease ? (
-                        <>
-                          <p className="text-2xl font-bold font-mono">v{activeRelease.version}</p>
-                          {activeRelease.tag && (
-                            <Badge variant="secondary" className="mt-1 capitalize">
-                              {activeRelease.tag}
-                            </Badge>
-                          )}
-                        </>
-                      ) : (
-                        <p className="text-sm text-muted-foreground">Version unknown</p>
-                      )}
-                    </div>
-                    <Button variant="ghost" size="sm" asChild>
-                      <Link
-                        to={`/projects/${projectId}/pipeline`}
-                        state={project.runningSource?.startsWith('debug:')
-                          ? { branch: project.runningSource.replace('debug:', '') }
-                          : undefined
-                        }
-                      >
-                        View
-                        <ChevronRight className="ml-1 size-4" />
-                      </Link>
-                    </Button>
-                  </div>
-                ) : activeRelease ? (
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-2xl font-bold">{activeRelease.version}</p>
-                      {activeRelease.tag && (
-                        <Badge variant="secondary" className="mt-1 capitalize">
-                          {activeRelease.tag}
-                        </Badge>
-                      )}
-                    </div>
-                    <Button variant="ghost" size="sm" asChild>
-                      <Link to={`/projects/${projectId}/pipeline`}>
-                        View
-                        <ChevronRight className="ml-1 size-4" />
-                      </Link>
-                    </Button>
-                  </div>
-                ) : (
-                  <p className="text-muted-foreground">No active release</p>
-                )}
-              </CardContent>
-            </Card>
-
+          <div className="grid gap-4 md:grid-cols-2">
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium">Public URL</CardTitle>
