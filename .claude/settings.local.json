@@ -35,7 +35,9 @@
       "Bash(make build:*)",
       "Bash(mongosh:*)",
       "Bash(grep:*)",
-      "Bash(make build-plugin:*)"
+      "Bash(make build-plugin:*)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:pkg.go.dev)"
     ],
     "deny": [],
     "ask": []
