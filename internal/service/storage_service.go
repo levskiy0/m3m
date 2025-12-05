@@ -97,10 +97,10 @@ func (s *StorageService) List(projectID, relativePath string) ([]FileInfo, error
 			fileInfo.MimeType = getMimeType(entry.Name())
 			// Generate public URLs (without /api prefix)
 			fileInfo.URL = fmt.Sprintf("%s/cdn/%s%s", s.config.Server.URI, projectID, filePath)
-			fileInfo.DownloadURL = fmt.Sprintf("%s/cdn-download/%s%s", s.config.Server.URI, projectID, filePath)
+			fileInfo.DownloadURL = fmt.Sprintf("%s/cdn/download/%s%s", s.config.Server.URI, projectID, filePath)
 			// Add thumb_url for images
 			if strings.HasPrefix(fileInfo.MimeType, "image/") {
-				fileInfo.ThumbURL = fmt.Sprintf("%s/cdn-thumb/64x64/%s%s", s.config.Server.URI, projectID, filePath)
+				fileInfo.ThumbURL = fmt.Sprintf("%s/cdn/resize/64x64/%s%s", s.config.Server.URI, projectID, filePath)
 			}
 		}
 

@@ -44,12 +44,12 @@ func (h *StorageHandler) Register(r *gin.RouterGroup, authMiddleware *middleware
 
 // RegisterPublicRoutes registers CDN routes at root level (not under /api)
 func (h *StorageHandler) RegisterPublicRoutes(r *gin.Engine) {
-	// /cdn/{project-id}/path/to/file - direct view
+	// /cdn/download/{project-id}/path/to/file - force download
+	r.GET("/cdn/download/:id/*path", h.PublicDownload)
+	// /cdn/resize/{WxH}/{project-id}/path/to/file - resized image
+	r.GET("/cdn/resize/:size/:id/*path", h.CDNResize)
+	// /cdn/{project-id}/path/to/file - direct view (must be last - catches all)
 	r.GET("/cdn/:id/*path", h.CDN)
-	// /cdn-download/{project-id}/path/to/file - force download
-	r.GET("/cdn-download/:id/*path", h.PublicDownload)
-	// /cdn-thumb/{WxH}/{project-id}/path/to/file - resized image
-	r.GET("/cdn-thumb/:size/:id/*path", h.CDNResize)
 }
 
 func (h *StorageHandler) checkAccess(c *gin.Context) (string, bool) {
