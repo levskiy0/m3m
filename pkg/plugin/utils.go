@@ -38,50 +38,6 @@ func IsBase64(s string) bool {
 	return err == nil
 }
 
-// GetString safely extracts a string value from a map
-func GetString(m map[string]interface{}, key string) string {
-	if v, ok := m[key].(string); ok {
-		return v
-	}
-	return ""
-}
-
-// GetInt safely extracts an int value from a map
-func GetInt(m map[string]interface{}, key string) int {
-	if v, ok := m[key].(int); ok {
-		return v
-	}
-	if v, ok := m[key].(int64); ok {
-		return int(v)
-	}
-	if v, ok := m[key].(float64); ok {
-		return int(v)
-	}
-	return 0
-}
-
-// GetInt64 safely extracts an int64 value from a map
-func GetInt64(m map[string]interface{}, key string) int64 {
-	if v, ok := m[key].(int64); ok {
-		return v
-	}
-	if v, ok := m[key].(int); ok {
-		return int64(v)
-	}
-	if v, ok := m[key].(float64); ok {
-		return int64(v)
-	}
-	return 0
-}
-
-// GetBool safely extracts a bool value from a map
-func GetBool(m map[string]interface{}, key string) bool {
-	if v, ok := m[key].(bool); ok {
-		return v
-	}
-	return false
-}
-
 // ResolvePath resolves a path relative to a base storage path.
 // It includes path traversal protection.
 func ResolvePath(basePath, path string) (string, error) {

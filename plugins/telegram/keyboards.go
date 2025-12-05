@@ -2,8 +2,7 @@ package main
 
 import (
 	"github.com/go-telegram/bot/models"
-
-	"m3m/pkg/plugin"
+	"github.com/spf13/cast"
 )
 
 // convertToKeyboardRows converts GOJA array to typed keyboard rows
@@ -40,14 +39,14 @@ func buildInlineKeyboard(keyboard [][]map[string]interface{}) *models.InlineKeyb
 		buttons := make([]models.InlineKeyboardButton, len(row))
 		for j, btn := range row {
 			button := models.InlineKeyboardButton{
-				Text: plugin.GetString(btn, "text"),
+				Text: cast.ToString(btn["text"]),
 			}
-			if url := plugin.GetString(btn, "url"); url != "" {
+			if url := cast.ToString(btn["url"]); url != "" {
 				button.URL = url
 			}
-			if data := plugin.GetString(btn, "callbackData"); data != "" {
+			if data := cast.ToString(btn["callbackData"]); data != "" {
 				button.CallbackData = data
-			} else if data := plugin.GetString(btn, "callback_data"); data != "" {
+			} else if data := cast.ToString(btn["callback_data"]); data != "" {
 				button.CallbackData = data
 			}
 			buttons[j] = button
@@ -64,7 +63,7 @@ func buildReplyKeyboard(keyboard [][]map[string]interface{}, options map[string]
 		buttons := make([]models.KeyboardButton, len(row))
 		for j, btn := range row {
 			button := models.KeyboardButton{
-				Text: plugin.GetString(btn, "text"),
+				Text: cast.ToString(btn["text"]),
 			}
 			if contact, ok := btn["requestContact"].(bool); ok {
 				button.RequestContact = contact
