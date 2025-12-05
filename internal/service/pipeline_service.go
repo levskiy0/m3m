@@ -61,6 +61,17 @@ func (s *PipelineService) GetBranch(ctx context.Context, projectID primitive.Obj
 	return s.pipelineRepo.FindBranchByName(ctx, projectID, name)
 }
 
+func (s *PipelineService) GetBranchByID(ctx context.Context, projectID primitive.ObjectID, branchID primitive.ObjectID) (*domain.Branch, error) {
+	branch, err := s.pipelineRepo.FindBranchByID(ctx, branchID)
+	if err != nil {
+		return nil, err
+	}
+	if branch.ProjectID != projectID {
+		return nil, repository.ErrBranchNotFound
+	}
+	return branch, nil
+}
+
 func (s *PipelineService) GetBranches(ctx context.Context, projectID primitive.ObjectID) ([]*domain.Branch, error) {
 	return s.pipelineRepo.FindBranchesByProject(ctx, projectID)
 }
@@ -71,6 +82,21 @@ func (s *PipelineService) GetBranchSummaries(ctx context.Context, projectID prim
 
 func (s *PipelineService) UpdateBranch(ctx context.Context, projectID primitive.ObjectID, name string, req *domain.UpdateBranchRequest) (*domain.Branch, error) {
 	branch, err := s.pipelineRepo.FindBranchByName(ctx, projectID, name)
+	if err != nil {
+		return nil, err
+	}
+
+	branch.Code = req.Code
+
+	if err := s.pipelineRepo.UpdateBranch(ctx, branch); err != nil {
+		return nil, err
+	}
+
+	return branch, nil
+}
+
+func (s *PipelineService) UpdateBranchByID(ctx context.Context, projectID primitive.ObjectID, branchID primitive.ObjectID, req *domain.UpdateBranchRequest) (*domain.Branch, error) {
+	branch, err := s.GetBranchByID(ctx, projectID, branchID)
 	if err != nil {
 		return nil, err
 	}
@@ -105,12 +131,44 @@ func (s *PipelineService) ResetBranch(ctx context.Context, projectID primitive.O
 	return branch, nil
 }
 
+func (s *PipelineService) ResetBranchByID(ctx context.Context, projectID primitive.ObjectID, branchID primitive.ObjectID, req *domain.ResetBranchRequest) (*domain.Branch, error) {
+	branch, err := s.GetBranchByID(ctx, projectID, branchID)
+	if err != nil {
+		return nil, err
+	}
+
+	release, err := s.pipelineRepo.FindReleaseByVersion(ctx, projectID, req.TargetVersion)
+	if err != nil {
+		return nil, err
+	}
+
+	branch.Code = release.Code
+	branch.CreatedFromRelease = &req.TargetVersion
+
+	if err := s.pipelineRepo.UpdateBranch(ctx, branch); err != nil {
+		return nil, err
+	}
+
+	return branch, nil
+}
+
 func (s *PipelineService) DeleteBranch(ctx context.Context, projectID primitive.ObjectID, name string) error {
 	branch, err := s.pipelineRepo.FindBranchByName(ctx, projectID, name)
 	if err != nil {
 		return err
 	}
 	return s.pipelineRepo.DeleteBranch(ctx, branch.ID)
+}
+
+func (s *PipelineService) DeleteBranchByID(ctx context.Context, projectID primitive.ObjectID, branchID primitive.ObjectID) error {
+	branch, err := s.GetBranchByID(ctx, projectID, branchID)
+	if err != nil {
+		return err
+	}
+	if branch.Name == "develop" {
+		return fmt.Errorf("cannot delete develop branch")
+	}
+	return s.pipelineRepo.DeleteBranch(ctx, branchID)
 }
 
 // Release methods
@@ -161,6 +219,17 @@ func (s *PipelineService) ActivateRelease(ctx context.Context, projectID primiti
 	return s.pipelineRepo.ActivateRelease(ctx, projectID, version)
 }
 
+func (s *PipelineService) ActivateReleaseByID(ctx context.Context, projectID primitive.ObjectID, releaseID primitive.ObjectID) error {
+	release, err := s.pipelineRepo.FindReleaseByID(ctx, releaseID)
+	if err != nil {
+		return err
+	}
+	if release.ProjectID != projectID {
+		return repository.ErrReleaseNotFound
+	}
+	return s.pipelineRepo.ActivateRelease(ctx, projectID, release.Version)
+}
+
 func (s *PipelineService) DeleteRelease(ctx context.Context, projectID primitive.ObjectID, version string) error {
 	release, err := s.pipelineRepo.FindReleaseByVersion(ctx, projectID, version)
 	if err != nil {
@@ -172,6 +241,20 @@ func (s *PipelineService) DeleteRelease(ctx context.Context, projectID primitive
 	}
 
 	return s.pipelineRepo.DeleteRelease(ctx, release.ID)
+}
+
+func (s *PipelineService) DeleteReleaseByID(ctx context.Context, projectID primitive.ObjectID, releaseID primitive.ObjectID) error {
+	release, err := s.pipelineRepo.FindReleaseByID(ctx, releaseID)
+	if err != nil {
+		return err
+	}
+	if release.ProjectID != projectID {
+		return repository.ErrReleaseNotFound
+	}
+	if release.IsActive {
+		return fmt.Errorf("cannot delete active release")
+	}
+	return s.pipelineRepo.DeleteRelease(ctx, releaseID)
 }
 
 func (s *PipelineService) getNextVersion(ctx context.Context, projectID primitive.ObjectID, bumpType string) (string, error) {

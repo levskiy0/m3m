@@ -30,16 +30,16 @@ func (h *PipelineHandler) Register(r *gin.RouterGroup, authMiddleware *middlewar
 		// Branches
 		pipeline.GET("/branches", h.ListBranches)
 		pipeline.POST("/branches", h.CreateBranch)
-		pipeline.GET("/branches/:name", h.GetBranch)
-		pipeline.PUT("/branches/:name", h.UpdateBranch)
-		pipeline.POST("/branches/:name/reset", h.ResetBranch)
-		pipeline.DELETE("/branches/:name", h.DeleteBranch)
+		pipeline.GET("/branches/:branchId", h.GetBranch)
+		pipeline.PUT("/branches/:branchId", h.UpdateBranch)
+		pipeline.POST("/branches/:branchId/reset", h.ResetBranch)
+		pipeline.DELETE("/branches/:branchId", h.DeleteBranch)
 
 		// Releases
 		pipeline.GET("/releases", h.ListReleases)
 		pipeline.POST("/releases", h.CreateRelease)
-		pipeline.DELETE("/releases/:version", h.DeleteRelease)
-		pipeline.POST("/releases/:version/activate", h.ActivateRelease)
+		pipeline.DELETE("/releases/:releaseId", h.DeleteRelease)
+		pipeline.POST("/releases/:releaseId/activate", h.ActivateRelease)
 	}
 }
 
@@ -103,8 +103,13 @@ func (h *PipelineHandler) GetBranch(c *gin.Context) {
 		return
 	}
 
-	name := c.Param("name")
-	branch, err := h.pipelineService.GetBranch(c.Request.Context(), projectID, name)
+	branchID, err := primitive.ObjectIDFromHex(c.Param("branchId"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid branch id"})
+		return
+	}
+
+	branch, err := h.pipelineService.GetBranchByID(c.Request.Context(), projectID, branchID)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "branch not found"})
 		return
@@ -119,14 +124,19 @@ func (h *PipelineHandler) UpdateBranch(c *gin.Context) {
 		return
 	}
 
-	name := c.Param("name")
+	branchID, err := primitive.ObjectIDFromHex(c.Param("branchId"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid branch id"})
+		return
+	}
+
 	var req domain.UpdateBranchRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	branch, err := h.pipelineService.UpdateBranch(c.Request.Context(), projectID, name, &req)
+	branch, err := h.pipelineService.UpdateBranchByID(c.Request.Context(), projectID, branchID, &req)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -141,14 +151,19 @@ func (h *PipelineHandler) ResetBranch(c *gin.Context) {
 		return
 	}
 
-	name := c.Param("name")
+	branchID, err := primitive.ObjectIDFromHex(c.Param("branchId"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid branch id"})
+		return
+	}
+
 	var req domain.ResetBranchRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	branch, err := h.pipelineService.ResetBranch(c.Request.Context(), projectID, name, &req)
+	branch, err := h.pipelineService.ResetBranchByID(c.Request.Context(), projectID, branchID, &req)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -163,13 +178,13 @@ func (h *PipelineHandler) DeleteBranch(c *gin.Context) {
 		return
 	}
 
-	name := c.Param("name")
-	if name == "develop" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "cannot delete develop branch"})
+	branchID, err := primitive.ObjectIDFromHex(c.Param("branchId"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid branch id"})
 		return
 	}
 
-	if err := h.pipelineService.DeleteBranch(c.Request.Context(), projectID, name); err != nil {
+	if err := h.pipelineService.DeleteBranchByID(c.Request.Context(), projectID, branchID); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -221,8 +236,13 @@ func (h *PipelineHandler) DeleteRelease(c *gin.Context) {
 		return
 	}
 
-	version := c.Param("version")
-	if err := h.pipelineService.DeleteRelease(c.Request.Context(), projectID, version); err != nil {
+	releaseID, err := primitive.ObjectIDFromHex(c.Param("releaseId"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid release id"})
+		return
+	}
+
+	if err := h.pipelineService.DeleteReleaseByID(c.Request.Context(), projectID, releaseID); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -236,8 +256,13 @@ func (h *PipelineHandler) ActivateRelease(c *gin.Context) {
 		return
 	}
 
-	version := c.Param("version")
-	if err := h.pipelineService.ActivateRelease(c.Request.Context(), projectID, version); err != nil {
+	releaseID, err := primitive.ObjectIDFromHex(c.Param("releaseId"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid release id"})
+		return
+	}
+
+	if err := h.pipelineService.ActivateReleaseByID(c.Request.Context(), projectID, releaseID); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}

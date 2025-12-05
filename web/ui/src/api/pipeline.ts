@@ -16,8 +16,8 @@ export const pipelineApi = {
     return api.get<BranchSummary[]>(`/api/projects/${projectId}/pipeline/branches`);
   },
 
-  getBranch: async (projectId: string, name: string): Promise<Branch> => {
-    return api.get<Branch>(`/api/projects/${projectId}/pipeline/branches/${name}`);
+  getBranch: async (projectId: string, branchId: string): Promise<Branch> => {
+    return api.get<Branch>(`/api/projects/${projectId}/pipeline/branches/${branchId}`);
   },
 
   createBranch: async (projectId: string, data: CreateBranchRequest): Promise<Branch> => {
@@ -26,25 +26,25 @@ export const pipelineApi = {
 
   updateBranch: async (
     projectId: string,
-    name: string,
+    branchId: string,
     data: UpdateBranchRequest
   ): Promise<Branch> => {
-    return api.put<Branch>(`/api/projects/${projectId}/pipeline/branches/${name}`, data);
+    return api.put<Branch>(`/api/projects/${projectId}/pipeline/branches/${branchId}`, data);
   },
 
   resetBranch: async (
     projectId: string,
-    name: string,
+    branchId: string,
     data: ResetBranchRequest
   ): Promise<Branch> => {
     return api.post<Branch>(
-      `/api/projects/${projectId}/pipeline/branches/${name}/reset`,
+      `/api/projects/${projectId}/pipeline/branches/${branchId}/reset`,
       data
     );
   },
 
-  deleteBranch: async (projectId: string, name: string): Promise<void> => {
-    return api.delete(`/api/projects/${projectId}/pipeline/branches/${name}`);
+  deleteBranch: async (projectId: string, branchId: string): Promise<void> => {
+    return api.delete(`/api/projects/${projectId}/pipeline/branches/${branchId}`);
   },
 
   // Releases
@@ -56,13 +56,13 @@ export const pipelineApi = {
     return api.post<Release>(`/api/projects/${projectId}/pipeline/releases`, data);
   },
 
-  deleteRelease: async (projectId: string, version: string): Promise<void> => {
-    return api.delete(`/api/projects/${projectId}/pipeline/releases/${version}`);
+  deleteRelease: async (projectId: string, releaseId: string): Promise<void> => {
+    return api.delete(`/api/projects/${projectId}/pipeline/releases/${releaseId}`);
   },
 
-  activateRelease: async (projectId: string, version: string): Promise<Release> => {
+  activateRelease: async (projectId: string, releaseId: string): Promise<Release> => {
     return api.post<Release>(
-      `/api/projects/${projectId}/pipeline/releases/${version}/activate`
+      `/api/projects/${projectId}/pipeline/releases/${releaseId}/activate`
     );
   },
 };
