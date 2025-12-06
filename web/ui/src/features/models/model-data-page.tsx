@@ -326,9 +326,41 @@ export function ModelDataPage() {
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
 
-  // Column resizing
-  const [columnWidths, setColumnWidths] = useState<Record<string, number>>({});
+  // Column resizing with localStorage persistence
+  const columnWidthsKey = `model-column-widths-${modelId}`;
+  const [columnWidths, setColumnWidths] = useState<Record<string, number>>(() => {
+    if (!modelId) return {};
+    try {
+      const saved = localStorage.getItem(`model-column-widths-${modelId}`);
+      return saved ? JSON.parse(saved) : {};
+    } catch {
+      return {};
+    }
+  });
   const resizingRef = useRef<{ column: string; startX: number; startWidth: number } | null>(null);
+
+  // Save column widths to localStorage
+  useEffect(() => {
+    if (modelId && Object.keys(columnWidths).length > 0) {
+      localStorage.setItem(columnWidthsKey, JSON.stringify(columnWidths));
+    }
+  }, [columnWidths, columnWidthsKey, modelId]);
+
+  // Load column widths when modelId changes
+  useEffect(() => {
+    if (modelId) {
+      try {
+        const saved = localStorage.getItem(`model-column-widths-${modelId}`);
+        if (saved) {
+          setColumnWidths(JSON.parse(saved));
+        } else {
+          setColumnWidths({});
+        }
+      } catch {
+        setColumnWidths({});
+      }
+    }
+  }, [modelId]);
 
   // Debounce search input
   useEffect(() => {
