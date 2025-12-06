@@ -39,7 +39,7 @@ export function StoragePage() {
   const [tabToClose, setTabToClose] = useState<string | null>(null);
 
   // Track current directory for new files
-  const [currentDir, setCurrentDir] = useState('');
+  const [currentDir] = useState('');
 
   const activeTab = tabs.find((t) => t.id === activeTabId);
 

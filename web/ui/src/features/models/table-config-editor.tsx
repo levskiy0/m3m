@@ -169,7 +169,7 @@ export function TableConfigEditor({ fields, config, onChange }: TableConfigEdito
     }));
 
     const allItems = [...fieldItems, ...systemItems];
-    const allKeys = allItems.map(i => i.key);
+    allItems.map(i => i.key);
 
     // Order based on config.columns, then add remaining
     const ordered: ColumnItem[] = [];
