@@ -79,8 +79,8 @@ func (v *DataValidator) Validate(data map[string]interface{}) error {
 			}
 		}
 
-		// Skip validation if field is not present and not required
-		if !exists || val == nil {
+		// Skip validation if field is not present/empty and not required
+		if !exists || val == nil || val == "" {
 			continue
 		}
 
