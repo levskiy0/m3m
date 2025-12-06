@@ -420,6 +420,20 @@ func (r *ModelRepository) coerceFilterValue(value interface{}, fieldType domain.
 				return oid
 			}
 		}
+	case domain.FieldTypeDate, domain.FieldTypeDateTime:
+		if str, ok := value.(string); ok {
+			if t, err := time.Parse(time.RFC3339, str); err == nil {
+				return t
+			}
+			// Try without timezone
+			if t, err := time.Parse("2006-01-02T15:04:05", str); err == nil {
+				return t
+			}
+			// Try date only
+			if t, err := time.Parse("2006-01-02", str); err == nil {
+				return t
+			}
+		}
 	}
 
 	return value
