@@ -3,6 +3,23 @@ import { useParams, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus, Trash2, GripVertical, Save, Table, Database, FileText } from 'lucide-react';
 import { toast } from 'sonner';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 import { modelsApi } from '@/api';
 import { FIELD_TYPES } from '@/lib/constants';
@@ -140,6 +157,104 @@ function DefaultValueInput({ type, value, onChange }: DefaultValueInputProps) {
   }
 }
 
+interface SortableSchemaFieldProps {
+  id: string;
+  field: ModelField;
+  onUpdate: (updates: Partial<ModelField>) => void;
+  onRemove: () => void;
+}
+
+function SortableSchemaField({ id, field, onUpdate, onRemove }: SortableSchemaFieldProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`flex items-start gap-4 p-4 border rounded-lg bg-background ${
+        isDragging ? 'opacity-50 shadow-lg z-50' : ''
+      }`}
+    >
+      <div
+        {...attributes}
+        {...listeners}
+        className="cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground transition-colors mt-6"
+      >
+        <GripVertical className="size-5" />
+      </div>
+      <div className="flex-1 grid gap-4 md:grid-cols-4">
+        <Field>
+          <FieldLabel>Key</FieldLabel>
+          <Input
+            value={field.key}
+            onChange={(e) =>
+              onUpdate({
+                key: e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '_'),
+              })
+            }
+            placeholder="field_name"
+          />
+        </Field>
+        <Field>
+          <FieldLabel>Type</FieldLabel>
+          <Select
+            value={field.type}
+            onValueChange={(v) => onUpdate({ type: v as FieldType })}
+          >
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {FIELD_TYPES.map((type) => (
+                <SelectItem key={type.value} value={type.value}>
+                  {type.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </Field>
+        <Field>
+          <FieldLabel>Default Value</FieldLabel>
+          <DefaultValueInput
+            type={field.type}
+            value={field.defaultValue}
+            onChange={(value) => onUpdate({ defaultValue: value })}
+          />
+        </Field>
+        <Field>
+          <FieldLabel>Required</FieldLabel>
+          <div className="flex items-center h-10">
+            <Switch
+              checked={field.required}
+              onCheckedChange={(checked) => onUpdate({ required: checked })}
+            />
+          </div>
+        </Field>
+      </div>
+      <Button
+        variant="ghost"
+        size="icon"
+        className="mt-6"
+        onClick={onRemove}
+      >
+        <Trash2 className="size-4 text-destructive" />
+      </Button>
+    </div>
+  );
+}
+
 export function ModelSchemaPage() {
   const { projectId, modelId } = useParams<{ projectId: string; modelId: string }>();
   const queryClient = useQueryClient();
@@ -157,6 +272,13 @@ export function ModelSchemaPage() {
     field_views: {},
   });
   const [hasChanges, setHasChanges] = useState(false);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
 
   const { data: model, isLoading } = useQuery({
     queryKey: ['model', projectId, modelId],
@@ -280,6 +402,31 @@ export function ModelSchemaPage() {
     setHasChanges(true);
   };
 
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (over && active.id !== over.id) {
+      const oldIndex = parseInt(active.id as string);
+      const newIndex = parseInt(over.id as string);
+      const newFields = arrayMove(fields, oldIndex, newIndex);
+      setFields(newFields);
+
+      // Update configs with new field order
+      const newKeys = newFields.map(f => f.key);
+      setTableConfig(prev => ({
+        ...prev,
+        columns: newKeys.filter(k => prev.columns.includes(k)),
+        sort_columns: newKeys.filter(k => prev.sort_columns.includes(k)),
+      }));
+      setFormConfig(prev => ({
+        ...prev,
+        field_order: newKeys,
+      }));
+
+      setHasChanges(true);
+    }
+  };
+
   const handleTableConfigChange = (config: TableConfig) => {
     setTableConfig(config);
     setHasChanges(true);
@@ -362,89 +509,34 @@ export function ModelSchemaPage() {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {fields.length === 0 ? (
-                  <div className="text-center py-8 text-muted-foreground">
-                    No fields defined. Add a field to get started.
-                  </div>
-                ) : (
-                  fields.map((field, index) => (
-                    <div
-                      key={index}
-                      className="flex items-start gap-4 p-4 border rounded-lg bg-background"
-                    >
-                      <div className="cursor-move text-muted-foreground">
-                        <GripVertical className="size-5" />
-                      </div>
-                      <div className="flex-1 grid gap-4 md:grid-cols-4">
-                        <Field>
-                          <FieldLabel>Key</FieldLabel>
-                          <Input
-                            value={field.key}
-                            onChange={(e) =>
-                              updateField(index, {
-                                key: e.target.value
-                                  .toLowerCase()
-                                  .replace(/[^a-z0-9_]/g, '_'),
-                              })
-                            }
-                            placeholder="field_name"
-                          />
-                        </Field>
-                        <Field>
-                          <FieldLabel>Type</FieldLabel>
-                          <Select
-                            value={field.type}
-                            onValueChange={(v) =>
-                              updateField(index, { type: v as FieldType })
-                            }
-                          >
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {FIELD_TYPES.map((type) => (
-                                <SelectItem key={type.value} value={type.value}>
-                                  {type.label}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </Field>
-                        <Field>
-                          <FieldLabel>Default Value</FieldLabel>
-                          <DefaultValueInput
-                            type={field.type}
-                            value={field.defaultValue}
-                            onChange={(value) =>
-                              updateField(index, { defaultValue: value })
-                            }
-                          />
-                        </Field>
-                        <Field>
-                          <FieldLabel>Required</FieldLabel>
-                          <div className="flex items-center h-10">
-                            <Switch
-                              checked={field.required}
-                              onCheckedChange={(checked) =>
-                                updateField(index, { required: checked })
-                              }
-                            />
-                          </div>
-                        </Field>
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="mt-6"
-                        onClick={() => removeField(index)}
-                      >
-                        <Trash2 className="size-4 text-destructive" />
-                      </Button>
+              {fields.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  No fields defined. Add a field to get started.
+                </div>
+              ) : (
+                <DndContext
+                  sensors={sensors}
+                  collisionDetection={closestCenter}
+                  onDragEnd={handleDragEnd}
+                >
+                  <SortableContext
+                    items={fields.map((_, i) => String(i))}
+                    strategy={verticalListSortingStrategy}
+                  >
+                    <div className="space-y-4">
+                      {fields.map((field, index) => (
+                        <SortableSchemaField
+                          key={index}
+                          id={String(index)}
+                          field={field}
+                          onUpdate={(updates) => updateField(index, updates)}
+                          onRemove={() => removeField(index)}
+                        />
+                      ))}
                     </div>
-                  ))
-                )}
-              </div>
+                  </SortableContext>
+                </DndContext>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
