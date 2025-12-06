@@ -93,6 +93,16 @@ export function calculateTrend(
 }
 
 /**
+ * Convert snake_case to Title Case (e.g., "registered_at" -> "Registered At")
+ */
+export function formatFieldLabel(key: string): string {
+  return key
+    .split('_')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(' ');
+}
+
+/**
  * Format environment value for display
  */
 export function formatEnvValue(

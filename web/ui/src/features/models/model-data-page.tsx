@@ -19,7 +19,7 @@ import {
 import { toast } from 'sonner';
 
 import { modelsApi } from '@/api';
-import { formatDateTime } from '@/lib/format';
+import { formatDateTime, formatFieldLabel } from '@/lib/format';
 import { ApiValidationError } from '@/api/client';
 import type { ModelData, ModelField, FieldType, FormConfig, TableConfig, FieldView } from '@/types';
 
@@ -568,7 +568,7 @@ export function ModelDataPage() {
                           onClick={() => isSortable && handleSort(field.key)}
                         >
                           <div className="flex items-center gap-1">
-                            {field.key}
+                            {formatFieldLabel(field.key)}
                             {isSortable && (
                               <span className="text-muted-foreground">
                                 {isCurrentSort ? (
@@ -722,7 +722,7 @@ export function ModelDataPage() {
             {orderedFormFields.map((field) => (
               <Field key={field.key}>
                 <FieldLabel>
-                  {field.key}
+                  {formatFieldLabel(field.key)}
                   {field.required && <span className="text-destructive ml-1">*</span>}
                 </FieldLabel>
                 <FieldInput
@@ -763,7 +763,7 @@ export function ModelDataPage() {
             {orderedFormFields.map((field) => (
               <Field key={field.key}>
                 <FieldLabel>
-                  {field.key}
+                  {formatFieldLabel(field.key)}
                   {field.required && <span className="text-destructive ml-1">*</span>}
                 </FieldLabel>
                 <FieldInput
@@ -818,7 +818,7 @@ export function ModelDataPage() {
             {orderedFormFields.map((field) => (
               <div key={field.key} className="grid grid-cols-3 gap-4">
                 <span className="font-medium text-muted-foreground">
-                  {field.key}
+                  {formatFieldLabel(field.key)}
                 </span>
                 <span className="col-span-2">
                   {field.type === 'document' ? (
