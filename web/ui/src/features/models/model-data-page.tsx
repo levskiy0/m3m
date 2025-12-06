@@ -217,7 +217,9 @@ function formatDateTimeDisplay(value: string): string {
   if (!timePart) {
     return `${day}.${month}.${year}`;
   }
-  const [hour, minute, second = '00'] = timePart.split(':');
+  const [hour, minute, secondWithMs = '00'] = timePart.split(':');
+  // Remove milliseconds from seconds (e.g., "12.875" -> "12")
+  const second = secondWithMs.split('.')[0];
   return `${day}.${month}.${year} ${hour}:${minute}:${second}`;
 }
 
