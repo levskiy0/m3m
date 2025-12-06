@@ -221,8 +221,6 @@ export function ActiveFilterBadges({
   modelFields,
   onRemoveFilter,
 }: ActiveFilterBadgesProps) {
-  if (activeFilters.length === 0) return null;
-
   return (
     <div className="flex items-center gap-2 mb-4 flex-wrap min-h-[22px]">
       {activeFilters.map((f, i) => {
