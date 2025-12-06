@@ -427,14 +427,8 @@ export function ModelDataPage() {
   });
 
   const handleCreate = () => {
-    // Initialize form with default values
-    const defaults: Record<string, unknown> = {};
-    model?.fields.forEach((field) => {
-      if (field.default_value !== undefined) {
-        defaults[field.key] = field.default_value;
-      }
-    });
-    setFormData(defaults);
+    // Don't pre-fill defaults - backend applies them
+    setFormData({});
     setFieldErrors({});
     setCreateOpen(true);
   };

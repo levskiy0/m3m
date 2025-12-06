@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { format, parse } from 'date-fns';
-import { CalendarIcon } from 'lucide-react';
+import { ChevronDownIcon } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -22,7 +22,7 @@ interface DateTimePickerProps {
 export function DateTimePicker({
   value,
   onChange,
-  placeholder = 'Pick date and time',
+  placeholder = 'Select date',
   disabled,
 }: DateTimePickerProps) {
   const [open, setOpen] = React.useState(false);
@@ -36,13 +36,13 @@ export function DateTimePicker({
     }
   });
   const [time, setTime] = React.useState(() => {
-    if (!value) return '00:00';
+    if (!value) return '';
     try {
       const d = new Date(value);
-      if (isNaN(d.getTime())) return '00:00';
+      if (isNaN(d.getTime())) return '';
       return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
     } catch {
-      return '00:00';
+      return '';
     }
   });
 
@@ -50,7 +50,7 @@ export function DateTimePicker({
   React.useEffect(() => {
     if (!value) {
       setDate(undefined);
-      setTime('00:00');
+      setTime('');
       return;
     }
     try {
@@ -64,32 +64,28 @@ export function DateTimePicker({
     }
   }, [value]);
 
+  const updateValue = (newDate: Date | undefined, newTime: string) => {
+    if (!newDate) {
+      onChange(undefined);
+      return;
+    }
+    const [hours, minutes] = (newTime || '00:00').split(':').map(Number);
+    const result = new Date(newDate);
+    result.setHours(hours || 0, minutes || 0, 0, 0);
+    onChange(format(result, "yyyy-MM-dd'T'HH:mm"));
+  };
+
   const handleDateSelect = (selectedDate: Date | undefined) => {
     setDate(selectedDate);
-    if (selectedDate) {
-      const [hours, minutes] = time.split(':').map(Number);
-      selectedDate.setHours(hours || 0, minutes || 0, 0, 0);
-      onChange(format(selectedDate, "yyyy-MM-dd'T'HH:mm"));
-    } else {
-      onChange(undefined);
-    }
+    updateValue(selectedDate, time);
     setOpen(false);
   };
 
   const handleTimeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newTime = e.target.value;
     setTime(newTime);
-    if (date && newTime) {
-      const [hours, minutes] = newTime.split(':').map(Number);
-      const newDate = new Date(date);
-      newDate.setHours(hours || 0, minutes || 0, 0, 0);
-      onChange(format(newDate, "yyyy-MM-dd'T'HH:mm"));
-    }
+    updateValue(date, newTime);
   };
-
-  const displayValue = date && !isNaN(date.getTime())
-    ? format(date, 'PPP') + ' ' + time
-    : undefined;
 
   return (
     <div className="flex gap-2">
@@ -99,20 +95,20 @@ export function DateTimePicker({
             variant="outline"
             disabled={disabled}
             className={cn(
-              'flex-1 justify-start text-left font-normal',
+              'flex-1 justify-between font-normal',
               !date && 'text-muted-foreground'
             )}
           >
-            <CalendarIcon className="mr-2 h-4 w-4" />
-            {displayValue || placeholder}
+            {date ? date.toLocaleDateString() : placeholder}
+            <ChevronDownIcon className="h-4 w-4 opacity-50" />
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-auto p-0" align="start">
+        <PopoverContent className="w-auto overflow-hidden p-0" align="start">
           <Calendar
             mode="single"
             selected={date}
+            captionLayout="dropdown"
             onSelect={handleDateSelect}
-            initialFocus
           />
         </PopoverContent>
       </Popover>
@@ -120,8 +116,8 @@ export function DateTimePicker({
         type="time"
         value={time}
         onChange={handleTimeChange}
-        disabled={disabled || !date}
-        className="w-28"
+        disabled={disabled}
+        className="w-28 bg-background appearance-none [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none"
       />
     </div>
   );
@@ -137,14 +133,15 @@ interface DatePickerProps {
 export function DatePicker({
   value,
   onChange,
-  placeholder = 'Pick a date',
+  placeholder = 'Select date',
   disabled,
 }: DatePickerProps) {
   const [open, setOpen] = React.useState(false);
   const [date, setDate] = React.useState<Date | undefined>(() => {
     if (!value) return undefined;
     try {
-      return parse(value, 'yyyy-MM-dd', new Date());
+      const d = parse(value, 'yyyy-MM-dd', new Date());
+      return isNaN(d.getTime()) ? undefined : d;
     } catch {
       return undefined;
     }
@@ -183,20 +180,20 @@ export function DatePicker({
           variant="outline"
           disabled={disabled}
           className={cn(
-            'w-full justify-start text-left font-normal',
+            'w-full justify-between font-normal',
             !date && 'text-muted-foreground'
           )}
         >
-          <CalendarIcon className="mr-2 h-4 w-4" />
-          {date ? format(date, 'PPP') : placeholder}
+          {date ? date.toLocaleDateString() : placeholder}
+          <ChevronDownIcon className="h-4 w-4 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-auto p-0" align="start">
+      <PopoverContent className="w-auto overflow-hidden p-0" align="start">
         <Calendar
           mode="single"
           selected={date}
+          captionLayout="dropdown"
           onSelect={handleSelect}
-          initialFocus
         />
       </PopoverContent>
     </Popover>
