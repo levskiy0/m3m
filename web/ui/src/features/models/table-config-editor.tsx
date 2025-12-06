@@ -129,7 +129,7 @@ function SortableRow({
             id={`search-${item.key}`}
             checked={(config.searchable || []).includes(item.key)}
             onCheckedChange={() => onToggleSearchable(item.key)}
-            disabled={!isSearchableType || item.isSystem}
+            disabled={(!isSearchableType && !(config.searchable || []).includes(item.key)) || item.isSystem}
           />
         </div>
       </td>
