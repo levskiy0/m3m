@@ -166,6 +166,11 @@ interface SortableSchemaFieldProps {
   currentModelId?: string;
 }
 
+// Validates field key: must start with letter, contain only letters, numbers, underscores
+const isValidFieldKey = (key: string): boolean => {
+  return /^[a-zA-Z][a-zA-Z0-9_]*$/.test(key);
+};
+
 function SortableSchemaField({ id, field, onUpdate, onRemove, models, currentModelId }: SortableSchemaFieldProps) {
   const {
     attributes,
@@ -183,6 +188,8 @@ function SortableSchemaField({ id, field, onUpdate, onRemove, models, currentMod
 
   // Filter out current model from ref options
   const availableModels = models.filter(m => m.id !== currentModelId);
+
+  const keyError = field.key && !isValidFieldKey(field.key);
 
   return (
     <div
@@ -210,6 +217,7 @@ function SortableSchemaField({ id, field, onUpdate, onRemove, models, currentMod
               })
             }
             placeholder="field_name"
+            className={keyError ? 'border-destructive focus-visible:ring-destructive' : ''}
           />
         </Field>
         <Field>
@@ -315,6 +323,9 @@ export function ModelSchemaPage() {
   });
   const [hasChanges, setHasChanges] = useState(false);
   const [activeTab, setActiveTab] = useState<'schema' | 'table' | 'form'>('schema');
+
+  // Check for validation errors
+  const hasValidationErrors = fields.some(f => !f.key || !isValidFieldKey(f.key));
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -554,7 +565,7 @@ export function ModelSchemaPage() {
           </Button>
           <Button
             onClick={() => updateMutation.mutate()}
-            disabled={!hasChanges || updateMutation.isPending}
+            disabled={!hasChanges || updateMutation.isPending || hasValidationErrors}
           >
             <Save className="mr-2 size-4" />
             {updateMutation.isPending ? 'Saving...' : 'Save'}
