@@ -8,7 +8,7 @@ import {
   TableCell,
   TableRow,
 } from '@/components/ui/table';
-import { SYSTEM_FIELDS, SYSTEM_FIELD_LABELS, type SystemField } from '../constants';
+import { SYSTEM_FIELDS, type SystemField } from '../constants';
 import { formatCellValue, formatSystemFieldValue } from '../utils';
 
 interface RecordViewProps {
@@ -68,13 +68,13 @@ export function RecordView({
                   </TableRow>
                 ))}
                 {/* System fields */}
-                {SYSTEM_FIELDS.map((key) => (
-                  <TableRow key={key}>
+                {SYSTEM_FIELDS.map((sf) => (
+                  <TableRow key={sf.key}>
                     <TableCell className="w-1/3 font-medium text-md text-muted-foreground bg-muted/30">
-                      {SYSTEM_FIELD_LABELS[key]}
+                      {sf.label}
                     </TableCell>
                     <TableCell className="font-mono text-md text-muted-foreground">
-                      {formatSystemFieldValue(key as SystemField, data?.[key])}
+                      {formatSystemFieldValue(sf.key as SystemField, data?.[sf.key])}
                     </TableCell>
                   </TableRow>
                 ))}

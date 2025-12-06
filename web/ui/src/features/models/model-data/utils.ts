@@ -21,12 +21,12 @@ export function getDefaultView(type: FieldType): FieldView {
 export function formatCellValue(value: unknown, type: FieldType): string {
   if (value === null || value === undefined) return '-';
   if (type === 'bool') return value ? 'Yes' : 'No';
-  if (type === 'document') return JSON.stringify(value).slice(0, 50) + '...';
+  if (type === 'document') return JSON.stringify(value).slice(0, 1024) + '...';
   if (type === 'date' || type === 'datetime') {
     return formatDateTime(value as string);
   }
   const str = String(value);
-  return str.length > 50 ? str.slice(0, 50) + '...' : str;
+  return str.length > 1024 ? str.slice(0, 1024) + '...' : str;
 }
 
 export function formatSystemFieldValue(key: SystemField, value: unknown): string {

@@ -1,3 +1,8 @@
+/**
+ * FormConfigEditor component
+ * Configure form: field order, visibility, widgets
+ */
+
 import { GripVertical, Eye, EyeOff } from 'lucide-react';
 import {
   DndContext,
@@ -18,7 +23,6 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 
 import type { ModelField, FormConfig, FieldView } from '@/types';
-import { FIELD_VIEWS } from '@/lib/constants';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -29,6 +33,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  getOrderedFormFields,
+  getDefaultFieldView,
+  getAvailableFieldViews,
+  toggleHiddenField,
+  setFieldView,
+  isFieldHidden,
+} from '../../lib';
 
 interface SortableFieldItemProps {
   field: ModelField;
@@ -141,12 +153,17 @@ export function FormConfigEditor({ fields, config, onChange }: FormConfigEditorP
     })
   );
 
-  // Get ordered fields list based on config.field_order
-  const getOrderedFields = () => {
-    const fieldMap = new Map(fields.map((f) => [f.key, f]));
+  // Get ordered fields based on config
+  const orderedFields = getOrderedFormFields(fields, {
+    ...config,
+    hidden_fields: [], // Show all fields in editor, including hidden
+  });
+
+  // Also include hidden fields
+  const allOrderedFields = (() => {
+    const fieldMap = new Map(fields.map(f => [f.key, f]));
     const ordered: ModelField[] = [];
 
-    // First add fields in specified order
     for (const key of config.field_order) {
       const field = fieldMap.get(key);
       if (field) {
@@ -155,48 +172,31 @@ export function FormConfigEditor({ fields, config, onChange }: FormConfigEditorP
       }
     }
 
-    // Then add remaining fields not in the order
     for (const field of fieldMap.values()) {
       ordered.push(field);
     }
 
     return ordered;
+  })();
+
+  const handleToggleHidden = (key: string) => {
+    onChange(toggleHiddenField(config, key));
   };
 
-  const orderedFields = getOrderedFields();
-
-  const toggleHidden = (key: string) => {
-    const hidden_fields = config.hidden_fields.includes(key)
-      ? config.hidden_fields.filter((k) => k !== key)
-      : [...config.hidden_fields, key];
-    onChange({ ...config, hidden_fields });
-  };
-
-  const setFieldView = (key: string, view: FieldView | '') => {
-    const field_views = { ...config.field_views };
-    if (view === '') {
-      delete field_views[key];
-    } else {
-      field_views[key] = view;
-    }
-    onChange({ ...config, field_views });
+  const handleViewChange = (key: string, view: FieldView) => {
+    onChange(setFieldView(config, key, view));
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
 
     if (over && active.id !== over.id) {
-      const currentOrder = orderedFields.map((f) => f.key);
+      const currentOrder = allOrderedFields.map(f => f.key);
       const oldIndex = currentOrder.indexOf(active.id as string);
       const newIndex = currentOrder.indexOf(over.id as string);
       const newOrder = arrayMove(currentOrder, oldIndex, newIndex);
       onChange({ ...config, field_order: newOrder });
     }
-  };
-
-  const getDefaultView = (field: ModelField): string => {
-    const views = FIELD_VIEWS[field.type];
-    return views?.[0]?.value || 'input';
   };
 
   return (
@@ -219,14 +219,14 @@ export function FormConfigEditor({ fields, config, onChange }: FormConfigEditorP
             onDragEnd={handleDragEnd}
           >
             <SortableContext
-              items={orderedFields.map((f) => f.key)}
+              items={allOrderedFields.map(f => f.key)}
               strategy={verticalListSortingStrategy}
             >
               <div className="space-y-2">
-                {orderedFields.map((field) => {
-                  const isHidden = config.hidden_fields.includes(field.key);
-                  const currentView = config.field_views[field.key] || getDefaultView(field);
-                  const availableViews = FIELD_VIEWS[field.type] || [];
+                {allOrderedFields.map((field) => {
+                  const isHidden = isFieldHidden(config, field.key);
+                  const currentView = config.field_views[field.key] || getDefaultFieldView(field.type);
+                  const availableViews = getAvailableFieldViews(field.type);
 
                   return (
                     <SortableFieldItem
@@ -235,8 +235,8 @@ export function FormConfigEditor({ fields, config, onChange }: FormConfigEditorP
                       isHidden={isHidden}
                       currentView={currentView}
                       availableViews={availableViews}
-                      onToggleHidden={() => toggleHidden(field.key)}
-                      onViewChange={(view) => setFieldView(field.key, view)}
+                      onToggleHidden={() => handleToggleHidden(field.key)}
+                      onViewChange={(view) => handleViewChange(field.key, view)}
                     />
                   );
                 })}

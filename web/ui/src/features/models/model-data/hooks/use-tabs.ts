@@ -32,7 +32,16 @@ export function useTabs(fields: ModelField[] = []) {
     }
 
     const newTab: Tab = { id: tabId, type, title, data, formData, fieldErrors: {} };
-    setTabs(prev => [...prev, newTab]);
+
+    setTabs(prev => {
+      let newTabs = [...prev, newTab];
+      // Close view tab when opening edit for the same record
+      if (type === 'edit' && data) {
+        const viewTabId = `view-${data._id}`;
+        newTabs = newTabs.filter(t => t.id !== viewTabId);
+      }
+      return newTabs;
+    });
     setActiveTabId(tabId);
   }, [tabs, fields]);
 

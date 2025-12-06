@@ -1,3 +1,8 @@
+/**
+ * TableConfigEditor component
+ * Configure table view: columns, filters, sorting, search
+ */
+
 import { useMemo } from 'react';
 import { Columns3, Filter, ArrowUpDown, Search, GripVertical } from 'lucide-react';
 import {
@@ -21,23 +26,20 @@ import { CSS } from '@dnd-kit/utilities';
 import type { ModelField, TableConfig } from '@/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
-
-// System fields that can be displayed in tables
-const SYSTEM_FIELDS = [
-  { key: '_created_at', label: 'Created At', type: 'datetime' },
-  { key: '_updated_at', label: 'Updated At', type: 'datetime' },
-] as const;
-
-type ColumnItem = {
-  key: string;
-  label: string;
-  type: string;
-  isSystem: boolean;
-};
+import {
+  buildOrderedColumnItems,
+  toggleColumn,
+  toggleFilter,
+  toggleSortable,
+  toggleSearchable,
+  isSearchableFieldType,
+  type ColumnItem,
+} from '../../lib';
 
 interface SortableRowProps {
   item: ColumnItem;
   config: TableConfig;
+  fields: ModelField[];
   onToggleColumn: (key: string) => void;
   onToggleFilter: (key: string) => void;
   onToggleSortable: (key: string) => void;
@@ -47,6 +49,7 @@ interface SortableRowProps {
 function SortableRow({
   item,
   config,
+  fields,
   onToggleColumn,
   onToggleFilter,
   onToggleSortable,
@@ -67,7 +70,7 @@ function SortableRow({
     opacity: isDragging ? 0.5 : 1,
   };
 
-  const isSearchableType = ['string', 'text'].includes(item.type);
+  const isSearchableType = isSearchableFieldType(item.type);
   const isInColumns = config.columns.includes(item.key);
 
   return (
@@ -151,86 +154,15 @@ export function TableConfigEditor({ fields, config, onChange }: TableConfigEdito
     })
   );
 
-  // Create ordered list of all columns (fields + system fields)
-  // Order is based on config.columns array, with remaining items at the end
-  const orderedItems = useMemo((): ColumnItem[] => {
-    const fieldItems: ColumnItem[] = fields.map(f => ({
-      key: f.key,
-      label: f.key,
-      type: f.type,
-      isSystem: false,
-    }));
+  const orderedItems = useMemo(
+    () => buildOrderedColumnItems(fields, config),
+    [fields, config]
+  );
 
-    const systemItems: ColumnItem[] = SYSTEM_FIELDS.map(sf => ({
-      key: sf.key,
-      label: sf.label,
-      type: sf.type,
-      isSystem: true,
-    }));
-
-    const allItems = [...fieldItems, ...systemItems];
-    allItems.map(i => i.key);
-
-    // Order based on config.columns, then add remaining
-    const ordered: ColumnItem[] = [];
-    const seen = new Set<string>();
-
-    // First add items in config.columns order
-    for (const key of config.columns) {
-      const item = allItems.find(i => i.key === key);
-      if (item && !seen.has(key)) {
-        ordered.push(item);
-        seen.add(key);
-      }
-    }
-
-    // Then add remaining items that aren't in columns yet
-    for (const item of allItems) {
-      if (!seen.has(item.key)) {
-        ordered.push(item);
-        seen.add(item.key);
-      }
-    }
-
-    return ordered;
-  }, [fields, config.columns]);
-
-  const toggleColumn = (key: string) => {
-    const columns = config.columns.includes(key)
-      ? config.columns.filter((c) => c !== key)
-      : [...config.columns, key];
-    onChange({ ...config, columns });
-  };
-
-  const toggleFilter = (key: string) => {
-    const filters = config.filters.includes(key)
-      ? config.filters.filter((f) => f !== key)
-      : [...config.filters, key];
-    onChange({ ...config, filters });
-  };
-
-  const toggleSortable = (key: string) => {
-    const sort_columns = config.sort_columns.includes(key)
-      ? config.sort_columns.filter((s) => s !== key)
-      : [...config.sort_columns, key];
-    onChange({ ...config, sort_columns });
-  };
-
-  const toggleSearchable = (key: string) => {
-    // Find the field to check its type
-    const field = fields.find(f => f.key === key);
-    const isSearchableType = field && ['string', 'text'].includes(field.type);
-
-    // Only allow adding if it's a searchable type
-    if (!isSearchableType && !(config.searchable || []).includes(key)) {
-      return; // Don't allow adding non-string fields
-    }
-
-    const searchable = (config.searchable || []).includes(key)
-      ? (config.searchable || []).filter((s) => s !== key)
-      : [...(config.searchable || []), key];
-    onChange({ ...config, searchable });
-  };
+  const handleToggleColumn = (key: string) => onChange(toggleColumn(config, key));
+  const handleToggleFilter = (key: string) => onChange(toggleFilter(config, key));
+  const handleToggleSortable = (key: string) => onChange(toggleSortable(config, key));
+  const handleToggleSearchable = (key: string) => onChange(toggleSearchable(config, key, fields));
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
@@ -242,8 +174,6 @@ export function TableConfigEditor({ fields, config, onChange }: TableConfigEdito
       if (oldIndex === -1 || newIndex === -1) return;
 
       const newOrder = arrayMove(orderedItems, oldIndex, newIndex);
-
-      // Update columns array to reflect new order (only for visible columns)
       const newColumns = newOrder
         .filter(i => config.columns.includes(i.key))
         .map(i => i.key);
@@ -313,10 +243,11 @@ export function TableConfigEditor({ fields, config, onChange }: TableConfigEdito
                         key={item.key}
                         item={item}
                         config={config}
-                        onToggleColumn={toggleColumn}
-                        onToggleFilter={toggleFilter}
-                        onToggleSortable={toggleSortable}
-                        onToggleSearchable={toggleSearchable}
+                        fields={fields}
+                        onToggleColumn={handleToggleColumn}
+                        onToggleFilter={handleToggleFilter}
+                        onToggleSortable={handleToggleSortable}
+                        onToggleSearchable={handleToggleSearchable}
                       />
                     ))}
                   </tbody>
