@@ -1,9 +1,16 @@
-import { useState, useRef } from 'react';
-import { Upload, X, File, Image, Loader2, ExternalLink } from 'lucide-react';
+import { useState } from 'react';
+import { FolderOpen, X, File, Image, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { storageApi } from '@/api/storage';
-import type { FieldView } from '@/types';
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { FileBrowser } from '@/features/storage/components';
+import type { FieldView, StorageItem } from '@/types';
 
 interface FileFieldInputProps {
   value: string | null;
@@ -18,43 +25,31 @@ export function FileFieldInput({
   projectId,
   view = 'file',
 }: FileFieldInputProps) {
-  const [isUploading, setIsUploading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [selectedItem, setSelectedItem] = useState<StorageItem | null>(null);
 
   const isImage = view === 'image';
-  const accept = isImage ? 'image/*' : undefined;
+  const accept = isImage ? 'images' : 'all';
 
-  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const handleSelect = (item: StorageItem) => {
+    setSelectedItem(item);
+  };
 
-    setIsUploading(true);
-    setError(null);
-
-    try {
-      // Upload to 'uploads' folder in project storage
-      const result = await storageApi.upload(projectId, 'uploads', file);
-      onChange(result.path);
-    } catch (err) {
-      setError('Failed to upload file');
-      console.error('Upload error:', err);
-    } finally {
-      setIsUploading(false);
-      // Reset input so same file can be selected again
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
+  const handleConfirm = () => {
+    if (selectedItem) {
+      onChange(selectedItem.path);
+      setDialogOpen(false);
+      setSelectedItem(null);
     }
   };
 
   const handleClear = () => {
     onChange(null);
-    setError(null);
   };
 
-  const handleClick = () => {
-    fileInputRef.current?.click();
+  const handleOpenDialog = () => {
+    setSelectedItem(null);
+    setDialogOpen(true);
   };
 
   // Extract filename from path
@@ -62,14 +57,6 @@ export function FileFieldInput({
 
   return (
     <div className="space-y-2">
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept={accept}
-        onChange={handleFileSelect}
-        className="hidden"
-      />
-
       {value ? (
         <div className="flex items-center gap-2 border rounded-md p-2">
           {isImage ? (
@@ -83,9 +70,9 @@ export function FileFieldInput({
             size="icon"
             className="h-8 w-8"
             onClick={() => {
-              // Open file in new tab using the storage URL
               window.open(`/api/projects/${projectId}/storage/download/${value}`, '_blank');
             }}
+            title="Open file"
           >
             <ExternalLink className="h-4 w-4" />
           </Button>
@@ -94,6 +81,7 @@ export function FileFieldInput({
             size="icon"
             className="h-8 w-8"
             onClick={handleClear}
+            title="Clear"
           >
             <X className="h-4 w-4" />
           </Button>
@@ -105,27 +93,53 @@ export function FileFieldInput({
             placeholder={isImage ? 'Select image...' : 'Select file...'}
             value=""
             readOnly
-            onClick={handleClick}
+            onClick={handleOpenDialog}
             className="cursor-pointer"
           />
           <Button
             variant="outline"
             size="icon"
-            onClick={handleClick}
-            disabled={isUploading}
+            onClick={handleOpenDialog}
+            title="Browse files"
           >
-            {isUploading ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Upload className="h-4 w-4" />
-            )}
+            <FolderOpen className="h-4 w-4" />
           </Button>
         </div>
       )}
 
-      {error && (
-        <p className="text-sm text-destructive">{error}</p>
-      )}
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle>
+              {isImage ? 'Select Image' : 'Select File'}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="flex-1 min-h-0 border rounded-md overflow-hidden">
+            <FileBrowser
+              projectId={projectId}
+              mode="select"
+              selectedPath={selectedItem?.path || null}
+              onSelect={handleSelect}
+              accept={accept as 'all' | 'images'}
+              showUpload={true}
+              className="h-[400px]"
+            />
+          </div>
+          {selectedItem && (
+            <div className="text-sm text-muted-foreground">
+              Selected: <span className="font-medium text-foreground">{selectedItem.path}</span>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleConfirm} disabled={!selectedItem}>
+              Select
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
