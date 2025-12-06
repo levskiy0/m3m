@@ -299,17 +299,36 @@ export function ModelSchemaPage() {
       setFields(model.fields);
       // Generate stable IDs for loaded fields
       fieldIdsRef.current = model.fields.map(() => generateFieldId());
-      setTableConfig(model.tableConfig || {
+
+      // Default table config
+      const defaultTableConfig: TableConfig = {
         columns: model.fields.map(f => f.key),
         filters: [],
         sort_columns: model.fields.map(f => f.key),
         searchable: model.fields.filter(f => ['string', 'text'].includes(f.type)).map(f => f.key),
+      };
+
+      // Merge with saved config, ensuring all arrays exist
+      setTableConfig({
+        columns: model.table_config?.columns ?? defaultTableConfig.columns,
+        filters: model.table_config?.filters ?? defaultTableConfig.filters,
+        sort_columns: model.table_config?.sort_columns ?? defaultTableConfig.sort_columns,
+        searchable: model.table_config?.searchable ?? defaultTableConfig.searchable,
       });
-      setFormConfig(model.formConfig || {
+
+      // Default form config
+      const defaultFormConfig: FormConfig = {
         field_order: model.fields.map(f => f.key),
         hidden_fields: [],
         field_views: {},
+      };
+
+      setFormConfig({
+        field_order: model.form_config?.field_order ?? defaultFormConfig.field_order,
+        hidden_fields: model.form_config?.hidden_fields ?? defaultFormConfig.hidden_fields,
+        field_views: model.form_config?.field_views ?? defaultFormConfig.field_views,
       });
+
       setHasChanges(false);
     }
   }, [model]);

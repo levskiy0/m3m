@@ -38,13 +38,13 @@ export const modelsApi = {
   listData: async (
     projectId: string,
     modelId: string,
-    params?: { page?: number; limit?: number; sort?: string; filter?: string }
+    params?: { page?: number; limit?: number; sort?: string; order?: string }
   ): Promise<PaginatedResponse<ModelData>> => {
     const searchParams = new URLSearchParams();
     if (params?.page) searchParams.set('page', params.page.toString());
     if (params?.limit) searchParams.set('limit', params.limit.toString());
     if (params?.sort) searchParams.set('sort', params.sort);
-    if (params?.filter) searchParams.set('filter', params.filter);
+    if (params?.order) searchParams.set('order', params.order);
     const query = searchParams.toString();
     return api.get<PaginatedResponse<ModelData>>(
       `/api/projects/${projectId}/models/${modelId}/data${query ? `?${query}` : ''}`

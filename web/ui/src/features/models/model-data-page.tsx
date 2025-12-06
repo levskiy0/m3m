@@ -232,43 +232,53 @@ export function ModelDataPage() {
     enabled: !!projectId && !!modelId,
   });
 
-  const { data: dataResponse, isLoading: dataLoading } = useQuery({
-    queryKey: ['model-data', projectId, modelId, page, limit, sortField, sortOrder, searchQuery],
-    queryFn: () => modelsApi.listData(projectId!, modelId!, {
-      page,
-      limit,
-      sort: sortField || undefined,
-      order: sortOrder,
-    }),
-    enabled: !!projectId && !!modelId,
-  });
-
-  // Get table config or defaults
+  // Get table config or defaults - must be before data query
   const tableConfig = useMemo((): TableConfig => {
-    if (model?.tableConfig) {
-      return model.tableConfig;
-    }
-    // Default config - show all fields
-    const columns = model?.fields.map(f => f.key) || [];
+    const defaultColumns = model?.fields.map(f => f.key) || [];
+    const defaultSearchable = model?.fields.filter(f => ['string', 'text'].includes(f.type)).map(f => f.key) || [];
+
     return {
-      columns,
-      filters: [],
-      sort_columns: columns,
-      searchable: model?.fields.filter(f => ['string', 'text'].includes(f.type)).map(f => f.key) || [],
+      columns: model?.table_config?.columns ?? defaultColumns,
+      filters: model?.table_config?.filters ?? [],
+      sort_columns: model?.table_config?.sort_columns ?? defaultColumns,
+      searchable: model?.table_config?.searchable ?? defaultSearchable,
     };
   }, [model]);
 
   // Get form config or defaults
   const formConfig = useMemo((): FormConfig => {
-    if (model?.formConfig) {
-      return model.formConfig;
-    }
+    const defaultFieldOrder = model?.fields.map(f => f.key) || [];
+
     return {
-      field_order: model?.fields.map(f => f.key) || [],
-      hidden_fields: [],
-      field_views: {},
+      field_order: model?.form_config?.field_order ?? defaultFieldOrder,
+      hidden_fields: model?.form_config?.hidden_fields ?? [],
+      field_views: model?.form_config?.field_views ?? {},
     };
   }, [model]);
+
+  const { data: dataResponse, isLoading: dataLoading } = useQuery({
+    queryKey: ['model-data', projectId, modelId, page, limit, sortField, sortOrder, searchQuery, tableConfig.searchable],
+    queryFn: () => {
+      // Use queryData for search, listData otherwise
+      if (searchQuery && tableConfig.searchable && tableConfig.searchable.length > 0) {
+        return modelsApi.queryData(projectId!, modelId!, {
+          page,
+          limit,
+          sort: sortField || undefined,
+          order: sortOrder,
+          search: searchQuery,
+          searchIn: tableConfig.searchable,
+        });
+      }
+      return modelsApi.listData(projectId!, modelId!, {
+        page,
+        limit,
+        sort: sortField || undefined,
+        order: sortOrder,
+      });
+    },
+    enabled: !!projectId && !!modelId,
+  });
 
   // Get visible columns based on tableConfig
   const visibleColumns = useMemo(() => {

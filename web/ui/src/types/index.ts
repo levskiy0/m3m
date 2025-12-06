@@ -235,8 +235,8 @@ export interface Model {
   name: string;
   slug: string;
   fields: ModelField[];
-  tableConfig?: TableConfig;
-  formConfig?: FormConfig;
+  table_config?: TableConfig;
+  form_config?: FormConfig;
   createdAt: string;
   updatedAt: string;
 }
@@ -321,10 +321,19 @@ export interface ModelData {
 }
 
 export interface QueryDataRequest {
-  filter?: Record<string, unknown>;
-  sort?: Record<string, 1 | -1>;
   page?: number;
   limit?: number;
+  sort?: string;
+  order?: string;
+  filters?: FilterCondition[];
+  search?: string;
+  searchIn?: string[];
+}
+
+export interface FilterCondition {
+  field: string;
+  operator: 'eq' | 'ne' | 'gt' | 'gte' | 'lt' | 'lte' | 'contains' | 'startsWith' | 'endsWith' | 'in';
+  value: unknown;
 }
 
 export interface PaginatedResponse<T> {
