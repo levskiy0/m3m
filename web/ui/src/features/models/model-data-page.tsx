@@ -396,10 +396,20 @@ export function ModelDataPage() {
       setEditOpen(false);
       setSelectedData(null);
       setFormData({});
+      setFieldErrors({});
       toast.success('Record updated');
     },
     onError: (err) => {
-      toast.error(err instanceof Error ? err.message : 'Failed to update record');
+      if (err instanceof ApiValidationError) {
+        const errors: Record<string, string> = {};
+        err.details.forEach(d => {
+          errors[d.field] = d.message;
+        });
+        setFieldErrors(errors);
+        toast.error('Validation failed. Please check the form.');
+      } else {
+        toast.error(err instanceof Error ? err.message : 'Failed to update record');
+      }
     },
   });
 
@@ -426,6 +436,7 @@ export function ModelDataPage() {
       }
     });
     setFormData(defaults);
+    setFieldErrors({});
     setCreateOpen(true);
   };
 
