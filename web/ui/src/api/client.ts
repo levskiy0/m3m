@@ -3,6 +3,22 @@ import type { ApiError } from '@/types';
 
 const TOKEN_KEY = 'm3m_token';
 
+// Custom error class to preserve validation details
+export interface ValidationDetail {
+  field: string;
+  message: string;
+}
+
+export class ApiValidationError extends Error {
+  details: ValidationDetail[];
+
+  constructor(message: string, details: ValidationDetail[] = []) {
+    super(message);
+    this.name = 'ApiValidationError';
+    this.details = details;
+  }
+}
+
 export function getToken(): string | null {
   return localStorage.getItem(TOKEN_KEY);
 }
@@ -38,9 +54,17 @@ export class ApiClient {
       throw new Error('Unauthorized');
     }
 
-    const error: ApiError = await response.json().catch(() => ({
+    const error = await response.json().catch(() => ({
       error: 'Unknown error',
-    }));
+    })) as ApiError & { details?: ValidationDetail[] };
+
+    // If validation error with details, throw ApiValidationError
+    if (error.details && Array.isArray(error.details)) {
+      throw new ApiValidationError(
+        error.message || error.error || 'Validation failed',
+        error.details
+      );
+    }
 
     throw new Error(error.message || error.error || 'Request failed');
   }

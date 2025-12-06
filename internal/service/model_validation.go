@@ -287,20 +287,21 @@ func (v *DataValidator) validateDate(value interface{}) error {
 	}
 }
 
-// DateTime format: ISO 8601 (YYYY-MM-DDTHH:MM:SSZ or with timezone)
-var dateTimeRegex = regexp.MustCompile(`^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2}(Z|[+-]\d{2}:\d{2})?)?$`)
+// DateTime format: ISO 8601 (YYYY-MM-DDTHH:MM or YYYY-MM-DDTHH:MM:SS with optional timezone)
+var dateTimeRegex = regexp.MustCompile(`^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}(:\d{2})?(Z|[+-]\d{2}:\d{2})?)?$`)
 
 func (v *DataValidator) validateDateTime(value interface{}) error {
 	switch val := value.(type) {
 	case string:
 		if !dateTimeRegex.MatchString(val) {
-			return errors.New("expected datetime format ISO 8601 (YYYY-MM-DDTHH:MM:SSZ)")
+			return errors.New("expected datetime format ISO 8601 (YYYY-MM-DDTHH:MM or YYYY-MM-DDTHH:MM:SS)")
 		}
 		// Try parsing with various formats
 		formats := []string{
 			time.RFC3339,
 			"2006-01-02T15:04:05Z",
 			"2006-01-02T15:04:05",
+			"2006-01-02T15:04", // Without seconds
 			"2006-01-02",
 		}
 		for _, format := range formats {

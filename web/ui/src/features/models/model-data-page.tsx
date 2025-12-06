@@ -19,6 +19,7 @@ import {
 import { toast } from 'sonner';
 
 import { modelsApi } from '@/api';
+import { ApiValidationError } from '@/api/client';
 import type { ModelData, ModelField, FieldType, FormConfig, TableConfig, FieldView } from '@/types';
 
 // System fields that can be displayed in tables and views
@@ -265,6 +266,7 @@ export function ModelDataPage() {
 
   const [selectedData, setSelectedData] = useState<ModelData | null>(null);
   const [formData, setFormData] = useState<Record<string, unknown>>({});
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   const { data: model, isLoading: modelLoading } = useQuery({
     queryKey: ['model', projectId, modelId],
@@ -369,10 +371,20 @@ export function ModelDataPage() {
       queryClient.invalidateQueries({ queryKey: ['model-data', projectId, modelId] });
       setCreateOpen(false);
       setFormData({});
+      setFieldErrors({});
       toast.success('Record created');
     },
     onError: (err) => {
-      toast.error(err instanceof Error ? err.message : 'Failed to create record');
+      if (err instanceof ApiValidationError) {
+        const errors: Record<string, string> = {};
+        err.details.forEach(d => {
+          errors[d.field] = d.message;
+        });
+        setFieldErrors(errors);
+        toast.error('Validation failed. Please check the form.');
+      } else {
+        toast.error(err instanceof Error ? err.message : 'Failed to create record');
+      }
     },
   });
 
