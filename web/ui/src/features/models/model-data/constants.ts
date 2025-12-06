@@ -71,6 +71,10 @@ export const FILTER_OPERATORS: Record<string, { value: FilterCondition['operator
     { value: 'lt', label: '<' },
     { value: 'lte', label: '<=' },
   ],
+  ref: [
+    { value: 'eq', label: '=' },
+    { value: 'ne', label: '!=' },
+  ],
 };
 
 /**

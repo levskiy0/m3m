@@ -223,6 +223,8 @@ export function ModelDataPage() {
             modelFields={model.fields}
             onFiltersChange={setActiveFilters}
             onPageReset={() => setPage(1)}
+            projectId={projectId}
+            models={allModels}
           />
         </div>
 

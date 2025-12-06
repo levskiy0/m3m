@@ -1,6 +1,6 @@
 import { Filter, Plus, X } from 'lucide-react';
 import { formatFieldLabel } from '@/lib/format';
-import type { ModelField, FilterCondition } from '@/types';
+import type { ModelField, FilterCondition, Model } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -19,6 +19,7 @@ import {
 import { DatePicker, DateTimePicker } from '@/components/ui/datetime-picker';
 import { FILTER_OPERATORS } from '../constants';
 import type { ActiveFilter } from '../types';
+import { RefFilterInput } from './ref-filter-input';
 
 interface FilterPopoverProps {
   activeFilters: ActiveFilter[];
@@ -26,6 +27,8 @@ interface FilterPopoverProps {
   modelFields: ModelField[];
   onFiltersChange: (filters: ActiveFilter[]) => void;
   onPageReset: () => void;
+  projectId?: string;
+  models?: Model[];
 }
 
 export function FilterPopover({
@@ -34,6 +37,8 @@ export function FilterPopover({
   modelFields,
   onFiltersChange,
   onPageReset,
+  projectId,
+  models = [],
 }: FilterPopoverProps) {
   const handleAddFilter = () => {
     const firstField = filterableFields[0];
@@ -135,6 +140,15 @@ export function FilterPopover({
                         <SelectItem value="false">No</SelectItem>
                       </SelectContent>
                     </Select>
+                  ) : field?.type === 'ref' && projectId && field.ref_model ? (
+                    <RefFilterInput
+                      value={String(f.value) || ''}
+                      onChange={(v) => handleUpdateFilter(index, { value: v })}
+                      projectId={projectId}
+                      refModelSlug={field.ref_model}
+                      models={models}
+                      onCommit={onPageReset}
+                    />
                   ) : field?.type === 'date' ? (
                     <div className="w-[130px]">
                       <DatePicker
