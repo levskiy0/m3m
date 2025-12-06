@@ -53,7 +53,7 @@ export function EditorTab({
     >
       <button
         onClick={onClick}
-        className={cn('flex items-center gap-2', hasClose && 'cursor-pointer')}
+        className={cn('flex items-center gap-2 relative', active ? '' : 'top-[1px]', hasClose && 'cursor-pointer')}
       >
         {icon}
         <span className={cn(hasClose && 'max-w-32 truncate')}>{children}</span>
@@ -82,7 +82,7 @@ interface EditorTabPanelProps {
 
 export function EditorTabPanel({ children, className }: EditorTabPanelProps) {
   return (
-    <div className={cn('w-full', className)}>
+    <div className={cn('w-full overflow-y-auto', className)}>
       {children}
     </div>
   );

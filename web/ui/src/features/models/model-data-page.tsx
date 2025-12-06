@@ -13,6 +13,9 @@ import {
   Loader2,
   Filter,
   X,
+  Eye,
+  MoreHorizontal,
+  Table2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -32,7 +35,6 @@ const SYSTEM_FIELD_LABELS: Record<SystemField, string> = {
 };
 
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
 import {
   Select,
   SelectContent,
@@ -44,16 +46,11 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Field, FieldGroup, FieldLabel, FieldDescription } from '@/components/ui/field';
 import { ConfirmDialog } from '@/components/shared/confirm-dialog';
 import { EmptyState } from '@/components/shared/empty-state';
 import { Skeleton } from '@/components/ui/skeleton';
 import { DatePicker, DateTimePicker } from '@/components/ui/datetime-picker';
-import {
-  ResizablePanelGroup,
-  ResizablePanel,
-  ResizableHandle,
-} from '@/components/ui/resizable';
+import { EditorTabs, EditorTab } from '@/components/ui/editor-tabs';
 import {
   Table,
   TableBody,
@@ -68,6 +65,12 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { Badge } from '@/components/ui/badge';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 // Filter operators by field type
 const FILTER_OPERATORS: Record<string, { value: FilterCondition['operator']; label: string }[]> = {
@@ -278,7 +281,17 @@ function isSystemField(key: string): key is SystemField {
   return SYSTEM_FIELDS.includes(key as SystemField);
 }
 
-type PanelMode = 'closed' | 'view' | 'edit' | 'create';
+// Tab types for file-manager style interface
+type TabType = 'table' | 'view' | 'edit' | 'create';
+
+interface Tab {
+  id: string;
+  type: TabType;
+  title: string;
+  data?: ModelData;
+  formData?: Record<string, unknown>;
+  fieldErrors?: Record<string, string>;
+}
 
 interface ActiveFilter {
   field: string;
@@ -291,7 +304,7 @@ export function ModelDataPage() {
   const queryClient = useQueryClient();
 
   const [page, setPage] = useState(1);
-  const [limit, setLimit] = useState(10);
+  const [limit, setLimit] = useState(25);
   const [searchInput, setSearchInput] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [sortField, setSortField] = useState<string | null>(null);
@@ -304,15 +317,14 @@ export function ModelDataPage() {
   // Selection for bulk actions
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
-  // Panel state
-  const [panelMode, setPanelMode] = useState<PanelMode>('closed');
-  const [selectedData, setSelectedData] = useState<ModelData | null>(null);
-  const [formData, setFormData] = useState<Record<string, unknown>>({});
-  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  // Tabs state (file-manager style)
+  const [tabs, setTabs] = useState<Tab[]>([{ id: 'table', type: 'table', title: 'Table' }]);
+  const [activeTabId, setActiveTabId] = useState('table');
 
   // Delete confirmation
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
 
   // Debounce search input
   useEffect(() => {
@@ -427,23 +439,73 @@ export function ModelDataPage() {
     return model.fields.filter(f => tableConfig.filters.includes(f.key));
   }, [model, tableConfig]);
 
+  // Tab management functions
+  const openTab = useCallback((type: TabType, data?: ModelData) => {
+    const tabId = type === 'create' ? `create-${Date.now()}` :
+                  type === 'table' ? 'table' :
+                  `${type}-${data?._id}`;
+
+    // Check if tab already exists
+    const existingTab = tabs.find(t => t.id === tabId);
+    if (existingTab) {
+      setActiveTabId(tabId);
+      return;
+    }
+
+    const title = type === 'create' ? 'New Record' :
+                  type === 'edit' ? `Edit: ${data?._id.slice(-6)}` :
+                  type === 'view' ? `View: ${data?._id.slice(-6)}` : 'Table';
+
+    const formData: Record<string, unknown> = {};
+    if (type === 'edit' && data) {
+      model?.fields.forEach((field) => {
+        formData[field.key] = data[field.key];
+      });
+    }
+
+    const newTab: Tab = { id: tabId, type, title, data, formData, fieldErrors: {} };
+    setTabs(prev => [...prev, newTab]);
+    setActiveTabId(tabId);
+  }, [tabs, model]);
+
+  const closeTab = useCallback((tabId: string) => {
+    if (tabId === 'table') return; // Can't close table tab
+
+    setTabs(prev => {
+      const newTabs = prev.filter(t => t.id !== tabId);
+      // If closing active tab, switch to previous or table
+      if (activeTabId === tabId) {
+        const idx = prev.findIndex(t => t.id === tabId);
+        const newActiveIdx = Math.max(0, idx - 1);
+        setActiveTabId(newTabs[newActiveIdx]?.id || 'table');
+      }
+      return newTabs;
+    });
+  }, [activeTabId]);
+
+  const updateTabFormData = useCallback((tabId: string, formData: Record<string, unknown>) => {
+    setTabs(prev => prev.map(t => t.id === tabId ? { ...t, formData } : t));
+  }, []);
+
+  const updateTabErrors = useCallback((tabId: string, fieldErrors: Record<string, string>) => {
+    setTabs(prev => prev.map(t => t.id === tabId ? { ...t, fieldErrors } : t));
+  }, []);
+
   const createMutation = useMutation({
-    mutationFn: (data: Record<string, unknown>) =>
-      modelsApi.createData(projectId!, modelId!, data),
-    onSuccess: () => {
+    mutationFn: (params: { tabId: string; data: Record<string, unknown> }) =>
+      modelsApi.createData(projectId!, modelId!, params.data),
+    onSuccess: (_, { tabId }) => {
       queryClient.invalidateQueries({ queryKey: ['model-data', projectId, modelId] });
-      setPanelMode('closed');
-      setFormData({});
-      setFieldErrors({});
+      closeTab(tabId);
       toast.success('Record created');
     },
-    onError: (err) => {
+    onError: (err, { tabId }) => {
       if (err instanceof ApiValidationError) {
         const errors: Record<string, string> = {};
         err.details.forEach(d => {
           errors[d.field] = d.message;
         });
-        setFieldErrors(errors);
+        updateTabErrors(tabId, errors);
         toast.error('Validation failed. Please check the form.');
       } else {
         toast.error(err instanceof Error ? err.message : 'Failed to create record');
@@ -452,23 +514,20 @@ export function ModelDataPage() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: () =>
-      modelsApi.updateData(projectId!, modelId!, selectedData!._id, formData),
-    onSuccess: () => {
+    mutationFn: (params: { tabId: string; dataId: string; data: Record<string, unknown> }) =>
+      modelsApi.updateData(projectId!, modelId!, params.dataId, params.data),
+    onSuccess: (_, { tabId }) => {
       queryClient.invalidateQueries({ queryKey: ['model-data', projectId, modelId] });
-      setPanelMode('closed');
-      setSelectedData(null);
-      setFormData({});
-      setFieldErrors({});
+      closeTab(tabId);
       toast.success('Record updated');
     },
-    onError: (err) => {
+    onError: (err, { tabId }) => {
       if (err instanceof ApiValidationError) {
         const errors: Record<string, string> = {};
         err.details.forEach(d => {
           errors[d.field] = d.message;
         });
-        setFieldErrors(errors);
+        updateTabErrors(tabId, errors);
         toast.error('Validation failed. Please check the form.');
       } else {
         toast.error(err instanceof Error ? err.message : 'Failed to update record');
@@ -477,13 +536,14 @@ export function ModelDataPage() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: () =>
-      modelsApi.deleteData(projectId!, modelId!, selectedData!._id),
-    onSuccess: () => {
+    mutationFn: (dataId: string) =>
+      modelsApi.deleteData(projectId!, modelId!, dataId),
+    onSuccess: (_, dataId) => {
       queryClient.invalidateQueries({ queryKey: ['model-data', projectId, modelId] });
       setDeleteOpen(false);
-      setPanelMode('closed');
-      setSelectedData(null);
+      setDeleteTargetId(null);
+      // Close any tabs related to this record
+      setTabs(prev => prev.filter(t => !t.id.includes(dataId)));
       toast.success('Record deleted');
     },
     onError: (err) => {
@@ -506,34 +566,19 @@ export function ModelDataPage() {
   });
 
   const handleCreate = useCallback(() => {
-    setFormData({});
-    setFieldErrors({});
-    setSelectedData(null);
-    setPanelMode('create');
-  }, []);
+    openTab('create');
+  }, [openTab]);
 
   const handleEdit = useCallback((data: ModelData) => {
-    const editData: Record<string, unknown> = {};
-    model?.fields.forEach((field) => {
-      editData[field.key] = data[field.key];
-    });
-    setSelectedData(data);
-    setFormData(editData);
-    setFieldErrors({});
-    setPanelMode('edit');
-  }, [model]);
+    openTab('edit', data);
+  }, [openTab]);
 
   const handleView = useCallback((data: ModelData) => {
-    setSelectedData(data);
-    setPanelMode('view');
-  }, []);
-
-  const handleRowClick = useCallback((data: ModelData) => {
-    handleView(data);
-  }, [handleView]);
+    openTab('view', data);
+  }, [openTab]);
 
   const handleDelete = useCallback((data: ModelData) => {
-    setSelectedData(data);
+    setDeleteTargetId(data._id);
     setDeleteOpen(true);
   }, []);
 
@@ -562,14 +607,6 @@ export function ModelDataPage() {
     setPage(1);
   }, []);
 
-  const handleSelectAll = useCallback((checked: boolean) => {
-    if (checked) {
-      setSelectedIds(new Set(data.map(d => d._id)));
-    } else {
-      setSelectedIds(new Set());
-    }
-  }, []);
-
   const handleSelectRow = useCallback((id: string, checked: boolean) => {
     setSelectedIds(prev => {
       const next = new Set(prev);
@@ -582,21 +619,22 @@ export function ModelDataPage() {
     });
   }, []);
 
-  const closePanel = useCallback(() => {
-    setPanelMode('closed');
-    setSelectedData(null);
-    setFormData({});
-    setFieldErrors({});
-  }, []);
-
   const isLoading = modelLoading || (dataLoading && !dataResponse);
-  const data = dataResponse?.data || [];
+  const data = useMemo(() => dataResponse?.data || [], [dataResponse?.data]);
   const totalPages = dataResponse?.totalPages || 1;
   const total = dataResponse?.total || 0;
   const hasSearchable = (tableConfig.searchable?.length || 0) > 0;
   const hasFilters = filterableFields.length > 0;
   const allSelected = data.length > 0 && data.every(d => selectedIds.has(d._id));
   const someSelected = selectedIds.size > 0;
+
+  const handleSelectAll = useCallback((checked: boolean) => {
+    if (checked) {
+      setSelectedIds(new Set(data.map(d => d._id)));
+    } else {
+      setSelectedIds(new Set());
+    }
+  }, [data]);
 
   if (isLoading) {
     return (
@@ -612,384 +650,403 @@ export function ModelDataPage() {
   }
 
   return (
-    <div className="h-full flex flex-col">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">{model.name}</h1>
-          <p className="text-muted-foreground">
-            {total} records
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button asChild variant="outline">
-            <Link to={`/projects/${projectId}/models/${modelId}/schema`}>
-              <Settings className="mr-2 size-4" />
-              Schema
-            </Link>
-          </Button>
-          <Button onClick={handleCreate}>
-            <Plus className="mr-2 size-4" />
-            New Record
-          </Button>
-        </div>
-      </div>
-
-      {/* Toolbar: Search, Filters, Bulk Actions */}
-      <div className="flex flex-wrap items-center gap-2 mb-4">
-        {/* Search */}
-        {hasSearchable && (
-          <div className="relative flex-1 max-w-sm">
-            {isFetching && searchQuery ? (
-              <Loader2 className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground animate-spin" />
-            ) : (
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-            )}
-            <Input
-              ref={searchInputRef}
-              placeholder={`Search in ${tableConfig.searchable?.join(', ')}...`}
-              value={searchInput}
-              onChange={(e) => setSearchInput(e.target.value)}
-              className="pl-9"
-            />
+      <div className="h-full flex flex-col">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight">{model.name}</h1>
+            <p className="text-muted-foreground">
+              {total} records
+            </p>
           </div>
-        )}
-
-        {/* Bulk Actions */}
-        {someSelected && (
-          <div className="flex items-center gap-2 ml-auto">
-            <span className="text-sm text-muted-foreground">
-              {selectedIds.size} selected
-            </span>
-            <Button
-              variant="destructive"
-              size="sm"
-              onClick={() => setBulkDeleteOpen(true)}
-            >
-              <Trash2 className="mr-2 size-4" />
-              Delete Selected
+          <div className="flex items-center gap-2">
+            <Button asChild variant="outline">
+              <Link to={`/projects/${projectId}/models/${modelId}/schema`}>
+                <Settings className="mr-2 size-4"/>
+                Schema
+              </Link>
+            </Button>
+            <Button onClick={handleCreate}>
+              <Plus className="mr-2 size-4"/>
+              New Record
             </Button>
           </div>
-        )}
-      </div>
-
-      {/* Filter Popover & Active Filters Display */}
-      {hasFilters && (
-        <div className="flex items-center gap-2 mb-4 flex-wrap">
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="outline" size="sm">
-                <Filter className="mr-2 size-4" />
-                Filter
-                {activeFilters.length > 0 && (
-                  <Badge variant="secondary" className="ml-2 px-1.5 py-0 text-xs">
-                    {activeFilters.length}
-                  </Badge>
-                )}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start">
-              <div className="p-3 space-y-2 min-w-[400px]">
-                {activeFilters.length === 0 ? (
-                  <p className="text-sm text-muted-foreground py-2">No filters applied</p>
-                ) : (
-                  activeFilters.map((f, index) => {
-                    const field = model.fields.find(fld => fld.key === f.field);
-                    const operators = FILTER_OPERATORS[field?.type || 'string'] || FILTER_OPERATORS.string;
-                    return (
-                      <div key={index} className="flex items-center gap-1.5">
-                        {index > 0 && (
-                          <span className="text-xs text-muted-foreground w-7 text-right">and</span>
-                        )}
-                        {index === 0 && <span className="w-7" />}
-                        <Select
-                          value={f.field}
-                          onValueChange={(v) => {
-                            const newFilters = [...activeFilters];
-                            newFilters[index] = { ...newFilters[index], field: v, operator: 'eq', value: '' };
-                            setActiveFilters(newFilters);
-                          }}
-                        >
-                          <SelectTrigger className="h-8 w-[120px] text-xs">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {filterableFields.map(fld => (
-                              <SelectItem key={fld.key} value={fld.key}>
-                                {formatFieldLabel(fld.key)}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <Select
-                          value={f.operator}
-                          onValueChange={(v) => {
-                            const newFilters = [...activeFilters];
-                            newFilters[index] = { ...newFilters[index], operator: v as FilterCondition['operator'] };
-                            setActiveFilters(newFilters);
-                            setPage(1);
-                          }}
-                        >
-                          <SelectTrigger className="h-8 w-[70px] text-xs">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {operators.map(op => (
-                              <SelectItem key={op.value} value={op.value}>
-                                {op.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        {field?.type === 'bool' ? (
-                          <Select
-                            value={String(f.value)}
-                            onValueChange={(v) => {
-                              const newFilters = [...activeFilters];
-                              newFilters[index] = { ...newFilters[index], value: v === 'true' };
-                              setActiveFilters(newFilters);
-                              setPage(1);
-                            }}
-                          >
-                            <SelectTrigger className="h-8 w-[80px] text-xs">
-                              <SelectValue placeholder="..." />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="true">Yes</SelectItem>
-                              <SelectItem value="false">No</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        ) : field?.type === 'date' ? (
-                          <div className="w-[130px]">
-                            <DatePicker
-                              value={String(f.value) || undefined}
-                              onChange={(v) => {
-                                const newFilters = [...activeFilters];
-                                newFilters[index] = { ...newFilters[index], value: v || '' };
-                                setActiveFilters(newFilters);
-                                setPage(1);
-                              }}
-                            />
-                          </div>
-                        ) : field?.type === 'datetime' ? (
-                          <div className="w-[180px]">
-                            <DateTimePicker
-                              value={String(f.value) || undefined}
-                              onChange={(v) => {
-                                const newFilters = [...activeFilters];
-                                newFilters[index] = { ...newFilters[index], value: v || '' };
-                                setActiveFilters(newFilters);
-                                setPage(1);
-                              }}
-                            />
-                          </div>
-                        ) : (
-                          <Input
-                            type={field?.type === 'number' || field?.type === 'float' ? 'number' : 'text'}
-                            value={String(f.value)}
-                            onChange={(e) => {
-                              const newFilters = [...activeFilters];
-                              const val = field?.type === 'number' ? parseInt(e.target.value, 10) || 0
-                                : field?.type === 'float' ? parseFloat(e.target.value) || 0
-                                : e.target.value;
-                              newFilters[index] = { ...newFilters[index], value: val };
-                              setActiveFilters(newFilters);
-                            }}
-                            onBlur={() => setPage(1)}
-                            onKeyDown={(e) => e.key === 'Enter' && setPage(1)}
-                            placeholder="value"
-                            className="h-8 w-[120px] text-xs"
-                          />
-                        )}
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 shrink-0"
-                          onClick={() => handleRemoveFilter(index)}
-                        >
-                          <X className="size-3.5" />
-                        </Button>
-                      </div>
-                    );
-                  })
-                )}
-                <div className="flex items-center gap-2 pt-2 border-t">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 text-xs"
-                    onClick={handleAddFilter}
-                  >
-                    <Plus className="mr-1 size-3" />
-                    Add
-                  </Button>
-                  {activeFilters.length > 0 && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-7 text-xs text-muted-foreground"
-                      onClick={() => {
-                        setActiveFilters([]);
-                        setPage(1);
-                      }}
-                    >
-                      Clear all
-                    </Button>
-                  )}
-                </div>
-              </div>
-            </PopoverContent>
-          </Popover>
-
-          {/* Show active filters as compact badges */}
-          {activeFilters.map((f, i) => {
-            const opLabel = FILTER_OPERATORS[model.fields.find(fld => fld.key === f.field)?.type || 'string']
-              ?.find(op => op.value === f.operator)?.label || f.operator;
-            return (
-              <Badge key={i} variant="secondary" className="gap-1 font-normal">
-                <span className="text-muted-foreground">{formatFieldLabel(f.field)}</span>
-                <span>{opLabel}</span>
-                <span className="font-medium">{String(f.value)}</span>
-                <button
-                  onClick={() => handleRemoveFilter(i)}
-                  className="ml-0.5 hover:text-destructive"
-                >
-                  <X className="size-3" />
-                </button>
-              </Badge>
-            );
-          })}
         </div>
-      )}
 
-      {/* Main content with resizable panel */}
-      <div className="flex-1 min-h-0">
-        <ResizablePanelGroup direction="horizontal" className="h-full">
-          {/* Table Panel */}
-          <ResizablePanel defaultSize={panelMode === 'closed' ? 100 : 60} minSize={40}>
-            <div className="h-full flex flex-col">
-              {data.length === 0 ? (
-                <div className="flex-1 flex items-center justify-center border rounded-md">
-                  {searchQuery || activeFilters.length > 0 ? (
-                    <EmptyState
-                      title="No results found"
-                      description={searchQuery ? `No records match "${searchQuery}"` : "No records match the current filters"}
-                    />
-                  ) : (
-                    <EmptyState
-                      title="No records"
-                      description="Create your first record to get started"
-                      action={
-                        <Button onClick={handleCreate}>
-                          <Plus className="mr-2 size-4" />
-                          Create Record
-                        </Button>
-                      }
-                    />
-                  )}
-                </div>
-              ) : (
-                <div className="overflow-hidden rounded-md border">
-                  <Table wrapperClassName="h-[calc(100vh-325px)] overflow-auto [&_thead]:sticky [&_thead]:top-0 [&_thead]:z-10 [&_thead]:bg-background">
-                      <TableHeader>
-                        <TableRow>
-                          {/* Checkbox column */}
-                          <TableHead className="w-12 min-w-12 bg-background">
-                            <Checkbox
-                              checked={allSelected}
-                              onCheckedChange={handleSelectAll}
-                            />
-                          </TableHead>
-                          {visibleColumns.map((field) => {
-                            const isSortable = tableConfig.sort_columns.includes(field.key);
-                            const isCurrentSort = sortField === field.key;
+        {/* Toolbar: Search, Filters, Bulk Actions */}
+        <div className="flex flex-wrap items-center gap-2 mb-4">
+          {/* Search */}
+          {hasSearchable && (
+              <div className="relative flex-1 max-w-sm">
+                {isFetching && searchQuery ? (
+                    <Loader2
+                        className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground animate-spin"/>
+                ) : (
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground"/>
+                )}
+                <Input
+                    ref={searchInputRef}
+                    placeholder={`Search in ${tableConfig.searchable?.join(', ')}...`}
+                    value={searchInput}
+                    onChange={(e) => setSearchInput(e.target.value)}
+                    className="pl-9"
+                />
+              </div>
+          )}
 
-                            return (
-                              <TableHead
-                                key={field.key}
-                                className={`whitespace-nowrap bg-background ${isSortable ? 'cursor-pointer select-none hover:bg-muted/50' : ''}`}
-                                onClick={() => isSortable && handleSort(field.key)}
-                              >
-                                <div className="flex items-center gap-2">
-                                  {formatFieldLabel(field.key)}
-                                  {isSortable && (
-                                    <span className="text-muted-foreground">
-                                      {isCurrentSort ? (
-                                        sortOrder === 'asc' ? (
-                                          <ArrowUp className="size-4" />
-                                        ) : (
-                                          <ArrowDown className="size-4" />
-                                        )
-                                      ) : (
-                                        <ArrowUpDown className="size-3 opacity-50" />
-                                      )}
-                                    </span>
-                                  )}
-                                </div>
-                              </TableHead>
-                            );
-                          })}
-                          {visibleSystemColumns.map((key) => {
-                            const isSortable = tableConfig.sort_columns.includes(key);
-                            const isCurrentSort = sortField === key;
+        </div>
 
-                            return (
-                              <TableHead
-                                key={key}
-                                className={`whitespace-nowrap text-muted-foreground bg-card ${isSortable ? 'cursor-pointer select-none hover:bg-muted/50' : ''}`}
-                                onClick={() => isSortable && handleSort(key)}
-                              >
-                                <div className="flex items-center gap-2">
-                                  {SYSTEM_FIELD_LABELS[key]}
-                                  {isSortable && (
-                                    <span className="text-muted-foreground">
-                                      {isCurrentSort ? (
-                                        sortOrder === 'asc' ? (
-                                          <ArrowUp className="size-4" />
-                                        ) : (
-                                          <ArrowDown className="size-4" />
-                                        )
-                                      ) : (
-                                        <ArrowUpDown className="size-3 opacity-50" />
-                                      )}
-                                    </span>
-                                  )}
-                                </div>
-                              </TableHead>
-                            );
-                          })}
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {data.map((row) => (
-                          <TableRow
-                            key={row._id}
-                            className={`cursor-pointer text-md hover:bg-muted/50 ${selectedData?._id === row._id ? 'bg-muted' : ''}`}
-                            onClick={() => handleRowClick(row)}
+        {/* Filter Popover & Active Filters Display */}
+        {hasFilters && (
+            <div className="flex items-center gap-2 mb-4 flex-wrap">
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" size="sm">
+                    <Filter className="mr-2 size-4"/>
+                    Filter
+                    {activeFilters.length > 0 && (
+                        <Badge variant="secondary" className="ml-2 px-1.5 py-0 text-xs">
+                          {activeFilters.length}
+                        </Badge>
+                    )}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <div className="p-3 space-y-2 min-w-[400px]">
+                    {activeFilters.length === 0 ? (
+                        <p className="text-sm text-muted-foreground py-2">No filters applied</p>
+                    ) : (
+                        activeFilters.map((f, index) => {
+                          const field = model.fields.find(fld => fld.key === f.field);
+                          const operators = FILTER_OPERATORS[field?.type || 'string'] || FILTER_OPERATORS.string;
+                          return (
+                              <div key={index} className="flex items-center gap-1.5">
+                                {index > 0 && (
+                                    <span className="text-xs text-muted-foreground w-7 text-right">and</span>
+                                )}
+                                {index === 0 && <span className="w-7"/>}
+                                <Select
+                                    value={f.field}
+                                    onValueChange={(v) => {
+                                      const newFilters = [...activeFilters];
+                                      newFilters[index] = {...newFilters[index], field: v, operator: 'eq', value: ''};
+                                      setActiveFilters(newFilters);
+                                    }}
+                                >
+                                  <SelectTrigger className="h-8 w-[120px] text-xs">
+                                    <SelectValue/>
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {filterableFields.map(fld => (
+                                        <SelectItem key={fld.key} value={fld.key}>
+                                          {formatFieldLabel(fld.key)}
+                                        </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                                <Select
+                                    value={f.operator}
+                                    onValueChange={(v) => {
+                                      const newFilters = [...activeFilters];
+                                      newFilters[index] = {
+                                        ...newFilters[index],
+                                        operator: v as FilterCondition['operator']
+                                      };
+                                      setActiveFilters(newFilters);
+                                      setPage(1);
+                                    }}
+                                >
+                                  <SelectTrigger className="h-8 w-[70px] text-xs">
+                                    <SelectValue/>
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {operators.map(op => (
+                                        <SelectItem key={op.value} value={op.value}>
+                                          {op.label}
+                                        </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                                {field?.type === 'bool' ? (
+                                    <Select
+                                        value={String(f.value)}
+                                        onValueChange={(v) => {
+                                          const newFilters = [...activeFilters];
+                                          newFilters[index] = {...newFilters[index], value: v === 'true'};
+                                          setActiveFilters(newFilters);
+                                          setPage(1);
+                                        }}
+                                    >
+                                      <SelectTrigger className="h-8 w-[80px] text-xs">
+                                        <SelectValue placeholder="..."/>
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        <SelectItem value="true">Yes</SelectItem>
+                                        <SelectItem value="false">No</SelectItem>
+                                      </SelectContent>
+                                    </Select>
+                                ) : field?.type === 'date' ? (
+                                    <div className="w-[130px]">
+                                      <DatePicker
+                                          value={String(f.value) || undefined}
+                                          onChange={(v) => {
+                                            const newFilters = [...activeFilters];
+                                            newFilters[index] = {...newFilters[index], value: v || ''};
+                                            setActiveFilters(newFilters);
+                                            setPage(1);
+                                          }}
+                                      />
+                                    </div>
+                                ) : field?.type === 'datetime' ? (
+                                    <div className="w-[180px]">
+                                      <DateTimePicker
+                                          value={String(f.value) || undefined}
+                                          onChange={(v) => {
+                                            const newFilters = [...activeFilters];
+                                            newFilters[index] = {...newFilters[index], value: v || ''};
+                                            setActiveFilters(newFilters);
+                                            setPage(1);
+                                          }}
+                                      />
+                                    </div>
+                                ) : (
+                                    <Input
+                                        type={field?.type === 'number' || field?.type === 'float' ? 'number' : 'text'}
+                                        value={String(f.value)}
+                                        onChange={(e) => {
+                                          const newFilters = [...activeFilters];
+                                          const val = field?.type === 'number' ? parseInt(e.target.value, 10) || 0
+                                              : field?.type === 'float' ? parseFloat(e.target.value) || 0
+                                                  : e.target.value;
+                                          newFilters[index] = {...newFilters[index], value: val};
+                                          setActiveFilters(newFilters);
+                                        }}
+                                        onBlur={() => setPage(1)}
+                                        onKeyDown={(e) => e.key === 'Enter' && setPage(1)}
+                                        placeholder="value"
+                                        className="h-8 w-[120px] text-xs"
+                                    />
+                                )}
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8 shrink-0"
+                                    onClick={() => handleRemoveFilter(index)}
+                                >
+                                  <X className="size-3.5"/>
+                                </Button>
+                              </div>
+                          );
+                        })
+                    )}
+                    <div className="flex items-center gap-2 pt-2 border-t">
+                      <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 text-xs"
+                          onClick={handleAddFilter}
+                      >
+                        <Plus className="mr-1 size-3"/>
+                        Add
+                      </Button>
+                      {activeFilters.length > 0 && (
+                          <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 text-xs text-muted-foreground"
+                              onClick={() => {
+                                setActiveFilters([]);
+                                setPage(1);
+                              }}
                           >
-                            <TableCell className="w-12 min-w-12" onClick={(e) => e.stopPropagation()}>
-                              <Checkbox
-                                checked={selectedIds.has(row._id)}
-                                onCheckedChange={(checked) => handleSelectRow(row._id, !!checked)}
-                              />
-                            </TableCell>
-                            {visibleColumns.map((field) => (
-                              <TableCell key={field.key} className="max-w-[300px]">
-                                <span className="block truncate font-mono whitespace-nowrap">
-                                  {formatCellValue(row[field.key], field.type)}
-                                </span>
-                              </TableCell>
-                            ))}
-                            {visibleSystemColumns.map((key) => (
-                              <TableCell key={key} className="text-muted-foreground font-mono whitespace-nowrap">
-                                {formatSystemFieldValue(key, row[key])}
-                              </TableCell>
-                            ))}
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
+                            Clear all
+                          </Button>
+                      )}
+                    </div>
                   </div>
+                </PopoverContent>
+              </Popover>
+
+              {/* Show active filters as compact badges */}
+              {activeFilters.map((f, i) => {
+                const opLabel = FILTER_OPERATORS[model.fields.find(fld => fld.key === f.field)?.type || 'string']
+                    ?.find(op => op.value === f.operator)?.label || f.operator;
+                return (
+                    <Badge key={i} variant="secondary" className="gap-1 font-normal">
+                      <span className="text-muted-foreground">{formatFieldLabel(f.field)}</span>
+                      <span>{opLabel}</span>
+                      <span className="font-medium">{String(f.value)}</span>
+                      <button
+                          onClick={() => handleRemoveFilter(i)}
+                          className="ml-0.5 hover:text-destructive"
+                      >
+                        <X className="size-3"/>
+                      </button>
+                    </Badge>
+                );
+              })}
+            </div>
+        )}
+
+        {/* Tabs Bar */}
+        <EditorTabs className="px-0 mb-[-1px] relative z-10">
+          {tabs.map((tab) => (
+              <EditorTab
+                  key={tab.id}
+                  active={activeTabId === tab.id}
+                  onClick={() => setActiveTabId(tab.id)}
+                  icon={
+                    tab.type === 'table' ? <Table2 className="size-4"/> :
+                        tab.type === 'view' ? <Eye className="size-4"/> :
+                            tab.type === 'edit' ? <Edit className="size-4"/> :
+                                <Plus className="size-4"/>
+                  }
+                  onClose={tab.id !== 'table' ? () => closeTab(tab.id) : undefined}
+                  className="bg-background"
+              >
+                {tab.title}
+              </EditorTab>
+          ))}
+        </EditorTabs>
+
+        <div className="border-b mb-4 relative top-[1px]"></div>
+
+        {/* Tab Content */}
+        <div className="flex-1 min-h-0 flex flex-col">
+          {/* Table Tab */}
+          {activeTabId === 'table' && (
+              <>
+                {data.length === 0 ? (
+                    <div className="flex-1 flex items-center justify-center border rounded-md">
+                      {searchQuery || activeFilters.length > 0 ? (
+                          <EmptyState
+                              title="No results found"
+                              description={searchQuery ? `No records match "${searchQuery}"` : "No records match the current filters"}
+                          />
+                      ) : (
+                          <EmptyState
+                              title="No records"
+                              description="Create your first record to get started"
+                              action={
+                                <Button onClick={handleCreate}>
+                                  <Plus className="mr-2 size-4"/>
+                                  Create Record
+                                </Button>
+                              }
+                          />
+                      )}
+                    </div>
+                ) : (
+                    <div className="overflow-hidden rounded-md border">
+                      <Table
+                          wrapperClassName="h-[calc(100vh-380px)] overflow-auto [&_thead]:sticky [&_thead]:top-0 [&_thead]:z-10 [&_thead]:bg-background">
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead className="w-12 min-w-12 bg-background">
+                              <Checkbox
+                                  checked={allSelected}
+                                  onCheckedChange={handleSelectAll}
+                              />
+                            </TableHead>
+                            {visibleColumns.map((field) => {
+                              const isSortable = tableConfig.sort_columns.includes(field.key);
+                              const isCurrentSort = sortField === field.key;
+                              return (
+                                  <TableHead
+                                      key={field.key}
+                                      className={`whitespace-nowrap bg-background ${isSortable ? 'cursor-pointer select-none hover:bg-muted/50' : ''}`}
+                                      onClick={() => isSortable && handleSort(field.key)}
+                                  >
+                                    <div className="flex items-center gap-2">
+                                      {formatFieldLabel(field.key)}
+                                      {isSortable && (
+                                          <span className="text-muted-foreground">
+                                  {isCurrentSort ? (sortOrder === 'asc' ? <ArrowUp className="size-4"/> :
+                                      <ArrowDown className="size-4"/>) : <ArrowUpDown className="size-3 opacity-50"/>}
+                                </span>
+                                      )}
+                                    </div>
+                                  </TableHead>
+                              );
+                            })}
+                            {visibleSystemColumns.map((key) => {
+                              const isSortable = tableConfig.sort_columns.includes(key);
+                              const isCurrentSort = sortField === key;
+                              return (
+                                  <TableHead
+                                      key={key}
+                                      className={`whitespace-nowrap text-muted-foreground bg-background ${isSortable ? 'cursor-pointer select-none hover:bg-muted/50' : ''}`}
+                                      onClick={() => isSortable && handleSort(key)}
+                                  >
+                                    <div className="flex items-center gap-2">
+                                      {SYSTEM_FIELD_LABELS[key]}
+                                      {isSortable && (
+                                          <span className="text-muted-foreground">
+                                  {isCurrentSort ? (sortOrder === 'asc' ? <ArrowUp className="size-4"/> :
+                                      <ArrowDown className="size-4"/>) : <ArrowUpDown className="size-3 opacity-50"/>}
+                                </span>
+                                      )}
+                                    </div>
+                                  </TableHead>
+                              );
+                            })}
+                            <TableHead className="w-12 bg-background"/>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {data.map((row) => (
+                              <TableRow
+                                  key={row._id}
+                                  className="cursor-pointer text-md hover:bg-muted/50"
+                                  onDoubleClick={() => handleView(row)}
+                              >
+                                <TableCell className="w-12 min-w-12" onClick={(e) => e.stopPropagation()}>
+                                  <Checkbox
+                                      checked={selectedIds.has(row._id)}
+                                      onCheckedChange={(checked) => handleSelectRow(row._id, !!checked)}
+                                  />
+                                </TableCell>
+                                {visibleColumns.map((field) => (
+                                    <TableCell key={field.key} className="max-w-[300px]">
+                            <span className="block truncate font-mono whitespace-nowrap">
+                              {formatCellValue(row[field.key], field.type)}
+                            </span>
+                                    </TableCell>
+                                ))}
+                                {visibleSystemColumns.map((key) => (
+                                    <TableCell key={key} className="text-muted-foreground font-mono whitespace-nowrap">
+                                      {formatSystemFieldValue(key, row[key])}
+                                    </TableCell>
+                                ))}
+                                <TableCell className="w-12" onClick={(e) => e.stopPropagation()}>
+                                  <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                      <Button variant="ghost" size="icon" className="size-8">
+                                        <MoreHorizontal className="size-4"/>
+                                      </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end">
+                                      <DropdownMenuItem onClick={() => handleView(row)}>
+                                        <Eye className="mr-2 size-4"/>
+                                        View
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem onClick={() => handleEdit(row)}>
+                                        <Edit className="mr-2 size-4"/>
+                                        Edit
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem onClick={() => handleDelete(row)}
+                                                        className="text-destructive focus:text-destructive">
+                                        <Trash2 className="mr-2 size-4"/>
+                                        Delete
+                                      </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                  </DropdownMenu>
+                                </TableCell>
+                              </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
                 )}
 
                 {/* Pagination */}
@@ -998,208 +1055,163 @@ export function ModelDataPage() {
                     <span className="text-sm text-muted-foreground">
                       {selectedIds.size > 0 ? `${selectedIds.size} of ${total} selected` : `${total} rows`}
                     </span>
+                    {someSelected && (
+                        <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => setBulkDeleteOpen(true)}
+                        >
+                          <Trash2 className="mr-2 size-4"/>
+                          Delete Selected
+                        </Button>
+                    )}
                   </div>
                   <div className="flex items-center gap-4">
-                    <Select
-                      value={limit.toString()}
-                      onValueChange={(v) => {
-                        setLimit(parseInt(v));
-                        setPage(1);
-                      }}
-                    >
-                      <SelectTrigger className="w-[100px]">
-                        <SelectValue />
-                      </SelectTrigger>
+                    <Select value={limit.toString()} onValueChange={(v) => {
+                      setLimit(parseInt(v));
+                      setPage(1);
+                    }}>
+                      <SelectTrigger className="w-[100px]"><SelectValue/></SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="10">10</SelectItem>
                         <SelectItem value="25">25</SelectItem>
                         <SelectItem value="50">50</SelectItem>
                         <SelectItem value="100">100</SelectItem>
                       </SelectContent>
                     </Select>
                     <div className="flex items-center gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setPage(page - 1)}
-                        disabled={page === 1}
-                      >
-                        Previous
-                      </Button>
-                      <span className="text-sm">
-                        {page} / {totalPages || 1}
-                      </span>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setPage(page + 1)}
-                        disabled={page >= totalPages}
-                      >
-                        Next
-                      </Button>
+                      <Button variant="outline" size="sm" onClick={() => setPage(page - 1)}
+                              disabled={page === 1}>Previous</Button>
+                      <span className="text-sm">{page} / {totalPages || 1}</span>
+                      <Button variant="outline" size="sm" onClick={() => setPage(page + 1)}
+                              disabled={page >= totalPages}>Next</Button>
                     </div>
+                  </div>
+                </div>
+              </>
+          )}
+
+          {/* View Tab Content */}
+          {tabs.filter(t => t.type === 'view' && t.id === activeTabId).map((tab) => (
+              <div key={tab.id} className="flex-1 overflow-auto">
+                <div className="max-w-2xl space-y-4">
+                  {/* Actions */}
+                  <div className="flex items-center gap-2">
+                    <Button variant="outline" size="sm" onClick={() => tab.data && handleEdit(tab.data)}>
+                      <Edit className="mr-2 size-4"/>
+                      Edit
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={() => tab.data && handleDelete(tab.data)}
+                            className="text-destructive hover:text-destructive">
+                      <Trash2 className="mr-2 size-4"/>
+                      Delete
+                    </Button>
+                  </div>
+                  {/* Fields table */}
+                  <div className="rounded-md border overflow-hidden">
+                    <Table>
+                      <TableBody>
+                        {/* Regular fields */}
+                        {orderedFormFields.map((field) => (
+                            <TableRow key={field.key}>
+                              <TableCell className="w-1/3 font-medium text-muted-foreground bg-muted/30">
+                                {formatFieldLabel(field.key)}
+                              </TableCell>
+                              <TableCell>
+                                {field.type === 'document' ? (
+                                    <pre className="text-xs bg-muted p-2 rounded overflow-auto max-h-32">
+                                      {JSON.stringify(tab.data?.[field.key], null, 2)}
+                                    </pre>
+                                ) : (
+                                    <span className="font-mono text-sm">
+                                      {formatCellValue(tab.data?.[field.key], field.type) || '—'}
+                                    </span>
+                                )}
+                              </TableCell>
+                            </TableRow>
+                        ))}
+                        {/* System fields */}
+                        {SYSTEM_FIELDS.map((key) => (
+                            <TableRow key={key}>
+                              <TableCell className="w-1/3 font-medium text-muted-foreground bg-muted/30">
+                                {SYSTEM_FIELD_LABELS[key]}
+                              </TableCell>
+                              <TableCell className="font-mono text-xs text-muted-foreground">
+                                {formatSystemFieldValue(key, tab.data?.[key])}
+                              </TableCell>
+                            </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
                   </div>
                 </div>
               </div>
-          </ResizablePanel>
+          ))}
 
-          {/* Side Panel */}
-          {panelMode !== 'closed' && (
-            <>
-              <ResizableHandle withHandle className="w-4 bg-transparent" />
-              <ResizablePanel defaultSize={40} minSize={30} maxSize={60}>
-                <div className="h-full flex flex-col">
-                  {/* Header */}
-                  <div className="flex items-center justify-between py-4 shrink-0">
-                    <h3 className="text-lg font-semibold">
-                      {panelMode === 'create' && 'New Record'}
-                      {panelMode === 'edit' && 'Edit Record'}
-                      {panelMode === 'view' && 'Record Details'}
-                    </h3>
-                    <div className="flex items-center gap-2">
-                      {panelMode === 'view' && (
-                        <>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleEdit(selectedData!)}
-                          >
-                            <Edit className="mr-2 size-4" />
-                            Edit
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleDelete(selectedData!)}
-                            className="text-destructive hover:text-destructive"
-                          >
-                            <Trash2 className="size-4" />
-                          </Button>
-                        </>
-                      )}
-                      <Button variant="ghost" size="icon" onClick={closePanel}>
-                        <X className="size-4" />
-                      </Button>
-                    </div>
-                  </div>
-
-                  {/* Content */}
-                  <div className="flex-1 overflow-hidden rounded-md border">
-                    <div className="h-full overflow-auto p-4">
-                      {panelMode === 'view' && selectedData && (
-                        <div className="space-y-3">
-                          {/* System fields */}
-                          <div className="pb-3 border-b space-y-2">
-                            {SYSTEM_FIELDS.map((key) => (
-                              <div key={key} className="flex justify-between text-sm">
-                                <span className="text-muted-foreground">
-                                  {SYSTEM_FIELD_LABELS[key]}
-                                </span>
-                                <span className="font-mono text-xs text-muted-foreground">
-                                  {formatSystemFieldValue(key, selectedData[key])}
-                                </span>
-                              </div>
-                            ))}
-                          </div>
-                          {/* Regular fields */}
-                          {orderedFormFields.map((field) => (
-                            <div key={field.key} className="space-y-1">
-                              <div className="text-sm font-medium text-muted-foreground">
-                                {formatFieldLabel(field.key)}
-                              </div>
-                              <div className="text-sm">
-                                {field.type === 'document' ? (
-                                  <pre className="text-xs bg-muted p-2 rounded overflow-auto max-h-32">
-                                    {JSON.stringify(selectedData[field.key], null, 2)}
-                                  </pre>
-                                ) : (
-                                  formatCellValue(selectedData[field.key], field.type) || <span className="text-muted-foreground">—</span>
-                                )}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-
-                      {(panelMode === 'create' || panelMode === 'edit') && (
-                        <div className="space-y-4">
-                          {orderedFormFields.map((field) => (
-                            <div key={field.key} className="space-y-2">
-                              <label className="text-sm font-medium">
-                                {formatFieldLabel(field.key)}
-                                {field.required && <span className="text-destructive ml-1">*</span>}
-                              </label>
-                              <FieldInput
-                                field={field}
-                                value={formData[field.key]}
-                                onChange={(value) =>
-                                  setFormData({ ...formData, [field.key]: value })
-                                }
-                                view={formConfig.field_views[field.key]}
-                              />
-                              {fieldErrors[field.key] && (
-                                <p className="text-sm text-destructive">
-                                  {fieldErrors[field.key]}
-                                </p>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Footer */}
-                  {(panelMode === 'create' || panelMode === 'edit') && (
-                    <div className="py-4 flex gap-2 shrink-0">
-                      <Button variant="outline" onClick={closePanel} className="flex-1">
-                        Cancel
-                      </Button>
-                      <Button
+          {/* Edit/Create Tab Content */}
+          {tabs.filter(t => (t.type === 'edit' || t.type === 'create') && t.id === activeTabId).map((tab) => (
+              <div key={tab.id} className="flex-1 overflow-auto">
+                <div className="max-w-2xl space-y-4">
+                  {orderedFormFields.map((field) => (
+                      <div key={field.key} className="space-y-2">
+                        <label className="text-sm font-medium">
+                          {formatFieldLabel(field.key)}
+                          {field.required && <span className="text-destructive ml-1">*</span>}
+                        </label>
+                        <FieldInput
+                            field={field}
+                            value={tab.formData?.[field.key]}
+                            onChange={(value) => updateTabFormData(tab.id, {...tab.formData, [field.key]: value})}
+                            view={formConfig.field_views[field.key]}
+                        />
+                        {tab.fieldErrors?.[field.key] && (
+                            <p className="text-sm text-destructive">{tab.fieldErrors[field.key]}</p>
+                        )}
+                      </div>
+                  ))}
+                  {/* Actions */}
+                  <div className="flex items-center gap-2">
+                    <Button variant="outline" onClick={() => closeTab(tab.id)}>Cancel</Button>
+                    <Button
                         onClick={() => {
-                          if (panelMode === 'create') {
-                            createMutation.mutate(formData);
-                          } else {
-                            updateMutation.mutate();
+                          if (tab.type === 'create') {
+                            createMutation.mutate({tabId: tab.id, data: tab.formData || {}});
+                          } else if (tab.data) {
+                            updateMutation.mutate({tabId: tab.id, dataId: tab.data._id, data: tab.formData || {}});
                           }
                         }}
                         disabled={createMutation.isPending || updateMutation.isPending}
-                        className="flex-1"
-                      >
-                        {(createMutation.isPending || updateMutation.isPending) ? 'Saving...' : 'Save'}
-                      </Button>
-                    </div>
-                  )}
+                    >
+                      {(createMutation.isPending || updateMutation.isPending) ? 'Saving...' : 'Save'}
+                    </Button>
+                  </div>
                 </div>
-              </ResizablePanel>
-            </>
-          )}
-        </ResizablePanelGroup>
+              </div>
+          ))}
+        </div>
+
+        {/* Delete Confirm */}
+        <ConfirmDialog
+            open={deleteOpen}
+            onOpenChange={setDeleteOpen}
+            title="Delete Record"
+            description="Are you sure you want to delete this record?"
+            confirmLabel="Delete"
+            variant="destructive"
+            onConfirm={() => deleteTargetId && deleteMutation.mutate(deleteTargetId)}
+            isLoading={deleteMutation.isPending}
+        />
+
+        {/* Bulk Delete Confirm */}
+        <ConfirmDialog
+            open={bulkDeleteOpen}
+            onOpenChange={setBulkDeleteOpen}
+            title="Delete Records"
+            description={`Are you sure you want to delete ${selectedIds.size} selected records?`}
+            confirmLabel="Delete All"
+            variant="destructive"
+            onConfirm={() => bulkDeleteMutation.mutate()}
+            isLoading={bulkDeleteMutation.isPending}
+        />
       </div>
-
-      {/* Delete Confirm */}
-      <ConfirmDialog
-        open={deleteOpen}
-        onOpenChange={setDeleteOpen}
-        title="Delete Record"
-        description="Are you sure you want to delete this record?"
-        confirmLabel="Delete"
-        variant="destructive"
-        onConfirm={() => deleteMutation.mutate()}
-        isLoading={deleteMutation.isPending}
-      />
-
-      {/* Bulk Delete Confirm */}
-      <ConfirmDialog
-        open={bulkDeleteOpen}
-        onOpenChange={setBulkDeleteOpen}
-        title="Delete Records"
-        description={`Are you sure you want to delete ${selectedIds.size} selected records?`}
-        confirmLabel="Delete All"
-        variant="destructive"
-        onConfirm={() => bulkDeleteMutation.mutate()}
-        isLoading={bulkDeleteMutation.isPending}
-      />
-    </div>
   );
 }
