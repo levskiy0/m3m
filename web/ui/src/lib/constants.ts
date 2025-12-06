@@ -110,26 +110,26 @@ export const RELEASE_TAGS: { value: ReleaseTag; label: string }[] = [
 
 export const DEFAULT_SERVICE_CODE = `// M3M Service Template
 
-service.boot(() => {
-  logger.info('Service booting...');
+$service.boot(() => {
+  $logger.info('Service booting...');
 });
 
-service.start(() => {
-  logger.info('Service started!');
+$service.start(() => {
+  $logger.info('Service started!');
 
   // Example: HTTP route
-  router.get('/health', (ctx) => {
-    return router.response(200, { status: 'ok' });
+  $router.get('/health', (ctx) => {
+    return $router.response(200, { status: 'ok' });
   });
 
   // Example: Scheduled task
-  schedule.every('1h', () => {
-    logger.info('Hourly task executed');
+  $schedule.every('1h', () => {
+    $logger.info('Hourly task executed');
   });
 });
 
-service.shutdown(() => {
-  logger.info('Service shutting down...');
+$service.shutdown(() => {
+  $logger.info('Service shutting down...');
 });
 `;
 
