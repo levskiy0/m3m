@@ -9,6 +9,9 @@ M3M (Mini Services Manager) is a platform for creating and managing JavaScript m
 ## Build & Development Commands
 
 ```bash
+# Initialize project (create directories, tidy deps)
+make init
+
 # Full build (frontend + backend)
 make build
 
@@ -25,6 +28,7 @@ make dev
 make web-install    # Install npm dependencies
 make web-build      # Build frontend
 make web-dev        # Run Vite dev server
+cd web/ui && npm run lint  # Lint frontend code
 
 # Tests
 make test                              # Run all tests
@@ -64,7 +68,7 @@ The runtime (`internal/runtime/runtime.go`) provides services with lifecycle man
 - `service.start(callback)` - when service is ready
 - `service.shutdown(callback)` - graceful shutdown
 
-**Built-in modules:**
+**Built-in modules** (accessed with `$` prefix in JS code, e.g., `$logger`, `$router`):
 - Core: logger, router, schedule, env, service
 - Data: storage, database, goals
 - Network: http, smtp
@@ -109,3 +113,4 @@ Default config path: `config.yaml`. Key settings:
 - Handlers use Gin context with JSON binding
 - All routes under `/api/` are protected except auth endpoints
 - Frontend embeds into binary when built (SPA fallback in `registerUIRoutes`)
+- Access current user in handlers: `middleware.GetCurrentUser(c)` or `middleware.GetCurrentUserID(c)`
