@@ -26,42 +26,29 @@ export function DateTimePicker({
   disabled,
 }: DateTimePickerProps) {
   const [open, setOpen] = React.useState(false);
-  const [date, setDate] = React.useState<Date | undefined>(() => {
-    if (!value) return undefined;
+
+  // Parse UTC datetime and convert to local time for display
+  const parseValue = (val: string | undefined): { date: Date | undefined; time: string } => {
+    if (!val) return { date: undefined, time: '' };
     try {
-      const d = new Date(value);
-      return isNaN(d.getTime()) ? undefined : d;
+      const d = new Date(val);
+      if (isNaN(d.getTime())) return { date: undefined, time: '' };
+      // Use local time for display
+      const time = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+      return { date: d, time };
     } catch {
-      return undefined;
+      return { date: undefined, time: '' };
     }
-  });
-  const [time, setTime] = React.useState(() => {
-    if (!value) return '';
-    try {
-      const d = new Date(value);
-      if (isNaN(d.getTime())) return '';
-      return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-    } catch {
-      return '';
-    }
-  });
+  };
+
+  const [date, setDate] = React.useState<Date | undefined>(() => parseValue(value).date);
+  const [time, setTime] = React.useState(() => parseValue(value).time);
 
   // Update internal state when value prop changes
   React.useEffect(() => {
-    if (!value) {
-      setDate(undefined);
-      setTime('');
-      return;
-    }
-    try {
-      const d = new Date(value);
-      if (!isNaN(d.getTime())) {
-        setDate(d);
-        setTime(`${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`);
-      }
-    } catch {
-      // Invalid date
-    }
+    const parsed = parseValue(value);
+    setDate(parsed.date);
+    setTime(parsed.time);
   }, [value]);
 
   const updateValue = (newDate: Date | undefined, newTime: string) => {
@@ -70,9 +57,12 @@ export function DateTimePicker({
       return;
     }
     const [hours, minutes] = (newTime || '00:00').split(':').map(Number);
+    // Create local Date and convert to UTC ISO string
     const result = new Date(newDate);
     result.setHours(hours || 0, minutes || 0, 0, 0);
-    onChange(format(result, "yyyy-MM-dd'T'HH:mm:ss"));
+    // Format as ISO 8601 without milliseconds (backend requirement)
+    const iso = result.toISOString().replace(/\.\d{3}Z$/, 'Z');
+    onChange(iso);
   };
 
   const handleDateSelect = (selectedDate: Date | undefined) => {

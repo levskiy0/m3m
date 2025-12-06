@@ -1,3 +1,31 @@
+import { format } from 'date-fns';
+
+/**
+ * Format datetime to local timezone string
+ */
+export function formatDateTime(value: string | Date): string {
+  try {
+    const d = value instanceof Date ? value : new Date(value);
+    if (isNaN(d.getTime())) return String(value);
+    return format(d, 'dd.MM.yyyy HH:mm:ss');
+  } catch {
+    return String(value);
+  }
+}
+
+/**
+ * Format date only (no time)
+ */
+export function formatDate(value: string | Date): string {
+  try {
+    const d = value instanceof Date ? value : new Date(value);
+    if (isNaN(d.getTime())) return String(value);
+    return format(d, 'dd.MM.yyyy');
+  } catch {
+    return String(value);
+  }
+}
+
 export function formatBytes(bytes: number): string {
   if (bytes === 0) return '0 B';
   const k = 1024;
