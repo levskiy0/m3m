@@ -58,7 +58,7 @@ export function LogsViewer({
   return (
     <div className={cn('flex flex-col overflow-hidden', className)} style={{ height }}>
       {/* Header */}
-      <div className="flex items-center justify-between flex-shrink-0 px-4 py-3 border-b bg-background">
+      <div className="flex items-center justify-between flex-shrink-0 px-4 py-3 border-b">
         <div className="flex items-center gap-4">
           <span className="text-sm font-medium">
             {displayLogs.length} log entries
