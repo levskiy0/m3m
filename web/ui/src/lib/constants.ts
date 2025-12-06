@@ -1,5 +1,12 @@
 import type { EnvType, FieldType, GoalType, ReleaseTag } from '@/types';
 
+export const LOG_LEVEL_COLORS: Record<string, string> = {
+  debug: 'text-gray-400',
+  info: 'text-blue-400',
+  warn: 'text-amber-400',
+  error: 'text-red-400',
+};
+
 export const PRESET_COLORS = [
   { name: 'slate', value: '#64748b' },
   { name: 'gray', value: '#6b7280' },

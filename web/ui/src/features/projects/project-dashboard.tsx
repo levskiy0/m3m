@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState } from 'react';
 import { useParams, Link, useLocation } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
@@ -18,15 +18,12 @@ import {
   MemoryStick,
   Copy,
   Check,
-  ArrowDown,
-  Download,
   ChevronRight,
   ChevronDown,
   Bug,
   Tag,
   Cpu,
   Plus,
-  Trash2,
   LayoutGrid,
   BarChart3,
   Minus,
@@ -35,11 +32,11 @@ import { toast } from 'sonner';
 
 import { projectsApi, runtimeApi, pipelineApi, goalsApi, widgetsApi } from '@/api';
 import { config } from '@/lib/config';
+import { formatBytes } from '@/lib/format';
 import { Button } from '@/components/ui/button';
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
@@ -47,8 +44,9 @@ import { Badge } from '@/components/ui/badge';
 import { EditorTabs, EditorTab } from '@/components/ui/editor-tabs';
 import { StatusBadge } from '@/components/shared/status-badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Sparkline } from '@/components/shared/sparkline';
+import { LogsViewer } from '@/components/shared/logs-viewer';
+import { MetricCard } from '@/components/shared/metric-card';
+import { WidgetCard } from '@/components/shared/widget-card';
 import {
   Select,
   SelectContent,
@@ -75,35 +73,16 @@ import {
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
-import type { LogEntry, Goal, GoalStats, Widget, WidgetVariant, CreateWidgetRequest } from '@/types';
+import type { LogEntry, GoalStats, WidgetVariant, CreateWidgetRequest } from '@/types';
 import type { StartOptions } from '@/api/runtime';
 
-type LogLevel = 'all' | 'debug' | 'info' | 'warn' | 'error';
 type OverviewTab = 'instance' | 'logs';
-
-const LOG_LEVEL_COLORS: Record<string, string> = {
-  debug: 'text-gray-400',
-  info: 'text-blue-400',
-  warn: 'text-amber-400',
-  error: 'text-red-400',
-};
-
-function formatBytes(bytes: number): string {
-  if (bytes === 0) return '0 B';
-  const k = 1024;
-  const sizes = ['B', 'KB', 'MB', 'GB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
-}
 
 export function ProjectDashboard() {
   const { projectId } = useParams<{ projectId: string }>();
   const location = useLocation();
   const queryClient = useQueryClient();
   const [copied, setCopied] = useState(false);
-  const [levelFilter, setLevelFilter] = useState<LogLevel>('all');
-  const [autoScroll, setAutoScroll] = useState(true);
-  const scrollRef = useRef<HTMLDivElement>(null);
 
   // Get initial tab from location state
   const initialTab = (location.state as { tab?: string } | null)?.tab as OverviewTab || 'instance';
@@ -166,16 +145,6 @@ export function ProjectDashboard() {
   const [selectedVariant, setSelectedVariant] = useState<WidgetVariant>('mini');
 
   const logs: LogEntry[] = Array.isArray(logsData) ? logsData : [];
-
-  const filteredLogs = logs.filter((log) =>
-    levelFilter === 'all' ? true : log.level === levelFilter
-  );
-
-  useEffect(() => {
-    if (autoScroll && scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
-  }, [logs, autoScroll]);
 
   const startMutation = useMutation({
     mutationFn: (options?: StartOptions) => runtimeApi.start(projectId!, options),
@@ -480,172 +449,68 @@ export function ProjectDashboard() {
             <div className="space-y-6 p-4">
           {/* Runtime Stats - Row 1 */}
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            {/* Uptime */}
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardDescription className="text-sm font-medium">Uptime</CardDescription>
-                <Clock className="size-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  {isRunning && stats?.uptime_formatted ? stats.uptime_formatted : '--'}
-                </div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {stats?.started_at
-                    ? `Since ${new Date(stats.started_at).toLocaleString()}`
-                    : 'Service not running'}
-                </p>
-              </CardContent>
-            </Card>
-
-            {/* Requests */}
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardDescription className="text-sm font-medium">Requests</CardDescription>
-                <Zap className="size-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-end justify-between gap-4">
-                  <div>
-                    <div className="text-2xl font-bold">
-                      {isRunning && stats?.total_requests != null
-                        ? stats.total_requests.toLocaleString()
-                        : '--'}
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {isRunning && stats?.routes_count
-                        ? `${stats.routes_count} route${stats.routes_count !== 1 ? 's' : ''}`
-                        : 'No routes'}
-                    </p>
-                  </div>
-                  <Sparkline
-                    data={stats?.history?.requests || []}
-                    width={80}
-                    height={32}
-                    color="hsl(var(--primary))"
-                    strokeWidth={2}
-                    fillOpacity={0.15}
-                  />
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Scheduled Jobs */}
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardDescription className="text-sm font-medium">Scheduled Jobs</CardDescription>
-                <Clock className="size-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-end justify-between gap-4">
-                  <div>
-                    <div className="text-2xl font-bold">
-                      {isRunning && stats?.scheduled_jobs != null ? stats.scheduled_jobs : '--'}
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {isRunning && stats
-                        ? stats.scheduler_active ? 'Scheduler active' : 'Scheduler inactive'
-                        : 'No data'}
-                    </p>
-                  </div>
-                  <Sparkline
-                    data={stats?.history?.jobs || []}
-                    width={80}
-                    height={32}
-                    color="hsl(var(--chart-3))"
-                    strokeWidth={2}
-                    fillOpacity={0.15}
-                  />
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Storage */}
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardDescription className="text-sm font-medium">Storage</CardDescription>
-                <HardDrive className="size-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  {stats?.storage_bytes != null ? formatBytes(stats.storage_bytes) : '--'}
-                </div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Project files
-                </p>
-              </CardContent>
-            </Card>
+            <MetricCard
+              label="Uptime"
+              value={isRunning && stats?.uptime_formatted ? stats.uptime_formatted : '--'}
+              subtext={stats?.started_at
+                ? `Since ${new Date(stats.started_at).toLocaleString()}`
+                : 'Service not running'}
+              icon={Clock}
+            />
+            <MetricCard
+              label="Requests"
+              value={isRunning && stats?.total_requests != null
+                ? stats.total_requests.toLocaleString()
+                : '--'}
+              subtext={isRunning && stats?.routes_count
+                ? `${stats.routes_count} route${stats.routes_count !== 1 ? 's' : ''}`
+                : 'No routes'}
+              icon={Zap}
+              sparklineData={stats?.history?.requests}
+              sparklineColor="hsl(var(--primary))"
+            />
+            <MetricCard
+              label="Scheduled Jobs"
+              value={isRunning && stats?.scheduled_jobs != null ? stats.scheduled_jobs : '--'}
+              subtext={isRunning && stats
+                ? stats.scheduler_active ? 'Scheduler active' : 'Scheduler inactive'
+                : 'No data'}
+              icon={Clock}
+              sparklineData={stats?.history?.jobs}
+              sparklineColor="hsl(var(--chart-3))"
+            />
+            <MetricCard
+              label="Storage"
+              value={stats?.storage_bytes != null ? formatBytes(stats.storage_bytes) : '--'}
+              subtext="Project files"
+              icon={HardDrive}
+            />
           </div>
 
           {/* Runtime Stats - Row 2 */}
           <div className="grid gap-4 md:grid-cols-3">
-            {/* Database */}
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardDescription className="text-sm font-medium">Database</CardDescription>
-                <Database className="size-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  {stats?.database_bytes != null ? formatBytes(stats.database_bytes) : '--'}
-                </div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Collections data
-                </p>
-              </CardContent>
-            </Card>
-
-            {/* Memory */}
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardDescription className="text-sm font-medium">Memory</CardDescription>
-                <MemoryStick className="size-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-end justify-between gap-4">
-                  <div>
-                    <div className="text-2xl font-bold">
-                      {isRunning && stats?.memory?.alloc != null ? formatBytes(stats.memory.alloc) : '--'}
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-1">Current usage</p>
-                  </div>
-                  <Sparkline
-                    data={stats?.history?.memory || []}
-                    width={80}
-                    height={32}
-                    color="hsl(var(--chart-2))"
-                    strokeWidth={2}
-                    fillOpacity={0.15}
-                  />
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* CPU */}
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardDescription className="text-sm font-medium">CPU</CardDescription>
-                <Cpu className="size-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-end justify-between gap-4">
-                  <div>
-                    <div className="text-2xl font-bold">
-                      {stats?.cpu_percent != null ? `${stats.cpu_percent.toFixed(1)}%` : '--'}
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-1">Process usage</p>
-                  </div>
-                  <Sparkline
-                    data={stats?.history?.cpu || []}
-                    width={80}
-                    height={32}
-                    color="hsl(var(--chart-4))"
-                    strokeWidth={2}
-                    fillOpacity={0.15}
-                  />
-                </div>
-              </CardContent>
-            </Card>
+            <MetricCard
+              label="Database"
+              value={stats?.database_bytes != null ? formatBytes(stats.database_bytes) : '--'}
+              subtext="Collections data"
+              icon={Database}
+            />
+            <MetricCard
+              label="Memory"
+              value={isRunning && stats?.memory?.alloc != null ? formatBytes(stats.memory.alloc) : '--'}
+              subtext="Current usage"
+              icon={MemoryStick}
+              sparklineData={stats?.history?.memory}
+              sparklineColor="hsl(var(--chart-2))"
+            />
+            <MetricCard
+              label="CPU"
+              value={stats?.cpu_percent != null ? `${stats.cpu_percent.toFixed(1)}%` : '--'}
+              subtext="Process usage"
+              icon={Cpu}
+              sparklineData={stats?.history?.cpu}
+              sparklineColor="hsl(var(--chart-4))"
+            />
           </div>
 
           {/* Project Info Cards */}
@@ -751,85 +616,11 @@ export function ProjectDashboard() {
 
         {/* Logs Tab */}
         {activeTab === 'logs' && (
-          <Card className="flex flex-col gap-0 rounded-t-none py-0 overflow-hidden" style={{ height: 'calc(100vh - 280px)' }}>
-            {/* Logs Header */}
-            <div className="flex items-center justify-between flex-shrink-0 px-4 py-3 border-b">
-              <div className="flex items-center gap-4">
-                <span className="text-sm font-medium">
-                  {filteredLogs.length} log entries
-                </span>
-                <Select
-                  value={levelFilter}
-                  onValueChange={(v) => setLevelFilter(v as LogLevel)}
-                >
-                  <SelectTrigger className="w-32 h-8">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Levels</SelectItem>
-                    <SelectItem value="debug">Debug</SelectItem>
-                    <SelectItem value="info">Info</SelectItem>
-                    <SelectItem value="warn">Warning</SelectItem>
-                    <SelectItem value="error">Error</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setAutoScroll(!autoScroll)}
-                  className={cn("h-8", autoScroll && "bg-muted")}
-                >
-                  Auto-scroll: {autoScroll ? 'On' : 'Off'}
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8"
-                  onClick={() => {
-                    if (scrollRef.current) {
-                      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-                    }
-                  }}
-                >
-                  <ArrowDown className="size-4" />
-                </Button>
-                <Button variant="outline" size="sm" onClick={handleDownloadLogs} className="h-8">
-                  <Download className="mr-2 size-4" />
-                  Download
-                </Button>
-              </div>
-            </div>
-            <ScrollArea
-              ref={scrollRef}
-              className="flex-1 bg-zinc-950 font-mono text-xs"
-            >
-              {filteredLogs.length === 0 ? (
-                <div className="flex items-center justify-center h-full text-muted-foreground py-12">
-                  No logs available
-                </div>
-              ) : (
-                <div className="space-y-0.5 p-4">
-                  {filteredLogs.map((log, index) => (
-                    <div key={index} className="flex gap-2 text-gray-300">
-                      <span className="text-gray-500 shrink-0">
-                        {new Date(log.timestamp).toLocaleTimeString()}
-                      </span>
-                      <span
-                        className={cn(
-                          'shrink-0 uppercase w-12',
-                          LOG_LEVEL_COLORS[log.level]
-                        )}
-                      >
-                        [{log.level}]
-                      </span>
-                      <span className="text-gray-200 break-all">{log.message}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </ScrollArea>
+          <Card className="flex flex-col gap-0 rounded-t-none py-0 overflow-hidden">
+            <LogsViewer
+              logs={logs}
+              onDownload={handleDownloadLogs}
+            />
           </Card>
         )}
       </div>
@@ -932,159 +723,3 @@ export function ProjectDashboard() {
     </div>
   );
 }
-
-// Widget Card Component - renders goal widget based on variant
-interface WidgetCardProps {
-  widget: Widget;
-  goal: Goal;
-  stats?: GoalStats;
-  onDelete: () => void;
-}
-
-function WidgetCard({ widget, goal, stats, onDelete }: WidgetCardProps) {
-  const sparklineData = stats?.dailyStats?.slice(-14).map((d) => d.value) || [];
-  const isDailyCounter = goal.type === 'daily_counter';
-
-  // Render based on variant
-  if (widget.variant === 'mini') {
-    // Mini variant - compact with sparkline for daily counters
-    return (
-      <Card className="group relative">
-        <Button
-          variant="ghost"
-          size="icon"
-          className="absolute top-2 right-2 size-6 opacity-0 group-hover:opacity-100 transition-opacity"
-          onClick={onDelete}
-        >
-          <Trash2 className="size-3.5 text-muted-foreground hover:text-destructive" />
-        </Button>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <div className="flex items-center gap-2">
-            <span
-              className="size-2.5 rounded-full"
-              style={{ backgroundColor: goal.color || '#6b7280' }}
-            />
-            <CardDescription className="text-sm font-medium">{goal.name}</CardDescription>
-          </div>
-          <Target className="size-4 text-muted-foreground" />
-        </CardHeader>
-        <CardContent>
-          {isDailyCounter && sparklineData.length > 0 ? (
-            <div className="flex items-end justify-between gap-4">
-              <div>
-                <div className="text-2xl font-bold">
-                  {stats?.value?.toLocaleString() ?? 0}
-                </div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {goal.description || 'Daily counter'}
-                </p>
-              </div>
-              <Sparkline
-                data={sparklineData}
-                width={80}
-                height={32}
-                color={goal.color || '#6b7280'}
-                strokeWidth={2}
-                fillOpacity={0.15}
-              />
-            </div>
-          ) : (
-            <div>
-              <div className="text-2xl font-bold">
-                {stats?.value?.toLocaleString() ?? 0}
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                {goal.description || 'Total count'}
-              </p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-    );
-  }
-
-  if (widget.variant === 'detailed') {
-    // Detailed variant - larger card with more info
-    return (
-      <Card className="group relative">
-        <Button
-          variant="ghost"
-          size="icon"
-          className="absolute top-2 right-2 size-6 opacity-0 group-hover:opacity-100 transition-opacity"
-          onClick={onDelete}
-        >
-          <Trash2 className="size-3.5 text-muted-foreground hover:text-destructive" />
-        </Button>
-        <CardHeader className="pb-2">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span
-                className="size-3 rounded-full"
-                style={{ backgroundColor: goal.color || '#6b7280' }}
-              />
-              <CardTitle className="text-sm font-medium">{goal.name}</CardTitle>
-            </div>
-            <Badge variant="secondary" className="text-xs">
-              {isDailyCounter ? 'Daily' : 'Counter'}
-            </Badge>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-end justify-between gap-4">
-            <div>
-              <div className="text-2xl font-bold">
-                {stats?.value?.toLocaleString() ?? 0}
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                {goal.description || (isDailyCounter ? 'Daily counter' : 'Total count')}
-              </p>
-            </div>
-            {isDailyCounter && sparklineData.length > 0 && (
-              <Sparkline
-                data={sparklineData}
-                width={80}
-                height={32}
-                color={goal.color || '#6b7280'}
-                strokeWidth={2}
-                fillOpacity={0.15}
-              />
-            )}
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  // Simple variant - just the number
-  return (
-    <Card className="group relative">
-      <Button
-        variant="ghost"
-        size="icon"
-        className="absolute top-2 right-2 size-6 opacity-0 group-hover:opacity-100 transition-opacity"
-        onClick={onDelete}
-      >
-        <Trash2 className="size-3.5 text-muted-foreground hover:text-destructive" />
-      </Button>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <div className="flex items-center gap-2">
-          <span
-            className="size-2.5 rounded-full"
-            style={{ backgroundColor: goal.color || '#6b7280' }}
-          />
-          <CardDescription className="text-sm font-medium">{goal.name}</CardDescription>
-        </div>
-        <Target className="size-4 text-muted-foreground" />
-      </CardHeader>
-      <CardContent>
-        <div className="text-2xl font-bold">
-          {stats?.value?.toLocaleString() ?? 0}
-        </div>
-        <p className="text-xs text-muted-foreground mt-1">
-          {goal.description || (isDailyCounter ? 'Daily counter' : 'Total count')}
-        </p>
-      </CardContent>
-    </Card>
-  );
-}
-

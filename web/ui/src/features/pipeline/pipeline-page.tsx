@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useParams, useLocation } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
@@ -12,8 +12,6 @@ import {
   Bug,
   Code,
   ScrollText,
-  ArrowDown,
-  Download,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -22,7 +20,7 @@ import { DEFAULT_SERVICE_CODE, RELEASE_TAGS } from '@/lib/constants';
 import type { CreateBranchRequest, CreateReleaseRequest, LogEntry } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { LogsViewer } from '@/components/shared/logs-viewer';
 import {
   Dialog,
   DialogContent,
@@ -48,10 +46,7 @@ import { Kbd } from '@/components/ui/kbd';
 import { EditorTabs, EditorTab } from '@/components/ui/editor-tabs';
 import { EmptyState } from '@/components/shared/empty-state';
 import { Skeleton } from '@/components/ui/skeleton';
-import { cn } from '@/lib/utils';
-
 type PipelineTab = 'editor' | 'logs' | 'releases';
-type LogLevel = 'all' | 'debug' | 'info' | 'warn' | 'error';
 
 export function PipelinePage() {
   const { projectId } = useParams<{ projectId: string }>();
@@ -65,8 +60,6 @@ export function PipelinePage() {
   const [code, setCode] = useState('');
   const [hasChanges, setHasChanges] = useState(false);
   const [activeTab, setActiveTab] = useState<PipelineTab>('editor');
-  const [levelFilter, setLevelFilter] = useState<LogLevel>('all');
-  const [autoScroll, setAutoScroll] = useState(true);
 
   // Dialogs
   const [createBranchOpen, setCreateBranchOpen] = useState(false);
@@ -89,9 +82,6 @@ export function PipelinePage() {
 
   // Reset form
   const [resetTargetVersion, setResetTargetVersion] = useState('');
-
-  // Logs ref for auto-scroll
-  const logsRef = useRef<HTMLDivElement>(null);
 
   const { data: project } = useQuery({
     queryKey: ['project', projectId],
@@ -128,16 +118,6 @@ export function PipelinePage() {
   });
 
   const logs: LogEntry[] = Array.isArray(logsData) ? logsData : [];
-  const filteredLogs = logs.filter((log) =>
-    levelFilter === 'all' ? true : log.level === levelFilter
-  );
-
-  // Auto-scroll logs
-  useEffect(() => {
-    if (logsRef.current && isDebugMode && autoScroll) {
-      logsRef.current.scrollTop = logsRef.current.scrollHeight;
-    }
-  }, [logs, isDebugMode, autoScroll]);
 
   // Auto-select branch on load (prioritize initialBranchName from state)
   useEffect(() => {
@@ -533,89 +513,14 @@ export function PipelinePage() {
 
           {/* Logs Content */}
           {activeTab === 'logs' && isDebugMode && runningBranch === currentBranch?.name && (
-            <>
-              {/* Logs Header */}
-              <div className="flex items-center justify-between flex-shrink-0 px-4 py-3 border-b">
-                <div className="flex items-center gap-4">
-                  <span className="text-sm font-medium">
-                    {filteredLogs.length} log entries
-                  </span>
-                  <Select
-                    value={levelFilter}
-                    onValueChange={(v) => setLevelFilter(v as LogLevel)}
-                  >
-                    <SelectTrigger className="w-32 h-8">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Levels</SelectItem>
-                      <SelectItem value="debug">Debug</SelectItem>
-                      <SelectItem value="info">Info</SelectItem>
-                      <SelectItem value="warn">Warning</SelectItem>
-                      <SelectItem value="error">Error</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setAutoScroll(!autoScroll)}
-                    className={cn("h-8", autoScroll && "bg-muted")}
-                  >
-                    Auto-scroll: {autoScroll ? 'On' : 'Off'}
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8"
-                    onClick={() => {
-                      if (logsRef.current) {
-                        logsRef.current.scrollTop = logsRef.current.scrollHeight;
-                      }
-                    }}
-                  >
-                    <ArrowDown className="size-4" />
-                  </Button>
-                  <Button variant="outline" size="sm" onClick={handleDownloadLogs} className="h-8">
-                    <Download className="mr-2 size-4" />
-                    Download
-                  </Button>
-                </div>
-              </div>
-              <ScrollArea
-                ref={logsRef}
-                className="flex-1 bg-zinc-950 font-mono text-xs"
-              >
-                {filteredLogs.length === 0 ? (
-                  <div className="flex items-center justify-center h-full text-muted-foreground py-12">
-                    {logs.length === 0 ? 'Waiting for logs...' : 'No logs match the filter'}
-                  </div>
-                ) : (
-                  <div className="space-y-0.5 p-4">
-                    {filteredLogs.slice(-500).map((log, index) => (
-                      <div key={index} className="flex gap-2 text-gray-300">
-                        <span className="text-gray-500 shrink-0">
-                          {new Date(log.timestamp).toLocaleTimeString()}
-                        </span>
-                        <span
-                          className={cn(
-                            'shrink-0 uppercase w-12',
-                            log.level === 'error' && 'text-red-400',
-                            log.level === 'warn' && 'text-amber-400',
-                            log.level === 'info' && 'text-blue-400',
-                            log.level === 'debug' && 'text-gray-400'
-                          )}
-                        >
-                          [{log.level}]
-                        </span>
-                        <span className="text-gray-200 break-all">{log.message}</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </ScrollArea>
-            </>
+            <LogsViewer
+              logs={logs}
+              limit={500}
+              emptyMessage="Waiting for logs..."
+              onDownload={handleDownloadLogs}
+              height="100%"
+              className="flex-1"
+            />
           )}
 
           {/* Releases Content */}

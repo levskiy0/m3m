@@ -15,6 +15,7 @@ import {
 
 import { goalsApi } from '@/api';
 import { GOAL_TYPES } from '@/lib/constants';
+import { formatNumber } from '@/lib/format';
 import type { Goal, CreateGoalRequest, UpdateGoalRequest, GoalType, GoalStats } from '@/types';
 import { Button } from '@/components/ui/button';
 import {
@@ -61,16 +62,6 @@ function slugify(text: string): string {
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-|-$/g, '');
-}
-
-function formatNumber(value: number): string {
-  if (value >= 1000000) {
-    return `${(value / 1000000).toFixed(1)}M`;
-  }
-  if (value >= 1000) {
-    return `${(value / 1000).toFixed(1)}K`;
-  }
-  return value.toLocaleString();
 }
 
 export function GoalsPage() {
