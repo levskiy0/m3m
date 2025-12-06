@@ -50,7 +50,6 @@ import { Field, FieldGroup, FieldLabel, FieldDescription } from '@/components/ui
 import { ConfirmDialog } from '@/components/shared/confirm-dialog';
 import { EmptyState } from '@/components/shared/empty-state';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { DatePicker, DateTimePicker } from '@/components/ui/datetime-picker';
 import {
   ResizablePanelGroup,
@@ -303,7 +302,6 @@ export function ModelDataPage() {
 
   // Filters
   const [activeFilters, setActiveFilters] = useState<ActiveFilter[]>([]);
-  const [showFilters, setShowFilters] = useState(false);
 
   // Selection for bulk actions
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -871,8 +869,8 @@ export function ModelDataPage() {
         <ResizablePanelGroup direction="horizontal" className="h-full">
           {/* Table Panel */}
           <ResizablePanel defaultSize={panelMode === 'closed' ? 100 : 60} minSize={40}>
-            <Card className="h-full flex flex-col">
-              <CardContent className="p-0 flex-1 min-h-0 flex flex-col">
+            <Card className="h-full flex flex-col overflow-hidden">
+              <CardContent className="p-0 h-full flex flex-col overflow-hidden">
                 {data.length === 0 ? (
                   searchQuery || activeFilters.length > 0 ? (
                     <EmptyState
@@ -894,12 +892,11 @@ export function ModelDataPage() {
                     />
                   )
                 ) : (
-                  <ScrollArea className="flex-1">
-                    <Table>
+                  <Table wrapperClassName="h-[calc(100vh-371px)] overflow-auto [&_thead]:sticky [&_thead]:top-0 [&_thead]:z-10 [&_thead]:bg-card">
                       <TableHeader>
                         <TableRow>
                           {/* Checkbox column */}
-                          <TableHead className="w-10">
+                          <TableHead className="w-12 min-w-12 bg-card">
                             <Checkbox
                               checked={allSelected}
                               onCheckedChange={handleSelectAll}
@@ -912,10 +909,10 @@ export function ModelDataPage() {
                             return (
                               <TableHead
                                 key={field.key}
-                                className={isSortable ? 'cursor-pointer select-none hover:bg-muted/50' : ''}
+                                className={`whitespace-nowrap bg-card ${isSortable ? 'cursor-pointer select-none hover:bg-muted/50' : ''}`}
                                 onClick={() => isSortable && handleSort(field.key)}
                               >
-                                <div className="flex items-center gap-1">
+                                <div className="flex items-center gap-2">
                                   {formatFieldLabel(field.key)}
                                   {isSortable && (
                                     <span className="text-muted-foreground">
@@ -941,10 +938,10 @@ export function ModelDataPage() {
                             return (
                               <TableHead
                                 key={key}
-                                className={`text-muted-foreground ${isSortable ? 'cursor-pointer select-none hover:bg-muted/50' : ''}`}
+                                className={`whitespace-nowrap text-muted-foreground bg-card ${isSortable ? 'cursor-pointer select-none hover:bg-muted/50' : ''}`}
                                 onClick={() => isSortable && handleSort(key)}
                               >
-                                <div className="flex items-center gap-1">
+                                <div className="flex items-center gap-2">
                                   {SYSTEM_FIELD_LABELS[key]}
                                   {isSortable && (
                                     <span className="text-muted-foreground">
@@ -969,22 +966,24 @@ export function ModelDataPage() {
                         {data.map((row) => (
                           <TableRow
                             key={row._id}
-                            className={`cursor-pointer hover:bg-muted/50 ${selectedData?._id === row._id ? 'bg-muted' : ''}`}
+                            className={`cursor-pointer text-md hover:bg-muted/50 ${selectedData?._id === row._id ? 'bg-muted' : ''}`}
                             onClick={() => handleRowClick(row)}
                           >
-                            <TableCell onClick={(e) => e.stopPropagation()}>
+                            <TableCell className="w-12 min-w-12" onClick={(e) => e.stopPropagation()}>
                               <Checkbox
                                 checked={selectedIds.has(row._id)}
                                 onCheckedChange={(checked) => handleSelectRow(row._id, !!checked)}
                               />
                             </TableCell>
                             {visibleColumns.map((field) => (
-                              <TableCell key={field.key}>
-                                {formatCellValue(row[field.key], field.type)}
+                              <TableCell key={field.key} className="max-w-[300px]">
+                                <span className="block truncate">
+                                  {formatCellValue(row[field.key], field.type)}
+                                </span>
                               </TableCell>
                             ))}
                             {visibleSystemColumns.map((key) => (
-                              <TableCell key={key} className="text-muted-foreground text-xs font-mono">
+                              <TableCell key={key} className="text-muted-foreground font-mono whitespace-nowrap">
                                 {formatSystemFieldValue(key, row[key])}
                               </TableCell>
                             ))}
@@ -992,11 +991,10 @@ export function ModelDataPage() {
                         ))}
                       </TableBody>
                     </Table>
-                  </ScrollArea>
                 )}
 
                 {/* Pagination */}
-                <div className="flex items-center justify-between p-4 border-t mt-auto">
+                <div className="flex items-center justify-between p-4 border-t shrink-0">
                   <Select
                     value={limit.toString()}
                     onValueChange={(v) => {
@@ -1045,8 +1043,8 @@ export function ModelDataPage() {
             <>
               <ResizableHandle withHandle className="w-4 bg-transparent" />
               <ResizablePanel defaultSize={40} minSize={30} maxSize={60}>
-                <Card className="h-full flex flex-col">
-                  <div className="flex items-center justify-between p-4 border-b">
+                <Card className="h-full flex flex-col overflow-hidden">
+                  <div className="flex items-center justify-between p-4 border-b shrink-0">
                     <h3 className="font-semibold">
                       {panelMode === 'create' && 'Create Record'}
                       {panelMode === 'edit' && 'Edit Record'}
@@ -1078,71 +1076,75 @@ export function ModelDataPage() {
                     </div>
                   </div>
 
-                  <ScrollArea className="flex-1 p-4">
-                    {panelMode === 'view' && selectedData && (
-                      <div className="space-y-4">
-                        {/* System fields at the top */}
-                        <div className="pb-3 mb-3 border-b space-y-2">
-                          {SYSTEM_FIELDS.map((key) => (
-                            <div key={key} className="grid grid-cols-3 gap-4">
-                              <span className="font-medium text-muted-foreground text-sm">
-                                {SYSTEM_FIELD_LABELS[key]}
+                  <div
+                    className="overflow-auto"
+                  >
+                    <div className="p-4">
+                      {panelMode === 'view' && selectedData && (
+                        <div className="space-y-4">
+                          {/* System fields at the top */}
+                          <div className="pb-3 mb-3 border-b space-y-2">
+                            {SYSTEM_FIELDS.map((key) => (
+                              <div key={key} className="grid grid-cols-3 gap-4">
+                                <span className="font-medium text-muted-foreground text-sm">
+                                  {SYSTEM_FIELD_LABELS[key]}
+                                </span>
+                                <span className="col-span-2 font-mono text-xs text-muted-foreground break-all">
+                                  {formatSystemFieldValue(key, selectedData[key])}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                          {/* Regular fields */}
+                          {orderedFormFields.map((field) => (
+                            <div key={field.key} className="grid grid-cols-3 gap-4">
+                              <span className="font-medium text-muted-foreground">
+                                {formatFieldLabel(field.key)}
                               </span>
-                              <span className="col-span-2 font-mono text-xs text-muted-foreground">
-                                {formatSystemFieldValue(key, selectedData[key])}
+                              <span className="col-span-2 break-words">
+                                {field.type === 'document' ? (
+                                  <pre className="text-xs bg-muted p-2 rounded overflow-auto max-h-32">
+                                    {JSON.stringify(selectedData[field.key], null, 2)}
+                                  </pre>
+                                ) : (
+                                  formatCellValue(selectedData[field.key], field.type)
+                                )}
                               </span>
                             </div>
                           ))}
                         </div>
-                        {/* Regular fields */}
-                        {orderedFormFields.map((field) => (
-                          <div key={field.key} className="grid grid-cols-3 gap-4">
-                            <span className="font-medium text-muted-foreground">
-                              {formatFieldLabel(field.key)}
-                            </span>
-                            <span className="col-span-2">
-                              {field.type === 'document' ? (
-                                <pre className="text-xs bg-muted p-2 rounded overflow-auto max-h-32">
-                                  {JSON.stringify(selectedData[field.key], null, 2)}
-                                </pre>
-                              ) : (
-                                formatCellValue(selectedData[field.key], field.type)
-                              )}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
+                      )}
 
-                    {(panelMode === 'create' || panelMode === 'edit') && (
-                      <FieldGroup>
-                        {orderedFormFields.map((field) => (
-                          <Field key={field.key}>
-                            <FieldLabel>
-                              {formatFieldLabel(field.key)}
-                              {field.required && <span className="text-destructive ml-1">*</span>}
-                            </FieldLabel>
-                            <FieldInput
-                              field={field}
-                              value={formData[field.key]}
-                              onChange={(value) =>
-                                setFormData({ ...formData, [field.key]: value })
-                              }
-                              view={formConfig.field_views[field.key]}
-                            />
-                            {fieldErrors[field.key] && (
-                              <FieldDescription className="text-destructive">
-                                {fieldErrors[field.key]}
-                              </FieldDescription>
-                            )}
-                          </Field>
-                        ))}
-                      </FieldGroup>
-                    )}
-                  </ScrollArea>
+                      {(panelMode === 'create' || panelMode === 'edit') && (
+                        <FieldGroup>
+                          {orderedFormFields.map((field) => (
+                            <Field key={field.key}>
+                              <FieldLabel>
+                                {formatFieldLabel(field.key)}
+                                {field.required && <span className="text-destructive ml-1">*</span>}
+                              </FieldLabel>
+                              <FieldInput
+                                field={field}
+                                value={formData[field.key]}
+                                onChange={(value) =>
+                                  setFormData({ ...formData, [field.key]: value })
+                                }
+                                view={formConfig.field_views[field.key]}
+                              />
+                              {fieldErrors[field.key] && (
+                                <FieldDescription className="text-destructive">
+                                  {fieldErrors[field.key]}
+                                </FieldDescription>
+                              )}
+                            </Field>
+                          ))}
+                        </FieldGroup>
+                      )}
+                    </div>
+                  </div>
 
                   {(panelMode === 'create' || panelMode === 'edit') && (
-                    <div className="p-4 border-t flex gap-2">
+                    <div className="p-4 border-t flex gap-2 shrink-0">
                       <Button variant="outline" onClick={closePanel} className="flex-1">
                         Cancel
                       </Button>
