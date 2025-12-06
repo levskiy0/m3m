@@ -364,19 +364,6 @@ function GoalCard({
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="flex items-end justify-between gap-4">
-          {goal.type === 'daily_counter' && stats?.dailyStats && stats.dailyStats.length > 1 && (
-            <Sparkline
-              data={stats.dailyStats.slice(-7).map(d => d.value)}
-              width={80}
-              height={36}
-              color={goal.color || '#6b7280'}
-              strokeWidth={2}
-              fillOpacity={0.2}
-            />
-          )}
-        </div>
-
         {chartData.length > 0 && (
           <div className="h-32">
             <ResponsiveContainer width="100%" height="100%">

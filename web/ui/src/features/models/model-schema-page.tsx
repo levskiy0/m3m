@@ -294,6 +294,7 @@ export function ModelSchemaPage() {
 
   const [fields, setFields] = useState<ModelField[]>([]);
   const fieldIdsRef = useRef<string[]>([]);
+  const fieldKeysRef = useRef<string[]>([]); // Track actual keys synchronously
   const idCounterRef = useRef(0);
 
   const generateFieldId = () => {
@@ -340,6 +341,7 @@ export function ModelSchemaPage() {
       setFields(model.fields);
       // Generate stable IDs for loaded fields
       fieldIdsRef.current = model.fields.map(() => generateFieldId());
+      fieldKeysRef.current = model.fields.map(f => f.key);
 
       // Default table config
       const defaultTableConfig: TableConfig = {
@@ -400,6 +402,7 @@ export function ModelSchemaPage() {
     const newFields = [...fields, newField];
     setFields(newFields);
     fieldIdsRef.current = [...fieldIdsRef.current, generateFieldId()];
+    fieldKeysRef.current = [...fieldKeysRef.current, newField.key];
 
     // Auto-add to configs
     setTableConfig(prev => ({
@@ -419,13 +422,17 @@ export function ModelSchemaPage() {
   };
 
   const updateField = (index: number, updates: Partial<ModelField>) => {
-    const oldKey = fields[index].key;
+    // Use ref for oldKey to avoid stale state issues with rapid updates
+    const oldKey = fieldKeysRef.current[index];
     const newFields = [...fields];
     newFields[index] = { ...newFields[index], ...updates };
     setFields(newFields);
 
     // Update key references in configs if key changed
     if (updates.key && updates.key !== oldKey) {
+      // Update ref immediately (synchronously)
+      fieldKeysRef.current[index] = updates.key;
+
       setTableConfig(prev => ({
         columns: prev.columns.map(k => k === oldKey ? updates.key! : k),
         filters: prev.filters.map(k => k === oldKey ? updates.key! : k),
@@ -450,9 +457,11 @@ export function ModelSchemaPage() {
   };
 
   const removeField = (index: number) => {
-    const keyToRemove = fields[index].key;
+    // Use ref for actual key (handles rapid updates correctly)
+    const keyToRemove = fieldKeysRef.current[index];
     setFields(fields.filter((_, i) => i !== index));
     fieldIdsRef.current = fieldIdsRef.current.filter((_, i) => i !== index);
+    fieldKeysRef.current = fieldKeysRef.current.filter((_, i) => i !== index);
 
     // Remove from configs
     setTableConfig(prev => ({
@@ -485,6 +494,7 @@ export function ModelSchemaPage() {
 
       const newFields = arrayMove(fields, oldIndex, newIndex);
       fieldIdsRef.current = arrayMove(fieldIdsRef.current, oldIndex, newIndex);
+      fieldKeysRef.current = arrayMove(fieldKeysRef.current, oldIndex, newIndex);
       setFields(newFields);
 
       // Update configs with new field order
