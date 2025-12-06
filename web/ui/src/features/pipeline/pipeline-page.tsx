@@ -42,6 +42,7 @@ import { Badge } from '@/components/ui/badge';
 import { Field, FieldGroup, FieldLabel, FieldDescription } from '@/components/ui/field';
 import { CodeEditor } from '@/components/shared/code-editor';
 import { ConfirmDialog } from '@/components/shared/confirm-dialog';
+import { Kbd } from '@/components/ui/kbd';
 import { EmptyState } from '@/components/shared/empty-state';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
@@ -489,6 +490,7 @@ export function PipelinePage() {
                       >
                         <Square className="mr-2 size-4" />
                         Stop Debug
+                        <Kbd className="ml-2">^R</Kbd>
                       </Button>
                     ) : (
                       <Button
@@ -505,12 +507,14 @@ export function PipelinePage() {
                       >
                         <Bug className="mr-2 size-4" />
                         Run Debug
+                        <Kbd className="ml-2">^R</Kbd>
                       </Button>
                     )
                   )}
                   <Button onClick={() => saveMutation.mutate()} disabled={!hasChanges || saveMutation.isPending}>
                     <Save className="mr-2 size-4" />
                     {saveMutation.isPending ? 'Saving...' : 'Save'}
+                    <Kbd className="ml-2">^S</Kbd>
                   </Button>
                 </div>
               </div>
