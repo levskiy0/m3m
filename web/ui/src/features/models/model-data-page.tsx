@@ -257,7 +257,7 @@ export function ModelDataPage() {
   }, [model]);
 
   const { data: dataResponse, isLoading: dataLoading } = useQuery({
-    queryKey: ['model-data', projectId, modelId, page, limit, sortField, sortOrder, searchQuery, tableConfig.searchable],
+    queryKey: ['model-data', projectId, modelId, page, limit, sortField, sortOrder, searchQuery],
     queryFn: () => {
       // Use queryData for search, listData otherwise
       if (searchQuery && tableConfig.searchable && tableConfig.searchable.length > 0) {
@@ -278,6 +278,7 @@ export function ModelDataPage() {
       });
     },
     enabled: !!projectId && !!modelId,
+    staleTime: 0, // Always refetch on parameter change
   });
 
   // Get visible columns based on tableConfig
