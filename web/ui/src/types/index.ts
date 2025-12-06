@@ -309,8 +309,8 @@ export interface CreateModelRequest {
 export interface UpdateModelRequest {
   name?: string;
   fields?: ModelField[];
-  tableConfig?: TableConfig;
-  formConfig?: FormConfig;
+  table_config?: TableConfig;
+  form_config?: FormConfig;
 }
 
 export interface ModelData {

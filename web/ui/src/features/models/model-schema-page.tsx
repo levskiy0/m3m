@@ -317,8 +317,8 @@ export function ModelSchemaPage() {
   const updateMutation = useMutation({
     mutationFn: () => modelsApi.update(projectId!, modelId!, {
       fields,
-      tableConfig,
-      formConfig,
+      table_config: tableConfig,
+      form_config: formConfig,
     }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['model', projectId, modelId] });
