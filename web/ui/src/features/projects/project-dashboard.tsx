@@ -72,7 +72,7 @@ import {
 } from '@/components/ui/dialog';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
-import { cn, downloadBlob } from '@/lib/utils';
+import { cn, downloadBlob, copyToClipboard } from '@/lib/utils';
 import type { LogEntry, GoalStats, WidgetVariant, CreateWidgetRequest } from '@/types';
 import type { StartOptions } from '@/api/runtime';
 
@@ -225,10 +225,12 @@ export function ProjectDashboard() {
 
   const copyApiKey = async () => {
     if (project?.apiKey) {
-      await navigator.clipboard.writeText(project.apiKey);
-      setCopied(true);
-      toast.success('API key copied');
-      setTimeout(() => setCopied(false), 2000);
+      const success = await copyToClipboard(project.apiKey);
+      if (success) {
+        setCopied(true);
+        toast.success('API key copied');
+        setTimeout(() => setCopied(false), 2000);
+      }
     }
   };
 

@@ -35,13 +35,7 @@ import { Field, FieldGroup, FieldLabel, FieldDescription } from '@/components/ui
 import { ColorPicker } from '@/components/shared/color-picker';
 import { ConfirmDialog } from '@/components/shared/confirm-dialog';
 import { Skeleton } from '@/components/ui/skeleton';
-
-function slugify(text: string): string {
-  return text
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-|-$/g, '');
-}
+import { slugify, copyToClipboard } from '@/lib/utils';
 
 export function ProjectSettings() {
   const { projectId } = useParams<{ projectId: string }>();
@@ -157,10 +151,12 @@ export function ProjectSettings() {
     setHasChanges(true);
   };
 
-  const copyApiKey = () => {
+  const copyApiKey = async () => {
     if (project?.apiKey) {
-      navigator.clipboard.writeText(project.apiKey);
-      toast.success('API key copied to clipboard');
+      const success = await copyToClipboard(project.apiKey);
+      if (success) {
+        toast.success('API key copied to clipboard');
+      }
     }
   };
 

@@ -46,7 +46,7 @@ import { Kbd } from '@/components/ui/kbd';
 import { EditorTabs, EditorTab } from '@/components/ui/editor-tabs';
 import { EmptyState } from '@/components/shared/empty-state';
 import { Skeleton } from '@/components/ui/skeleton';
-import { cn } from '@/lib/utils';
+import { cn, downloadBlob } from '@/lib/utils';
 type PipelineTab = 'editor' | 'logs' | 'releases';
 
 export function PipelinePage() {
@@ -313,12 +313,7 @@ export function PipelinePage() {
   const handleDownloadLogs = async () => {
     try {
       const blob = await runtimeApi.downloadLogs(projectId!);
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${project?.slug || projectId}-debug-logs.txt`;
-      a.click();
-      URL.revokeObjectURL(url);
+      await downloadBlob(blob, `${project?.slug || projectId}-logs.txt`);
     } catch (err) {
       console.error('Failed to download logs:', err);
     }
