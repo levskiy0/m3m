@@ -34,6 +34,35 @@ import {
   RecordView,
   Pagination,
 } from './model-data';
+import type { ModelField } from '@/types';
+
+// Normalize form data before sending to API
+function normalizeFormData(
+  formData: Record<string, unknown>,
+  fields: ModelField[]
+): Record<string, unknown> {
+  const result: Record<string, unknown> = {};
+
+  for (const field of fields) {
+    const value = formData[field.key];
+
+    switch (field.type) {
+      case 'ref':
+      case 'file':
+        // Convert empty strings and undefined to null
+        result[field.key] = (value === '' || value === undefined) ? null : value;
+        break;
+      case 'bool':
+        // Ensure boolean value (undefined/null -> false)
+        result[field.key] = !!value;
+        break;
+      default:
+        result[field.key] = value;
+    }
+  }
+
+  return result;
+}
 
 export function ModelDataPage() {
   const { projectId, modelId } = useParams<{ projectId: string; modelId: string }>();
@@ -324,13 +353,17 @@ export function ModelDataPage() {
             formConfig={formConfig}
             onFormDataChange={updateTabFormData}
             onSave={() => {
+              const normalizedData = model?.fields
+                ? normalizeFormData(activeTab.formData || {}, model.fields)
+                : activeTab.formData || {};
+
               if (activeTab.type === 'create') {
-                createMutation.mutate({ tabId: activeTab.id, data: activeTab.formData || {} });
+                createMutation.mutate({ tabId: activeTab.id, data: normalizedData });
               } else if (activeTab.data) {
                 updateMutation.mutate({
                   tabId: activeTab.id,
                   dataId: activeTab.data._id,
-                  data: activeTab.formData || {},
+                  data: normalizedData,
                 });
               }
             }}

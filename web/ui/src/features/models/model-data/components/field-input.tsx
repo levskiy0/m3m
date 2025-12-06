@@ -23,24 +23,24 @@ export function FieldInput({ field, value, onChange, view, projectId, models }: 
   switch (field.type) {
     case 'file':
       if (!projectId) {
-        return <Input value={(value as string) || ''} onChange={(e) => onChange(e.target.value)} />;
+        return <Input value={(value as string) || ''} onChange={(e) => onChange(e.target.value || null)} />;
       }
       return (
         <FileFieldInput
           value={(value as string) || null}
-          onChange={(v) => onChange(v || '')}
+          onChange={onChange}
           projectId={projectId}
           view={widget}
         />
       );
     case 'ref':
       if (!projectId || !models || !field.ref_model) {
-        return <Input value={(value as string) || ''} onChange={(e) => onChange(e.target.value)} />;
+        return <Input value={(value as string) || ''} onChange={(e) => onChange(e.target.value || null)} />;
       }
       return (
         <RefFieldInput
           value={(value as string) || null}
-          onChange={(v) => onChange(v || '')}
+          onChange={onChange}
           projectId={projectId}
           refModelSlug={field.ref_model}
           models={models}
