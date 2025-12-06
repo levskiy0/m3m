@@ -168,7 +168,8 @@ export function TableConfigEditor({ fields, config, onChange }: TableConfigEdito
                       <div className="flex items-center justify-center">
                         <Checkbox
                           id={`sort-${sysField.key}`}
-                          disabled
+                          checked={config.sort_columns.includes(sysField.key)}
+                          onCheckedChange={() => toggleSortable(sysField.key)}
                         />
                       </div>
                     </td>

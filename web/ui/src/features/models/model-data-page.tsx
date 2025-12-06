@@ -541,11 +541,35 @@ export function ModelDataPage() {
                         </TableHead>
                       );
                     })}
-                    {visibleSystemColumns.map((key) => (
-                      <TableHead key={key} className="text-muted-foreground">
-                        {SYSTEM_FIELD_LABELS[key]}
-                      </TableHead>
-                    ))}
+                    {visibleSystemColumns.map((key) => {
+                      const isSortable = tableConfig.sort_columns.includes(key);
+                      const isCurrentSort = sortField === key;
+
+                      return (
+                        <TableHead
+                          key={key}
+                          className={`text-muted-foreground ${isSortable ? 'cursor-pointer select-none hover:bg-muted/50' : ''}`}
+                          onClick={() => isSortable && handleSort(key)}
+                        >
+                          <div className="flex items-center gap-1">
+                            {SYSTEM_FIELD_LABELS[key]}
+                            {isSortable && (
+                              <span className="text-muted-foreground">
+                                {isCurrentSort ? (
+                                  sortOrder === 'asc' ? (
+                                    <ArrowUp className="size-4" />
+                                  ) : (
+                                    <ArrowDown className="size-4" />
+                                  )
+                                ) : (
+                                  <ArrowUpDown className="size-3 opacity-50" />
+                                )}
+                              </span>
+                            )}
+                          </div>
+                        </TableHead>
+                      );
+                    })}
                     <TableHead className="w-12"></TableHead>
                   </TableRow>
                 </TableHeader>

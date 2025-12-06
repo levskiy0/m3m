@@ -272,6 +272,12 @@ func (v *ModelSchemaValidator) validateDefaultValue(field domain.ModelField) err
 	return nil
 }
 
+// System fields that can be used in table config columns and sorting
+var allowedSystemFields = map[string]bool{
+	"_created_at": true,
+	"_updated_at": true,
+}
+
 func (v *ModelSchemaValidator) validateTableConfig(config *domain.TableConfig, fields []domain.ModelField) []ValidationError {
 	var errors []ValidationError
 	fieldMap := make(map[string]bool)
@@ -279,9 +285,9 @@ func (v *ModelSchemaValidator) validateTableConfig(config *domain.TableConfig, f
 		fieldMap[f.Key] = true
 	}
 
-	// Validate columns
+	// Validate columns (allow system fields for display)
 	for i, col := range config.Columns {
-		if !fieldMap[col] {
+		if !fieldMap[col] && !allowedSystemFields[col] {
 			errors = append(errors, ValidationError{
 				Field:   fmt.Sprintf("table_config.columns[%d]", i),
 				Message: fmt.Sprintf("unknown field '%s'", col),
@@ -289,7 +295,7 @@ func (v *ModelSchemaValidator) validateTableConfig(config *domain.TableConfig, f
 		}
 	}
 
-	// Validate filters
+	// Validate filters (only user-defined fields)
 	for i, filter := range config.Filters {
 		if !fieldMap[filter] {
 			errors = append(errors, ValidationError{
@@ -299,9 +305,9 @@ func (v *ModelSchemaValidator) validateTableConfig(config *domain.TableConfig, f
 		}
 	}
 
-	// Validate sort columns
+	// Validate sort columns (allow system fields for sorting)
 	for i, sortCol := range config.SortColumns {
-		if !fieldMap[sortCol] {
+		if !fieldMap[sortCol] && !allowedSystemFields[sortCol] {
 			errors = append(errors, ValidationError{
 				Field:   fmt.Sprintf("table_config.sort_columns[%d]", i),
 				Message: fmt.Sprintf("unknown field '%s'", sortCol),
@@ -309,7 +315,7 @@ func (v *ModelSchemaValidator) validateTableConfig(config *domain.TableConfig, f
 		}
 	}
 
-	// Validate searchable fields
+	// Validate searchable fields (only user-defined fields)
 	for i, searchField := range config.Searchable {
 		if !fieldMap[searchField] {
 			errors = append(errors, ValidationError{
