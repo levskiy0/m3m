@@ -619,7 +619,7 @@ export function StoragePage() {
             {activeTabId === null ? (
                 <>
                   {/* File Browser */}
-                  <CardHeader className="py-4 grid-rows-[none] border-b">
+                  <CardHeader className="px-4 py-3 grid-rows-[none] border-b">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-1 text-sm text-muted-foreground">
                         <Button
