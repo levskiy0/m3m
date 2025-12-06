@@ -1092,100 +1092,104 @@ export function ModelDataPage() {
 
           {/* View Tab Content */}
           {tabs.filter(t => t.type === 'view' && t.id === activeTabId).map((tab) => (
-              <div key={tab.id} className="flex-1 overflow-auto">
-                <div className="max-w-2xl space-y-4">
-                  {/* Actions */}
-                  <div className="flex items-center gap-2">
-                    <Button variant="outline" size="sm" onClick={() => tab.data && handleEdit(tab.data)}>
-                      <Edit className="mr-2 size-4"/>
-                      Edit
-                    </Button>
-                    <Button variant="outline" size="sm" onClick={() => tab.data && handleDelete(tab.data)}
-                            className="text-destructive hover:text-destructive">
-                      <Trash2 className="mr-2 size-4"/>
-                      Delete
-                    </Button>
-                  </div>
-                  {/* Fields table */}
-                  <div className="rounded-md border overflow-hidden">
-                    <Table>
-                      <TableBody>
-                        {/* Regular fields */}
-                        {orderedFormFields.map((field) => (
-                            <TableRow key={field.key}>
-                              <TableCell className="w-1/3 font-medium text-muted-foreground bg-muted/30">
-                                {formatFieldLabel(field.key)}
-                              </TableCell>
-                              <TableCell>
-                                {field.type === 'document' ? (
-                                    <pre className="text-xs bg-muted p-2 rounded overflow-auto max-h-32">
+              <>
+                {/* Actions */}
+                <div className="flex items-center gap-2 mb-4">
+                  <Button variant="outline" size="sm" onClick={() => tab.data && handleEdit(tab.data)}>
+                    <Edit className="mr-2 size-4"/>
+                    Edit
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => tab.data && handleDelete(tab.data)}
+                          className="text-destructive hover:text-destructive">
+                    <Trash2 className="mr-2 size-4"/>
+                    Delete
+                  </Button>
+                </div>
+                <div key={tab.id} className="flex-1 overflow-y-auto max-h-[calc(100vh-360px)]">
+                  <div className="max-w-2xl space-y-4">
+                    {/* Fields table */}
+                    <div className="rounded-md border overflow-hidden">
+                      <Table>
+                        <TableBody>
+                          {/* Regular fields */}
+                          {orderedFormFields.map((field) => (
+                              <TableRow key={field.key}>
+                                <TableCell className="w-1/3 font-medium text-muted-foreground bg-muted/30">
+                                  {formatFieldLabel(field.key)}
+                                </TableCell>
+                                <TableCell>
+                                  {field.type === 'document' ? (
+                                      <pre className="text-md bg-muted p-2 rounded overflow-auto max-h-32">
                                       {JSON.stringify(tab.data?.[field.key], null, 2)}
                                     </pre>
-                                ) : (
-                                    <span className="font-mono text-sm">
+                                  ) : (
+                                      <span className="font-mono text-md">
                                       {formatCellValue(tab.data?.[field.key], field.type) || '—'}
                                     </span>
-                                )}
-                              </TableCell>
-                            </TableRow>
-                        ))}
-                        {/* System fields */}
-                        {SYSTEM_FIELDS.map((key) => (
-                            <TableRow key={key}>
-                              <TableCell className="w-1/3 font-medium text-muted-foreground bg-muted/30">
-                                {SYSTEM_FIELD_LABELS[key]}
-                              </TableCell>
-                              <TableCell className="font-mono text-xs text-muted-foreground">
-                                {formatSystemFieldValue(key, tab.data?.[key])}
-                              </TableCell>
-                            </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
+                                  )}
+                                </TableCell>
+                              </TableRow>
+                          ))}
+                          {/* System fields */}
+                          {SYSTEM_FIELDS.map((key) => (
+                              <TableRow key={key}>
+                                <TableCell className="w-1/3 font-medium text-md text-muted-foreground bg-muted/30">
+                                  {SYSTEM_FIELD_LABELS[key]}
+                                </TableCell>
+                                <TableCell className="font-mono text-md text-muted-foreground">
+                                  {formatSystemFieldValue(key, tab.data?.[key])}
+                                </TableCell>
+                              </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
                   </div>
                 </div>
-              </div>
+              </>
           ))}
 
           {/* Edit/Create Tab Content */}
           {tabs.filter(t => (t.type === 'edit' || t.type === 'create') && t.id === activeTabId).map((tab) => (
-              <div key={tab.id} className="flex-1 overflow-auto">
-                <div className="max-w-2xl space-y-4">
-                  {orderedFormFields.map((field) => (
-                      <div key={field.key} className="space-y-2">
-                        <label className="text-sm font-medium">
-                          {formatFieldLabel(field.key)}
-                          {field.required && <span className="text-destructive ml-1">*</span>}
-                        </label>
-                        <FieldInput
-                            field={field}
-                            value={tab.formData?.[field.key]}
-                            onChange={(value) => updateTabFormData(tab.id, {...tab.formData, [field.key]: value})}
-                            view={formConfig.field_views[field.key]}
-                        />
-                        {tab.fieldErrors?.[field.key] && (
-                            <p className="text-sm text-destructive">{tab.fieldErrors[field.key]}</p>
-                        )}
-                      </div>
-                  ))}
-                  {/* Actions */}
-                  <div className="flex items-center gap-2">
-                    <Button variant="outline" onClick={() => closeTab(tab.id)}>Cancel</Button>
-                    <Button
-                        onClick={() => {
-                          if (tab.type === 'create') {
-                            createMutation.mutate({tabId: tab.id, data: tab.formData || {}});
-                          } else if (tab.data) {
-                            updateMutation.mutate({tabId: tab.id, dataId: tab.data._id, data: tab.formData || {}});
-                          }
-                        }}
-                        disabled={createMutation.isPending || updateMutation.isPending}
-                    >
-                      {(createMutation.isPending || updateMutation.isPending) ? 'Saving...' : 'Save'}
-                    </Button>
+              <>
+                <div key={tab.id} className="overflow-y-auto max-h-[calc(100vh-360px)]">
+                  <div className="max-w-2xl space-y-4">
+                    {orderedFormFields.map((field) => (
+                        <div key={field.key} className="space-y-2">
+                          <label className="text-sm font-medium">
+                            {formatFieldLabel(field.key)}
+                            {field.required && <span className="text-destructive ml-1">*</span>}
+                          </label>
+                          <FieldInput
+                              field={field}
+                              value={tab.formData?.[field.key]}
+                              onChange={(value) => updateTabFormData(tab.id, {...tab.formData, [field.key]: value})}
+                              view={formConfig.field_views[field.key]}
+                          />
+                          {tab.fieldErrors?.[field.key] && (
+                              <p className="text-sm text-destructive">{tab.fieldErrors[field.key]}</p>
+                          )}
+                        </div>
+                    ))}
                   </div>
                 </div>
-              </div>
+                {/* Actions */}
+                <div className="flex items-center gap-2 mt-4">
+                  <Button variant="outline" onClick={() => closeTab(tab.id)}>Cancel</Button>
+                  <Button
+                      onClick={() => {
+                        if (tab.type === 'create') {
+                          createMutation.mutate({tabId: tab.id, data: tab.formData || {}});
+                        } else if (tab.data) {
+                          updateMutation.mutate({tabId: tab.id, dataId: tab.data._id, data: tab.formData || {}});
+                        }
+                      }}
+                      disabled={createMutation.isPending || updateMutation.isPending}
+                  >
+                    {(createMutation.isPending || updateMutation.isPending) ? 'Saving...' : 'Save'}
+                  </Button>
+                </div>
+              </>
           ))}
         </div>
 
