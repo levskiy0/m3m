@@ -36,8 +36,8 @@ export function FileFieldInput({
   };
 
   const handleConfirm = () => {
-    if (selectedItem) {
-      onChange(selectedItem.path);
+    if (selectedItem?.url) {
+      onChange(selectedItem.url);
       setDialogOpen(false);
       setSelectedItem(null);
     }
@@ -69,9 +69,7 @@ export function FileFieldInput({
             variant="ghost"
             size="icon"
             className="h-8 w-8"
-            onClick={() => {
-              window.open(`/api/projects/${projectId}/storage/download/${value}`, '_blank');
-            }}
+            onClick={() => window.open(value, '_blank')}
             title="Open file"
           >
             <ExternalLink className="h-4 w-4" />
@@ -127,14 +125,14 @@ export function FileFieldInput({
           </div>
           {selectedItem && (
             <div className="text-sm text-muted-foreground">
-              Selected: <span className="font-medium text-foreground">{selectedItem.path}</span>
+              Selected: <span className="font-medium text-foreground">{selectedItem.name}</span>
             </div>
           )}
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={handleConfirm} disabled={!selectedItem}>
+            <Button onClick={handleConfirm} disabled={!selectedItem?.url}>
               Select
             </Button>
           </DialogFooter>
