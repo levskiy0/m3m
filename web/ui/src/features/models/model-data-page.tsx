@@ -654,6 +654,15 @@ export function ModelDataPage() {
     return columnWidths[key] || defaultWidth;
   }, [columnWidths]);
 
+  // Calculate total table width
+  const tableWidth = useMemo(() => {
+    const checkboxWidth = 48; // w-12
+    const actionsWidth = 48; // w-12
+    const regularColumnsWidth = visibleColumns.reduce((sum, field) => sum + getColumnWidth(field.key), 0);
+    const systemColumnsWidth = visibleSystemColumns.reduce((sum, key) => sum + getColumnWidth(key, 180), 0);
+    return checkboxWidth + regularColumnsWidth + systemColumnsWidth + actionsWidth;
+  }, [visibleColumns, visibleSystemColumns, getColumnWidth]);
+
   const isLoading = modelLoading || (dataLoading && !dataResponse);
   const data = useMemo(() => dataResponse?.data || [], [dataResponse?.data]);
   const totalPages = dataResponse?.totalPages || 1;
@@ -685,7 +694,7 @@ export function ModelDataPage() {
   }
 
   return (
-      <div className="h-full flex flex-col">
+      <div className="h-full flex flex-col overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between mb-4">
           <div>
@@ -945,7 +954,7 @@ export function ModelDataPage() {
         <div className="border-b mb-4 relative top-[1px]"></div>
 
         {/* Tab Content */}
-        <div className="flex-1 min-h-0 flex flex-col">
+        <div className="flex-1 min-h-0 min-w-0 flex flex-col overflow-hidden">
           {/* Table Tab */}
           {activeTabId === 'table' && (
               <>
@@ -970,9 +979,11 @@ export function ModelDataPage() {
                       )}
                     </div>
                 ) : (
-                    <div className="overflow-hidden rounded-md border">
+                    <div className="rounded-md border overflow-x-auto">
                       <Table
-                          wrapperClassName="h-[calc(100vh-380px)] overflow-auto [&_thead]:sticky [&_thead]:top-0 [&_thead]:z-10 [&_thead]:bg-background">
+                          className="table-fixed"
+                          style={{ width: tableWidth, minWidth: tableWidth }}
+                          wrapperClassName="h-[calc(100vh-380px)] overflow-y-auto [&_thead]:sticky [&_thead]:top-0 [&_thead]:z-10 [&_thead]:bg-background">
                         <TableHeader>
                           <TableRow>
                             <TableHead className="w-12 min-w-12 bg-background">
