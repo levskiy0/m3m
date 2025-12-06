@@ -1048,6 +1048,7 @@ export function ModelDataPage() {
                                     <div
                                         className="absolute right-0 top-0 h-full w-1 cursor-col-resize hover:bg-primary/50 active:bg-primary"
                                         onMouseDown={(e) => handleResizeStart(e, field.key, width)}
+                                        onClick={(e) => e.stopPropagation()}
                                     />
                                   </TableHead>
                               );
@@ -1075,6 +1076,7 @@ export function ModelDataPage() {
                                     <div
                                         className="absolute right-0 top-0 h-full w-1 cursor-col-resize hover:bg-primary/50 active:bg-primary"
                                         onMouseDown={(e) => handleResizeStart(e, key, width)}
+                                        onClick={(e) => e.stopPropagation()}
                                     />
                                   </TableHead>
                               );
