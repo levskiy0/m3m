@@ -326,6 +326,10 @@ export function ModelDataPage() {
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
 
+  // Column resizing
+  const [columnWidths, setColumnWidths] = useState<Record<string, number>>({});
+  const resizingRef = useRef<{ column: string; startX: number; startWidth: number } | null>(null);
+
   // Debounce search input
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -619,6 +623,37 @@ export function ModelDataPage() {
     });
   }, []);
 
+  // Column resize handlers
+  const handleResizeStart = useCallback((e: React.MouseEvent, column: string, currentWidth: number) => {
+    e.preventDefault();
+    e.stopPropagation();
+    resizingRef.current = { column, startX: e.clientX, startWidth: currentWidth };
+
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!resizingRef.current) return;
+      const delta = e.clientX - resizingRef.current.startX;
+      const newWidth = Math.max(50, resizingRef.current.startWidth + delta);
+      setColumnWidths(prev => ({ ...prev, [resizingRef.current!.column]: newWidth }));
+    };
+
+    const handleMouseUp = () => {
+      resizingRef.current = null;
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+  }, []);
+
+  const getColumnWidth = useCallback((key: string, defaultWidth: number = 150) => {
+    return columnWidths[key] || defaultWidth;
+  }, [columnWidths]);
+
   const isLoading = modelLoading || (dataLoading && !dataResponse);
   const data = useMemo(() => dataResponse?.data || [], [dataResponse?.data]);
   const totalPages = dataResponse?.totalPages || 1;
@@ -674,7 +709,175 @@ export function ModelDataPage() {
         </div>
 
         {/* Toolbar: Search, Filters, Bulk Actions */}
-        <div className="flex flex-wrap items-center gap-2 mb-4">
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+          {/* Filter Popover & Active Filters Display */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="sm">
+                <Filter className="mr-2 size-4"/>
+                Filter
+                {activeFilters.length > 0 && (
+                    <Badge variant="secondary" className="ml-2 px-1.5 py-0 text-xs">
+                      {activeFilters.length}
+                    </Badge>
+                )}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <div className="p-3 space-y-2 min-w-[400px]">
+                {activeFilters.length === 0 ? (
+                    <p className="text-sm text-muted-foreground py-2">No filters applied</p>
+                ) : (
+                    activeFilters.map((f, index) => {
+                      const field = model.fields.find(fld => fld.key === f.field);
+                      const operators = FILTER_OPERATORS[field?.type || 'string'] || FILTER_OPERATORS.string;
+                      return (
+                          <div key={index} className="flex items-center gap-1.5">
+                            {index > 0 && (
+                                <span className="text-xs text-muted-foreground w-7 text-right">and</span>
+                            )}
+                            {index === 0 && <span className="w-7"/>}
+                            <Select
+                                value={f.field}
+                                onValueChange={(v) => {
+                                  const newFilters = [...activeFilters];
+                                  newFilters[index] = {...newFilters[index], field: v, operator: 'eq', value: ''};
+                                  setActiveFilters(newFilters);
+                                }}
+                            >
+                              <SelectTrigger className="h-8 w-[120px] text-xs">
+                                <SelectValue/>
+                              </SelectTrigger>
+                              <SelectContent>
+                                {filterableFields.map(fld => (
+                                    <SelectItem key={fld.key} value={fld.key}>
+                                      {formatFieldLabel(fld.key)}
+                                    </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <Select
+                                value={f.operator}
+                                onValueChange={(v) => {
+                                  const newFilters = [...activeFilters];
+                                  newFilters[index] = {
+                                    ...newFilters[index],
+                                    operator: v as FilterCondition['operator']
+                                  };
+                                  setActiveFilters(newFilters);
+                                  setPage(1);
+                                }}
+                            >
+                              <SelectTrigger className="h-8 w-[70px] text-xs">
+                                <SelectValue/>
+                              </SelectTrigger>
+                              <SelectContent>
+                                {operators.map(op => (
+                                    <SelectItem key={op.value} value={op.value}>
+                                      {op.label}
+                                    </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            {field?.type === 'bool' ? (
+                                <Select
+                                    value={String(f.value)}
+                                    onValueChange={(v) => {
+                                      const newFilters = [...activeFilters];
+                                      newFilters[index] = {...newFilters[index], value: v === 'true'};
+                                      setActiveFilters(newFilters);
+                                      setPage(1);
+                                    }}
+                                >
+                                  <SelectTrigger className="h-8 w-[80px] text-xs">
+                                    <SelectValue placeholder="..."/>
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="true">Yes</SelectItem>
+                                    <SelectItem value="false">No</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                            ) : field?.type === 'date' ? (
+                                <div className="w-[130px]">
+                                  <DatePicker
+                                      value={String(f.value) || undefined}
+                                      onChange={(v) => {
+                                        const newFilters = [...activeFilters];
+                                        newFilters[index] = {...newFilters[index], value: v || ''};
+                                        setActiveFilters(newFilters);
+                                        setPage(1);
+                                      }}
+                                  />
+                                </div>
+                            ) : field?.type === 'datetime' ? (
+                                <div className="w-[180px]">
+                                  <DateTimePicker
+                                      value={String(f.value) || undefined}
+                                      onChange={(v) => {
+                                        const newFilters = [...activeFilters];
+                                        newFilters[index] = {...newFilters[index], value: v || ''};
+                                        setActiveFilters(newFilters);
+                                        setPage(1);
+                                      }}
+                                  />
+                                </div>
+                            ) : (
+                                <Input
+                                    type={field?.type === 'number' || field?.type === 'float' ? 'number' : 'text'}
+                                    value={String(f.value)}
+                                    onChange={(e) => {
+                                      const newFilters = [...activeFilters];
+                                      const val = field?.type === 'number' ? parseInt(e.target.value, 10) || 0
+                                          : field?.type === 'float' ? parseFloat(e.target.value) || 0
+                                              : e.target.value;
+                                      newFilters[index] = {...newFilters[index], value: val};
+                                      setActiveFilters(newFilters);
+                                    }}
+                                    onBlur={() => setPage(1)}
+                                    onKeyDown={(e) => e.key === 'Enter' && setPage(1)}
+                                    placeholder="value"
+                                    className="h-8 w-[120px] text-xs"
+                                />
+                            )}
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 shrink-0"
+                                onClick={() => handleRemoveFilter(index)}
+                            >
+                              <X className="size-3.5"/>
+                            </Button>
+                          </div>
+                      );
+                    })
+                )}
+                <div className="flex items-center gap-2 pt-2 border-t">
+                  <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 text-xs"
+                      onClick={handleAddFilter}
+                  >
+                    <Plus className="mr-1 size-3"/>
+                    Add
+                  </Button>
+                  {activeFilters.length > 0 && (
+                      <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 text-xs text-muted-foreground"
+                          onClick={() => {
+                            setActiveFilters([]);
+                            setPage(1);
+                          }}
+                      >
+                        Clear all
+                      </Button>
+                  )}
+                </div>
+              </div>
+            </PopoverContent>
+          </Popover>
           {/* Search */}
           {hasSearchable && (
               <div className="relative flex-1 max-w-sm">
@@ -697,176 +900,7 @@ export function ModelDataPage() {
         </div>
 
         {/* Filter Popover & Active Filters Display */}
-        {hasFilters && (
-            <div className="flex items-center gap-2 mb-4 flex-wrap">
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" size="sm">
-                    <Filter className="mr-2 size-4"/>
-                    Filter
-                    {activeFilters.length > 0 && (
-                        <Badge variant="secondary" className="ml-2 px-1.5 py-0 text-xs">
-                          {activeFilters.length}
-                        </Badge>
-                    )}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <div className="p-3 space-y-2 min-w-[400px]">
-                    {activeFilters.length === 0 ? (
-                        <p className="text-sm text-muted-foreground py-2">No filters applied</p>
-                    ) : (
-                        activeFilters.map((f, index) => {
-                          const field = model.fields.find(fld => fld.key === f.field);
-                          const operators = FILTER_OPERATORS[field?.type || 'string'] || FILTER_OPERATORS.string;
-                          return (
-                              <div key={index} className="flex items-center gap-1.5">
-                                {index > 0 && (
-                                    <span className="text-xs text-muted-foreground w-7 text-right">and</span>
-                                )}
-                                {index === 0 && <span className="w-7"/>}
-                                <Select
-                                    value={f.field}
-                                    onValueChange={(v) => {
-                                      const newFilters = [...activeFilters];
-                                      newFilters[index] = {...newFilters[index], field: v, operator: 'eq', value: ''};
-                                      setActiveFilters(newFilters);
-                                    }}
-                                >
-                                  <SelectTrigger className="h-8 w-[120px] text-xs">
-                                    <SelectValue/>
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {filterableFields.map(fld => (
-                                        <SelectItem key={fld.key} value={fld.key}>
-                                          {formatFieldLabel(fld.key)}
-                                        </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                                <Select
-                                    value={f.operator}
-                                    onValueChange={(v) => {
-                                      const newFilters = [...activeFilters];
-                                      newFilters[index] = {
-                                        ...newFilters[index],
-                                        operator: v as FilterCondition['operator']
-                                      };
-                                      setActiveFilters(newFilters);
-                                      setPage(1);
-                                    }}
-                                >
-                                  <SelectTrigger className="h-8 w-[70px] text-xs">
-                                    <SelectValue/>
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {operators.map(op => (
-                                        <SelectItem key={op.value} value={op.value}>
-                                          {op.label}
-                                        </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                                {field?.type === 'bool' ? (
-                                    <Select
-                                        value={String(f.value)}
-                                        onValueChange={(v) => {
-                                          const newFilters = [...activeFilters];
-                                          newFilters[index] = {...newFilters[index], value: v === 'true'};
-                                          setActiveFilters(newFilters);
-                                          setPage(1);
-                                        }}
-                                    >
-                                      <SelectTrigger className="h-8 w-[80px] text-xs">
-                                        <SelectValue placeholder="..."/>
-                                      </SelectTrigger>
-                                      <SelectContent>
-                                        <SelectItem value="true">Yes</SelectItem>
-                                        <SelectItem value="false">No</SelectItem>
-                                      </SelectContent>
-                                    </Select>
-                                ) : field?.type === 'date' ? (
-                                    <div className="w-[130px]">
-                                      <DatePicker
-                                          value={String(f.value) || undefined}
-                                          onChange={(v) => {
-                                            const newFilters = [...activeFilters];
-                                            newFilters[index] = {...newFilters[index], value: v || ''};
-                                            setActiveFilters(newFilters);
-                                            setPage(1);
-                                          }}
-                                      />
-                                    </div>
-                                ) : field?.type === 'datetime' ? (
-                                    <div className="w-[180px]">
-                                      <DateTimePicker
-                                          value={String(f.value) || undefined}
-                                          onChange={(v) => {
-                                            const newFilters = [...activeFilters];
-                                            newFilters[index] = {...newFilters[index], value: v || ''};
-                                            setActiveFilters(newFilters);
-                                            setPage(1);
-                                          }}
-                                      />
-                                    </div>
-                                ) : (
-                                    <Input
-                                        type={field?.type === 'number' || field?.type === 'float' ? 'number' : 'text'}
-                                        value={String(f.value)}
-                                        onChange={(e) => {
-                                          const newFilters = [...activeFilters];
-                                          const val = field?.type === 'number' ? parseInt(e.target.value, 10) || 0
-                                              : field?.type === 'float' ? parseFloat(e.target.value) || 0
-                                                  : e.target.value;
-                                          newFilters[index] = {...newFilters[index], value: val};
-                                          setActiveFilters(newFilters);
-                                        }}
-                                        onBlur={() => setPage(1)}
-                                        onKeyDown={(e) => e.key === 'Enter' && setPage(1)}
-                                        placeholder="value"
-                                        className="h-8 w-[120px] text-xs"
-                                    />
-                                )}
-                                <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-8 w-8 shrink-0"
-                                    onClick={() => handleRemoveFilter(index)}
-                                >
-                                  <X className="size-3.5"/>
-                                </Button>
-                              </div>
-                          );
-                        })
-                    )}
-                    <div className="flex items-center gap-2 pt-2 border-t">
-                      <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-7 text-xs"
-                          onClick={handleAddFilter}
-                      >
-                        <Plus className="mr-1 size-3"/>
-                        Add
-                      </Button>
-                      {activeFilters.length > 0 && (
-                          <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-7 text-xs text-muted-foreground"
-                              onClick={() => {
-                                setActiveFilters([]);
-                                setPage(1);
-                              }}
-                          >
-                            Clear all
-                          </Button>
-                      )}
-                    </div>
-                  </div>
-                </PopoverContent>
-              </Popover>
-
+            <div className="flex items-center gap-2 mb-4 flex-wrap min-h-[22px]">
               {/* Show active filters as compact badges */}
               {activeFilters.map((f, i) => {
                 const opLabel = FILTER_OPERATORS[model.fields.find(fld => fld.key === f.field)?.type || 'string']
@@ -886,7 +920,6 @@ export function ModelDataPage() {
                 );
               })}
             </div>
-        )}
 
         {/* Tabs Bar */}
         <EditorTabs className="px-0 mb-[-1px] relative z-10">
@@ -951,42 +984,55 @@ export function ModelDataPage() {
                             {visibleColumns.map((field) => {
                               const isSortable = tableConfig.sort_columns.includes(field.key);
                               const isCurrentSort = sortField === field.key;
+                              const width = getColumnWidth(field.key);
                               return (
                                   <TableHead
                                       key={field.key}
-                                      className={`whitespace-nowrap bg-background ${isSortable ? 'cursor-pointer select-none hover:bg-muted/50' : ''}`}
+                                      className={`relative whitespace-nowrap bg-background ${isSortable ? 'cursor-pointer select-none hover:bg-muted/50' : ''}`}
+                                      style={{ width, minWidth: width, maxWidth: width }}
                                       onClick={() => isSortable && handleSort(field.key)}
                                   >
-                                    <div className="flex items-center gap-2">
-                                      {formatFieldLabel(field.key)}
+                                    <div className="flex items-center gap-2 overflow-hidden">
+                                      <span className="truncate">{formatFieldLabel(field.key)}</span>
                                       {isSortable && (
-                                          <span className="text-muted-foreground">
-                                  {isCurrentSort ? (sortOrder === 'asc' ? <ArrowUp className="size-4"/> :
-                                      <ArrowDown className="size-4"/>) : <ArrowUpDown className="size-3 opacity-50"/>}
-                                </span>
+                                          <span className="text-muted-foreground shrink-0">
+                                            {isCurrentSort ? (sortOrder === 'asc' ? <ArrowUp className="size-4"/> :
+                                                <ArrowDown className="size-4"/>) : <ArrowUpDown className="size-3 opacity-50"/>}
+                                          </span>
                                       )}
                                     </div>
+                                    {/* Resize handle */}
+                                    <div
+                                        className="absolute right-0 top-0 h-full w-1 cursor-col-resize hover:bg-primary/50 active:bg-primary"
+                                        onMouseDown={(e) => handleResizeStart(e, field.key, width)}
+                                    />
                                   </TableHead>
                               );
                             })}
                             {visibleSystemColumns.map((key) => {
                               const isSortable = tableConfig.sort_columns.includes(key);
                               const isCurrentSort = sortField === key;
+                              const width = getColumnWidth(key, 180);
                               return (
                                   <TableHead
                                       key={key}
-                                      className={`whitespace-nowrap text-muted-foreground bg-background ${isSortable ? 'cursor-pointer select-none hover:bg-muted/50' : ''}`}
+                                      className={`relative whitespace-nowrap text-muted-foreground bg-background ${isSortable ? 'cursor-pointer select-none hover:bg-muted/50' : ''}`}
+                                      style={{ width, minWidth: width, maxWidth: width }}
                                       onClick={() => isSortable && handleSort(key)}
                                   >
-                                    <div className="flex items-center gap-2">
-                                      {SYSTEM_FIELD_LABELS[key]}
+                                    <div className="flex items-center gap-2 overflow-hidden">
+                                      <span className="truncate">{SYSTEM_FIELD_LABELS[key]}</span>
                                       {isSortable && (
-                                          <span className="text-muted-foreground">
-                                  {isCurrentSort ? (sortOrder === 'asc' ? <ArrowUp className="size-4"/> :
-                                      <ArrowDown className="size-4"/>) : <ArrowUpDown className="size-3 opacity-50"/>}
-                                </span>
+                                          <span className="text-muted-foreground shrink-0">
+                                            {isCurrentSort ? (sortOrder === 'asc' ? <ArrowUp className="size-4"/> :
+                                                <ArrowDown className="size-4"/>) : <ArrowUpDown className="size-3 opacity-50"/>}
+                                          </span>
                                       )}
                                     </div>
+                                    <div
+                                        className="absolute right-0 top-0 h-full w-1 cursor-col-resize hover:bg-primary/50 active:bg-primary"
+                                        onMouseDown={(e) => handleResizeStart(e, key, width)}
+                                    />
                                   </TableHead>
                               );
                             })}
@@ -1006,18 +1052,31 @@ export function ModelDataPage() {
                                       onCheckedChange={(checked) => handleSelectRow(row._id, !!checked)}
                                   />
                                 </TableCell>
-                                {visibleColumns.map((field) => (
-                                    <TableCell key={field.key} className="max-w-[300px]">
-                            <span className="block truncate font-mono whitespace-nowrap">
-                              {formatCellValue(row[field.key], field.type)}
-                            </span>
-                                    </TableCell>
-                                ))}
-                                {visibleSystemColumns.map((key) => (
-                                    <TableCell key={key} className="text-muted-foreground font-mono whitespace-nowrap">
-                                      {formatSystemFieldValue(key, row[key])}
-                                    </TableCell>
-                                ))}
+                                {visibleColumns.map((field) => {
+                                  const width = getColumnWidth(field.key);
+                                  return (
+                                      <TableCell
+                                          key={field.key}
+                                          style={{ width, minWidth: width, maxWidth: width }}
+                                      >
+                                        <span className="block truncate font-mono whitespace-nowrap">
+                                          {formatCellValue(row[field.key], field.type)}
+                                        </span>
+                                      </TableCell>
+                                  );
+                                })}
+                                {visibleSystemColumns.map((key) => {
+                                  const width = getColumnWidth(key, 180);
+                                  return (
+                                      <TableCell
+                                          key={key}
+                                          className="text-muted-foreground font-mono whitespace-nowrap"
+                                          style={{ width, minWidth: width, maxWidth: width }}
+                                      >
+                                        {formatSystemFieldValue(key, row[key])}
+                                      </TableCell>
+                                  );
+                                })}
                                 <TableCell className="w-12" onClick={(e) => e.stopPropagation()}>
                                   <DropdownMenu>
                                     <DropdownMenuTrigger asChild>
