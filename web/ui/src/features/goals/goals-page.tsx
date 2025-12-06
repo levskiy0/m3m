@@ -55,14 +55,7 @@ import { ConfirmDialog } from '@/components/shared/confirm-dialog';
 import { EmptyState } from '@/components/shared/empty-state';
 import { Sparkline } from '@/components/shared/sparkline';
 import { Skeleton } from '@/components/ui/skeleton';
-import { cn } from '@/lib/utils';
-
-function slugify(text: string): string {
-  return text
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-|-$/g, '');
-}
+import { cn, slugify } from '@/lib/utils';
 
 export function GoalsPage() {
   const { projectId } = useParams<{ projectId: string }>();

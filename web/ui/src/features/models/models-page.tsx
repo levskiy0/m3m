@@ -35,13 +35,7 @@ import { ConfirmDialog } from '@/components/shared/confirm-dialog';
 import { EmptyState } from '@/components/shared/empty-state';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
-
-function slugify(text: string): string {
-  return text
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '_')
-    .replace(/^_|_$/g, '');
-}
+import { slugify } from '@/lib/utils';
 
 export function ModelsPage() {
   const { projectId } = useParams<{ projectId: string }>();
@@ -98,7 +92,7 @@ export function ModelsPage() {
   const handleNameChange = (value: string) => {
     setName(value);
     if (!slugEdited) {
-      setSlug(slugify(value));
+      setSlug(slugify(value, '_'));
     }
   };
 
@@ -245,7 +239,7 @@ export function ModelsPage() {
               <Input
                 value={slug}
                 onChange={(e) => {
-                  setSlug(slugify(e.target.value));
+                  setSlug(slugify(e.target.value, '_'));
                   setSlugEdited(true);
                 }}
                 placeholder="user_profile"

@@ -72,7 +72,7 @@ import {
 } from '@/components/ui/dialog';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
-import { cn } from '@/lib/utils';
+import { cn, downloadBlob } from '@/lib/utils';
 import type { LogEntry, GoalStats, WidgetVariant, CreateWidgetRequest } from '@/types';
 import type { StartOptions } from '@/api/runtime';
 
@@ -235,12 +235,7 @@ export function ProjectDashboard() {
   const handleDownloadLogs = async () => {
     try {
       const blob = await runtimeApi.downloadLogs(projectId!);
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${project?.slug || projectId}-logs.txt`;
-      a.click();
-      URL.revokeObjectURL(url);
+      await downloadBlob(blob, `${project?.slug || projectId}-logs.txt`);
     } catch (err) {
       console.error('Failed to download logs:', err);
     }

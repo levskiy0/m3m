@@ -5,6 +5,8 @@ export interface Plugin {
   name: string;
   description?: string;
   version?: string;
+  author?: string;
+  url?: string;
 }
 
 export interface SystemInfo {

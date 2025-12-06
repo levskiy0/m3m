@@ -32,6 +32,8 @@ import { toast } from 'sonner';
 
 import { storageApi } from '@/api';
 import { EDITABLE_MIME_TYPES } from '@/lib/constants';
+import { formatBytes } from '@/lib/format';
+import { cn, getFileExtension, isImageFile, getLanguageFromFilename } from '@/lib/utils';
 import { EditorTabs, EditorTab } from '@/components/ui/editor-tabs';
 import type { StorageItem } from '@/types';
 import { Button } from '@/components/ui/button';
@@ -54,43 +56,14 @@ import { Input } from '@/components/ui/input';
 import { Field, FieldLabel } from '@/components/ui/field';
 import { CodeEditor } from '@/components/shared/code-editor';
 import { ConfirmDialog } from '@/components/shared/confirm-dialog';
-import { cn } from '@/lib/utils';
 
-interface EditorTab {
+interface FileEditorTab {
   id: string;
   name: string;
-  path: string; // empty for new files
+  path: string;
   content: string;
   originalContent: string;
   isNew: boolean;
-}
-
-function getFileExtension(filename: string): string {
-  return filename.split('.').pop()?.toLowerCase() || '';
-}
-
-function isImageFile(filename: string): boolean {
-  const ext = getFileExtension(filename);
-  return ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'ico', 'bmp'].includes(ext);
-}
-
-function formatFileSize(bytes: number): string {
-  if (bytes === 0) return '-';
-  const k = 1024;
-  const sizes = ['B', 'KB', 'MB', 'GB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-}
-
-function getLanguageFromFilename(filename: string): string {
-  if (filename.endsWith('.json')) return 'json';
-  if (filename.endsWith('.yaml') || filename.endsWith('.yml')) return 'yaml';
-  if (filename.endsWith('.js')) return 'javascript';
-  if (filename.endsWith('.ts')) return 'typescript';
-  if (filename.endsWith('.html')) return 'html';
-  if (filename.endsWith('.css')) return 'css';
-  if (filename.endsWith('.md')) return 'markdown';
-  return 'plaintext';
 }
 
 export function StoragePage() {
@@ -114,7 +87,7 @@ export function StoragePage() {
   const [moveTargetPath, setMoveTargetPath] = useState('');
 
   // Tabs
-  const [tabs, setTabs] = useState<EditorTab[]>([]);
+  const [tabs, setTabs] = useState<FileEditorTab[]>([]);
   const [activeTabId, setActiveTabId] = useState<string | null>(null);
 
   // Dialogs
@@ -256,7 +229,7 @@ export function StoragePage() {
 
   const [savingTabId, setSavingTabId] = useState<string | null>(null);
 
-  const handleSaveTab = async (tab: EditorTab) => {
+  const handleSaveTab = async (tab: FileEditorTab) => {
     setSavingTabId(tab.id);
     try {
       if (tab.isNew) {
@@ -400,7 +373,7 @@ export function StoragePage() {
   );
 
   const handleCreateFile = () => {
-    const newTab: EditorTab = {
+    const newTab: FileEditorTab = {
       id: `new-${Date.now()}`,
       name: 'untitled.txt',
       path: '',
@@ -423,7 +396,7 @@ export function StoragePage() {
     try {
       const blob = await storageApi.download(projectId!, item.path);
       const text = await blob.text();
-      const newTab: EditorTab = {
+      const newTab: FileEditorTab = {
         id: `edit-${Date.now()}`,
         name: item.name,
         path: item.path,
@@ -730,7 +703,7 @@ export function StoragePage() {
                                       </div>
                                       {!item.is_dir && (
                                           <div className="flex items-center gap-6 text-sm text-muted-foreground">
-                                            <span className="w-20 text-right">{formatFileSize(item.size)}</span>
+                                            <span className="w-20 text-right">{formatBytes(item.size)}</span>
                                             <span className="w-24">
                                   {new Date(item.updated_at).toLocaleDateString()}
                                 </span>

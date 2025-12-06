@@ -46,6 +46,7 @@ import { Kbd } from '@/components/ui/kbd';
 import { EditorTabs, EditorTab } from '@/components/ui/editor-tabs';
 import { EmptyState } from '@/components/shared/empty-state';
 import { Skeleton } from '@/components/ui/skeleton';
+import { cn } from '@/lib/utils';
 type PipelineTab = 'editor' | 'logs' | 'releases';
 
 export function PipelinePage() {
