@@ -43,6 +43,7 @@ import { Field, FieldGroup, FieldLabel, FieldDescription } from '@/components/ui
 import { CodeEditor } from '@/components/shared/code-editor';
 import { ConfirmDialog } from '@/components/shared/confirm-dialog';
 import { Kbd } from '@/components/ui/kbd';
+import { EditorTabs, EditorTab } from '@/components/ui/editor-tabs';
 import { EmptyState } from '@/components/shared/empty-state';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
@@ -365,69 +366,46 @@ export function PipelinePage() {
     <>
       {/* Tabs */}
       <div className="w-full">
-        <div className="flex items-end px-4">
-          {/* Editor tab */}
-          <button
+        <EditorTabs>
+          <EditorTab
+            active={activeTab === 'editor'}
             onClick={() => setActiveTab('editor')}
-            className={cn(
-              'flex items-center gap-2 px-4 py-2 text-sm border-t border-l border-r rounded-t-xl',
-              activeTab === 'editor'
-                ? 'border-border bg-card'
-                : 'border-transparent text-muted-foreground hover:text-foreground'
-            )}
-            style={{
-              marginBottom: activeTab === 'editor' ? -1 : 0,
-            }}
+            icon={<Code className="size-4" />}
+            dirty={hasChanges}
           >
-            <Code className="size-4" />
             Editor
-            {hasChanges && <span className="text-orange-500">*</span>}
-          </button>
+          </EditorTab>
 
-          {/* Logs tab - only show when debug mode is active */}
           {isDebugMode && runningBranch === currentBranch?.name && (
-            <button
+            <EditorTab
+              active={activeTab === 'logs'}
               onClick={() => setActiveTab('logs')}
-              className={cn(
-                'flex items-center gap-2 px-4 py-2 text-sm border-t border-l border-r rounded-t-xl',
-                activeTab === 'logs'
-                  ? 'border-border bg-card'
-                  : 'border-transparent text-muted-foreground hover:text-foreground'
-              )}
-              style={{
-                marginBottom: activeTab === 'logs' ? -1 : 0,
-              }}
+              icon={<ScrollText className="size-4" />}
+              badge={
+                <Badge variant="outline" className="ml-1 border-amber-500/50 text-amber-500 text-[10px] h-[20px] py-0">
+                  {runningBranch}
+                </Badge>
+              }
             >
-              <ScrollText className="size-4" />
               Logs
-              <Badge variant="outline" className="ml-1 border-amber-500/50 text-amber-500 text-[10px] h-[20px] py-0">
-                {runningBranch}
-              </Badge>
-            </button>
+            </EditorTab>
           )}
 
-          {/* Releases tab */}
-          <button
+          <EditorTab
+            active={activeTab === 'releases'}
             onClick={() => setActiveTab('releases')}
-            className={cn(
-              'flex items-center gap-2 px-4 py-2 text-sm border-t border-l border-r rounded-t-xl',
-              activeTab === 'releases'
-                ? 'border-border bg-card'
-                : 'border-transparent text-muted-foreground hover:text-foreground'
-            )}
-            style={{
-              marginBottom: activeTab === 'releases' ? -1 : 0,
-            }}
+            icon={<Tag className="size-4" />}
+            badge={
+              releases.length > 0 ? (
+                <Badge variant="secondary" className="ml-1 text-xs">
+                  {releases.length}
+                </Badge>
+              ) : undefined
+            }
           >
-            <Tag className="size-4" />
             Releases
-            {releases.length > 0 && (
-              <Badge variant="secondary" className="ml-1 text-xs">
-                {releases.length}
-              </Badge>
-            )}
-          </button>
-        </div>
+          </EditorTab>
+        </EditorTabs>
 
         <Card className="flex flex-col gap-0 rounded-t-none py-0 overflow-hidden" style={{ height: 'calc(100vh - 120px)' }}>
           {/* Editor Content */}

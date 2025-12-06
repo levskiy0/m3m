@@ -23,15 +23,16 @@ import {
   ChevronRight,
   Home,
   ExternalLink,
-  X,
   Save,
   Move,
   Check,
+  X,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { storageApi } from '@/api';
 import { EDITABLE_MIME_TYPES } from '@/lib/constants';
+import { EditorTabs, EditorTab } from '@/components/ui/editor-tabs';
 import type { StorageItem } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
@@ -555,64 +556,28 @@ export function StoragePage() {
       <>
         {/* Tabs Bar - above card */}
         <div className="w-full">
-          <div className="flex items-end px-4">
-            {/* Files tab */}
-            <button
-                onClick={() => setActiveTabId(null)}
-                className={cn(
-                    'flex items-center gap-2 px-4 py-2 text-sm border-t border-l border-r rounded-t-xl',
-                    activeTabId === null
-                        ? 'border-border bg-card'
-                        : 'border-transparent text-muted-foreground hover:text-foreground'
-                )}
-                style={{
-                  marginBottom: activeTabId === null ? -1 : 0,
-                }}
+          <EditorTabs>
+            <EditorTab
+              active={activeTabId === null}
+              onClick={() => setActiveTabId(null)}
+              icon={<Folder className="size-4" />}
             >
-              <Folder className="size-4"/>
               Files
-            </button>
+            </EditorTab>
 
-            {/* Open file tabs */}
-            {tabs.map((tab) => {
-              const isDirty = tab.content !== tab.originalContent;
-              const isActive = activeTabId === tab.id;
-              return (
-                  <div
-                      key={tab.id}
-                      className={cn(
-                          'group flex items-center gap-3 px-4 py-2 text-sm border-t border-l border-r rounded-t-xl',
-                          isActive
-                              ? 'border-border bg-card'
-                              : 'border-transparent text-muted-foreground hover:text-foreground'
-                      )}
-                      style={{
-                        marginBottom: isActive ? -1 : 0,
-                      }}
-                  >
-                    <button
-                        onClick={() => setActiveTabId(tab.id)}
-                        className="flex items-center gap-2"
-                    >
-                      <FileCode className="size-4"/>
-                      <span className="max-w-32 truncate">{tab.name}</span>
-                      {isDirty && <span className="text-orange-500">*</span>}
-                    </button>
-                    <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleCloseTab(tab.id);
-                        }}
-                        className={cn(
-                            'ml-1 p-0.5 rounded-full hover:bg-muted'
-                        )}
-                    >
-                      <X className="size-3"/>
-                    </button>
-                  </div>
-              );
-            })}
-          </div>
+            {tabs.map((tab) => (
+              <EditorTab
+                key={tab.id}
+                active={activeTabId === tab.id}
+                onClick={() => setActiveTabId(tab.id)}
+                icon={<FileCode className="size-4" />}
+                dirty={tab.content !== tab.originalContent}
+                onClose={() => handleCloseTab(tab.id)}
+              >
+                {tab.name}
+              </EditorTab>
+            ))}
+          </EditorTabs>
 
           <Card className="flex flex-col gap-0 rounded-t-none py-0 overflow-hidden" style={{height: 'calc(100vh - 120px)'}}>
             {/* Content */}
