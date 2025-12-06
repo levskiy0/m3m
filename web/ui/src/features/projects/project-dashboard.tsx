@@ -30,9 +30,13 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 
-import { projectsApi, runtimeApi, pipelineApi, goalsApi, widgetsApi } from '@/api';
+import { projectsApi, pipelineApi, goalsApi, widgetsApi } from '@/api';
 import { config } from '@/lib/config';
 import { formatBytes } from '@/lib/format';
+import { queryKeys } from '@/lib/query-keys';
+import { cn, copyToClipboard } from '@/lib/utils';
+import { useProjectRuntime } from '@/hooks';
+import type { LogEntry, GoalStats, WidgetVariant, CreateWidgetRequest } from '@/types';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -72,9 +76,6 @@ import {
 } from '@/components/ui/dialog';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
-import { cn, downloadBlob, copyToClipboard } from '@/lib/utils';
-import type { LogEntry, GoalStats, WidgetVariant, CreateWidgetRequest } from '@/types';
-import type { StartOptions } from '@/api/runtime';
 
 type OverviewTab = 'instance' | 'logs';
 
@@ -84,113 +85,69 @@ export function ProjectDashboard() {
   const queryClient = useQueryClient();
   const [copied, setCopied] = useState(false);
 
-  // Get initial tab from location state
   const initialTab = (location.state as { tab?: string } | null)?.tab as OverviewTab || 'instance';
   const [activeTab, setActiveTab] = useState<OverviewTab>(initialTab);
 
   const { data: project, isLoading: projectLoading } = useQuery({
-    queryKey: ['project', projectId],
+    queryKey: queryKeys.projects.detail(projectId!),
     queryFn: () => projectsApi.get(projectId!),
     enabled: !!projectId,
   });
 
+  const isRunning = project?.status === 'running';
+
+  // Runtime hook - handles start/stop/restart, logs, monitor
+  const runtime = useProjectRuntime({
+    projectId: projectId!,
+    projectSlug: project?.slug,
+    enabled: !!projectId,
+    refetchLogsInterval: 3000,
+    refetchStatusInterval: isRunning ? 5000 : false,
+  });
+
   const { data: releases = [] } = useQuery({
-    queryKey: ['releases', projectId],
+    queryKey: queryKeys.pipeline.releases(projectId!),
     queryFn: () => pipelineApi.listReleases(projectId!),
     enabled: !!projectId,
   });
 
   const { data: branches = [] } = useQuery({
-    queryKey: ['branches', projectId],
+    queryKey: queryKeys.pipeline.branches(projectId!),
     queryFn: () => pipelineApi.listBranches(projectId!),
     enabled: !!projectId,
   });
 
-  const { data: stats } = useQuery({
-    queryKey: ['runtime-stats', projectId],
-    queryFn: () => runtimeApi.monitor(projectId!),
-    enabled: !!projectId && project?.status === 'running',
-    refetchInterval: project?.status === 'running' ? 5000 : false,
-  });
-
-  const { data: logsData = [] } = useQuery({
-    queryKey: ['logs', projectId],
-    queryFn: () => runtimeApi.logs(projectId!),
-    enabled: !!projectId,
-    refetchInterval: 3000,
-  });
-
   const { data: goals = [] } = useQuery({
-    queryKey: ['project-goals', projectId],
+    queryKey: queryKeys.goals.project(projectId!),
     queryFn: () => goalsApi.listProject(projectId!),
     enabled: !!projectId,
   });
 
   const { data: goalStats = [] } = useQuery({
-    queryKey: ['project-goal-stats', projectId, goals.map(g => g.id)],
+    queryKey: queryKeys.goals.stats(projectId!, goals.map(g => g.id)),
     queryFn: () => goalsApi.getStats({ goalIds: goals.map(g => g.id) }),
     enabled: !!projectId && goals.length > 0,
     refetchInterval: 10000,
   });
 
   const { data: widgets = [] } = useQuery({
-    queryKey: ['project-widgets', projectId],
+    queryKey: queryKeys.widgets.all(projectId!),
     queryFn: () => widgetsApi.list(projectId!),
     enabled: !!projectId,
   });
 
-  // Add Widget Dialog state
+  // Widget Dialog state
   const [addWidgetOpen, setAddWidgetOpen] = useState(false);
   const [selectedGoalId, setSelectedGoalId] = useState<string>('');
   const [selectedVariant, setSelectedVariant] = useState<WidgetVariant>('mini');
 
-  const logs: LogEntry[] = Array.isArray(logsData) ? logsData : [];
-
-  const startMutation = useMutation({
-    mutationFn: (options?: StartOptions) => runtimeApi.start(projectId!, options),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['project', projectId] });
-      queryClient.invalidateQueries({ queryKey: ['projects'] });
-      queryClient.invalidateQueries({ queryKey: ['runtime-status', projectId] });
-      queryClient.invalidateQueries({ queryKey: ['runtime-stats', projectId] });
-      toast.success('Service started');
-    },
-    onError: (err) => {
-      toast.error(err instanceof Error ? err.message : 'Failed to start');
-    },
-  });
-
-  const stopMutation = useMutation({
-    mutationFn: () => runtimeApi.stop(projectId!),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['project', projectId] });
-      queryClient.invalidateQueries({ queryKey: ['projects'] });
-      queryClient.invalidateQueries({ queryKey: ['runtime-status', projectId] });
-      toast.success('Service stopped');
-    },
-    onError: (err) => {
-      toast.error(err instanceof Error ? err.message : 'Failed to stop');
-    },
-  });
-
-  const restartMutation = useMutation({
-    mutationFn: () => runtimeApi.restart(projectId!),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['project', projectId] });
-      queryClient.invalidateQueries({ queryKey: ['projects'] });
-      queryClient.invalidateQueries({ queryKey: ['runtime-status', projectId] });
-      queryClient.invalidateQueries({ queryKey: ['runtime-stats', projectId] });
-      toast.success('Service restarted');
-    },
-    onError: (err) => {
-      toast.error(err instanceof Error ? err.message : 'Failed to restart');
-    },
-  });
+  const logs: LogEntry[] = Array.isArray(runtime.logs) ? runtime.logs : [];
+  const stats = runtime.monitor;
 
   const createWidgetMutation = useMutation({
     mutationFn: (data: CreateWidgetRequest) => widgetsApi.create(projectId!, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['project-widgets', projectId] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.widgets.all(projectId!) });
       setAddWidgetOpen(false);
       setSelectedGoalId('');
       setSelectedVariant('mini');
@@ -204,7 +161,7 @@ export function ProjectDashboard() {
   const deleteWidgetMutation = useMutation({
     mutationFn: (widgetId: string) => widgetsApi.delete(projectId!, widgetId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['project-widgets', projectId] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.widgets.all(projectId!) });
       toast.success('Widget removed');
     },
     onError: (err) => {
@@ -234,15 +191,6 @@ export function ProjectDashboard() {
     }
   };
 
-  const handleDownloadLogs = async () => {
-    try {
-      const blob = await runtimeApi.downloadLogs(projectId!);
-      await downloadBlob(blob, `${project?.slug || projectId}-logs.txt`);
-    } catch (err) {
-      console.error('Failed to download logs:', err);
-    }
-  };
-
   if (projectLoading) {
     return (
       <div className="space-y-4">
@@ -257,11 +205,7 @@ export function ProjectDashboard() {
   }
 
   const publicUrl = `${config.apiURL}/r/${project.slug}`;
-  const isRunning = project.status === 'running';
-  const isPending = startMutation.isPending || stopMutation.isPending || restartMutation.isPending;
 
-
-  // Create goal stats map for quick lookup
   const goalStatsMap = new Map<string, GoalStats>();
   goalStats.forEach((s) => goalStatsMap.set(s.goalID, s));
 
@@ -305,18 +249,18 @@ export function ProjectDashboard() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => restartMutation.mutate()}
-                disabled={isPending}
+                onClick={() => runtime.restart()}
+                disabled={runtime.isPending}
                 className="gap-2"
               >
-                <RotateCcw className={cn("size-4", restartMutation.isPending && "animate-spin")} />
+                <RotateCcw className={cn("size-4", runtime.isRestarting && "animate-spin")} />
                 Restart
               </Button>
               <Button
                 variant="destructive"
                 size="sm"
-                onClick={() => stopMutation.mutate()}
-                disabled={isPending}
+                onClick={() => runtime.stop()}
+                disabled={runtime.isPending}
                 className="gap-2"
               >
                 <Square className="size-4" />
@@ -328,7 +272,7 @@ export function ProjectDashboard() {
               <DropdownMenuTrigger asChild>
                 <Button
                   size="sm"
-                  disabled={isPending || (releases.length === 0 && branches.length === 0)}
+                  disabled={runtime.isPending || (releases.length === 0 && branches.length === 0)}
                   className="gap-2 bg-green-600 hover:bg-green-700"
                 >
                   <Play className="size-4" />
@@ -346,7 +290,7 @@ export function ProjectDashboard() {
                     {releases.slice(0, 5).map((release) => (
                       <DropdownMenuItem
                         key={release.id}
-                        onClick={() => startMutation.mutate({ version: release.version })}
+                        onClick={() => runtime.start({ version: release.version })}
                       >
                         <span className="font-mono">{release.version}</span>
                         {release.tag && (
@@ -375,7 +319,7 @@ export function ProjectDashboard() {
                     {branches.map((branch) => (
                       <DropdownMenuItem
                         key={branch.id}
-                        onClick={() => startMutation.mutate({ branch: branch.name })}
+                        onClick={() => runtime.start({ branch: branch.name })}
                       >
                         <Code className="size-4 mr-2" />
                         {branch.name}
@@ -444,170 +388,170 @@ export function ProjectDashboard() {
           <div className="bg-background rounded-b-xl">
             <div className="border-b" />
             <div className="space-y-6 p-4">
-          {/* Runtime Stats - Row 1 */}
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            <MetricCard
-              label="Uptime"
-              value={isRunning && stats?.uptime_formatted ? stats.uptime_formatted : '--'}
-              subtext={stats?.started_at
-                ? `Since ${new Date(stats.started_at).toLocaleString()}`
-                : 'Service not running'}
-              icon={Clock}
-            />
-            <MetricCard
-              label="Requests"
-              value={isRunning && stats?.total_requests != null
-                ? stats.total_requests.toLocaleString()
-                : '--'}
-              subtext={isRunning && stats?.routes_count
-                ? `${stats.routes_count} route${stats.routes_count !== 1 ? 's' : ''}`
-                : 'No routes'}
-              icon={Zap}
-              sparklineData={stats?.history?.requests}
-              sparklineColor="hsl(var(--primary))"
-            />
-            <MetricCard
-              label="Scheduled Jobs"
-              value={isRunning && stats?.scheduled_jobs != null ? stats.scheduled_jobs : '--'}
-              subtext={isRunning && stats
-                ? stats.scheduler_active ? 'Scheduler active' : 'Scheduler inactive'
-                : 'No data'}
-              icon={Clock}
-              sparklineData={stats?.history?.jobs}
-              sparklineColor="hsl(var(--chart-3))"
-            />
-            <MetricCard
-              label="Storage"
-              value={stats?.storage_bytes != null ? formatBytes(stats.storage_bytes) : '--'}
-              subtext="Project files"
-              icon={HardDrive}
-            />
-          </div>
+              {/* Runtime Stats - Row 1 */}
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                <MetricCard
+                  label="Uptime"
+                  value={isRunning && stats?.uptime_formatted ? stats.uptime_formatted : '--'}
+                  subtext={stats?.started_at
+                    ? `Since ${new Date(stats.started_at).toLocaleString()}`
+                    : 'Service not running'}
+                  icon={Clock}
+                />
+                <MetricCard
+                  label="Requests"
+                  value={isRunning && stats?.total_requests != null
+                    ? stats.total_requests.toLocaleString()
+                    : '--'}
+                  subtext={isRunning && stats?.routes_count
+                    ? `${stats.routes_count} route${stats.routes_count !== 1 ? 's' : ''}`
+                    : 'No routes'}
+                  icon={Zap}
+                  sparklineData={stats?.history?.requests}
+                  sparklineColor="hsl(var(--primary))"
+                />
+                <MetricCard
+                  label="Scheduled Jobs"
+                  value={isRunning && stats?.scheduled_jobs != null ? stats.scheduled_jobs : '--'}
+                  subtext={isRunning && stats
+                    ? stats.scheduler_active ? 'Scheduler active' : 'Scheduler inactive'
+                    : 'No data'}
+                  icon={Clock}
+                  sparklineData={stats?.history?.jobs}
+                  sparklineColor="hsl(var(--chart-3))"
+                />
+                <MetricCard
+                  label="Storage"
+                  value={stats?.storage_bytes != null ? formatBytes(stats.storage_bytes) : '--'}
+                  subtext="Project files"
+                  icon={HardDrive}
+                />
+              </div>
 
-          {/* Runtime Stats - Row 2 */}
-          <div className="grid gap-4 md:grid-cols-3">
-            <MetricCard
-              label="Database"
-              value={stats?.database_bytes != null ? formatBytes(stats.database_bytes) : '--'}
-              subtext="Collections data"
-              icon={Database}
-            />
-            <MetricCard
-              label="Memory"
-              value={isRunning && stats?.memory?.alloc != null ? formatBytes(stats.memory.alloc) : '--'}
-              subtext="Current usage"
-              icon={MemoryStick}
-              sparklineData={stats?.history?.memory}
-              sparklineColor="hsl(var(--chart-2))"
-            />
-            <MetricCard
-              label="CPU"
-              value={stats?.cpu_percent != null ? `${stats.cpu_percent.toFixed(1)}%` : '--'}
-              subtext="Process usage"
-              icon={Cpu}
-              sparklineData={stats?.history?.cpu}
-              sparklineColor="hsl(var(--chart-4))"
-            />
-          </div>
+              {/* Runtime Stats - Row 2 */}
+              <div className="grid gap-4 md:grid-cols-3">
+                <MetricCard
+                  label="Database"
+                  value={stats?.database_bytes != null ? formatBytes(stats.database_bytes) : '--'}
+                  subtext="Collections data"
+                  icon={Database}
+                />
+                <MetricCard
+                  label="Memory"
+                  value={isRunning && stats?.memory?.alloc != null ? formatBytes(stats.memory.alloc) : '--'}
+                  subtext="Current usage"
+                  icon={MemoryStick}
+                  sparklineData={stats?.history?.memory}
+                  sparklineColor="hsl(var(--chart-2))"
+                />
+                <MetricCard
+                  label="CPU"
+                  value={stats?.cpu_percent != null ? `${stats.cpu_percent.toFixed(1)}%` : '--'}
+                  subtext="Process usage"
+                  icon={Cpu}
+                  sparklineData={stats?.history?.cpu}
+                  sparklineColor="hsl(var(--chart-4))"
+                />
+              </div>
 
-          {/* Project Info Cards */}
-          <div className="grid gap-4 md:grid-cols-2">
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">Public URL</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <a
-                  href={publicUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-2 text-primary hover:underline"
-                >
-                  <span className="font-mono text-sm truncate">/r/{project.slug}</span>
-                  <ExternalLink className="size-4 shrink-0" />
-                </a>
-              </CardContent>
-            </Card>
+              {/* Project Info Cards */}
+              <div className="grid gap-4 md:grid-cols-2">
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-medium">Public URL</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <a
+                      href={publicUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2 text-primary hover:underline"
+                    >
+                      <span className="font-mono text-sm truncate">/r/{project.slug}</span>
+                      <ExternalLink className="size-4 shrink-0" />
+                    </a>
+                  </CardContent>
+                </Card>
 
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">API Key</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center gap-2">
-                  <Key className="size-4 text-muted-foreground shrink-0" />
-                  <code className="text-sm truncate flex-1 font-mono">
-                    {project.apiKey?.slice(0, 12)}...
-                  </code>
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-medium">API Key</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex items-center gap-2">
+                      <Key className="size-4 text-muted-foreground shrink-0" />
+                      <code className="text-sm truncate flex-1 font-mono">
+                        {project.apiKey?.slice(0, 12)}...
+                      </code>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="size-8 shrink-0"
+                        onClick={copyApiKey}
+                      >
+                        {copied ? (
+                          <Check className="size-4 text-green-500" />
+                        ) : (
+                          <Copy className="size-4" />
+                        )}
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Widgets Section */}
+              <div>
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-lg font-semibold">Widgets</h2>
                   <Button
-                    variant="ghost"
-                    size="icon"
-                    className="size-8 shrink-0"
-                    onClick={copyApiKey}
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setAddWidgetOpen(true)}
+                    disabled={goals.length === 0}
                   >
-                    {copied ? (
-                      <Check className="size-4 text-green-500" />
-                    ) : (
-                      <Copy className="size-4" />
-                    )}
+                    <Plus className="mr-1.5 size-4" />
+                    Add Widget
                   </Button>
                 </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Widgets Section */}
-          <div>
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold">Widgets</h2>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setAddWidgetOpen(true)}
-                disabled={goals.length === 0}
-              >
-                <Plus className="mr-1.5 size-4" />
-                Add Widget
-              </Button>
-            </div>
-            {widgets.length > 0 ? (
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {widgets.map((widget) => {
-                  const goal = goals.find(g => g.id === widget.goalId);
-                  const stat = goal ? goalStatsMap.get(goal.id) : undefined;
-                  if (!goal) return null;
-                  return (
-                    <WidgetCard
-                      key={widget.id}
-                      widget={widget}
-                      goal={goal}
-                      stats={stat}
-                      onDelete={() => deleteWidgetMutation.mutate(widget.id)}
-                    />
-                  );
-                })}
+                {widgets.length > 0 ? (
+                  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                    {widgets.map((widget) => {
+                      const goal = goals.find(g => g.id === widget.goalId);
+                      const stat = goal ? goalStatsMap.get(goal.id) : undefined;
+                      if (!goal) return null;
+                      return (
+                        <WidgetCard
+                          key={widget.id}
+                          widget={widget}
+                          goal={goal}
+                          stats={stat}
+                          onDelete={() => deleteWidgetMutation.mutate(widget.id)}
+                        />
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <Card>
+                    <CardContent className="flex flex-col items-center justify-center py-8">
+                      <LayoutGrid className="size-10 text-muted-foreground mb-3" />
+                      <p className="text-muted-foreground text-center text-sm">
+                        {goals.length === 0
+                          ? 'Create goals first to add widgets.'
+                          : 'No widgets added. Add widgets to display goal metrics.'}
+                      </p>
+                      {goals.length === 0 && (
+                        <Button variant="outline" size="sm" className="mt-3" asChild>
+                          <Link to={`/projects/${projectId}/goals`}>
+                            Create Goals
+                          </Link>
+                        </Button>
+                      )}
+                    </CardContent>
+                  </Card>
+                )}
               </div>
-            ) : (
-              <Card>
-                <CardContent className="flex flex-col items-center justify-center py-8">
-                  <LayoutGrid className="size-10 text-muted-foreground mb-3" />
-                  <p className="text-muted-foreground text-center text-sm">
-                    {goals.length === 0
-                      ? 'Create goals first to add widgets.'
-                      : 'No widgets added. Add widgets to display goal metrics.'}
-                  </p>
-                  {goals.length === 0 && (
-                    <Button variant="outline" size="sm" className="mt-3" asChild>
-                      <Link to={`/projects/${projectId}/goals`}>
-                        Create Goals
-                      </Link>
-                    </Button>
-                  )}
-                </CardContent>
-              </Card>
-            )}
             </div>
-          </div>
           </div>
         )}
 
@@ -616,7 +560,7 @@ export function ProjectDashboard() {
           <Card className="flex flex-col gap-0 rounded-t-none py-0 overflow-hidden">
             <LogsViewer
               logs={logs}
-              onDownload={handleDownloadLogs}
+              onDownload={runtime.downloadLogs}
             />
           </Card>
         )}
@@ -633,7 +577,6 @@ export function ProjectDashboard() {
           </DialogHeader>
 
           <div className="space-y-4 py-4">
-            {/* Goal Selection */}
             <div className="space-y-2">
               <Label>Goal</Label>
               <Select value={selectedGoalId} onValueChange={setSelectedGoalId}>
@@ -659,7 +602,6 @@ export function ProjectDashboard() {
               </Select>
             </div>
 
-            {/* Variant Selection */}
             <div className="space-y-2">
               <Label>Display Variant</Label>
               <RadioGroup
