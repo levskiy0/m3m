@@ -127,70 +127,65 @@ export function ModelsPage() {
         />
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {models.map((model) => (
-            <Card key={model.id} className="group">
-              <CardHeader className="pb-2">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <CardTitle className="text-lg">{model.name}</CardTitle>
-                    <CardDescription className="font-mono text-xs">
-                      {model.slug}
-                    </CardDescription>
+          {models.map((model) => {
+            const hasSchema = model.fields.length > 1;
+            const targetPath = hasSchema
+              ? `/projects/${projectId}/models/${model.id}/data`
+              : `/projects/${projectId}/models/${model.id}/schema`;
+
+            return (
+              <Card
+                key={model.id}
+                className="group cursor-pointer transition-colors hover:bg-muted/50"
+                onClick={() => navigate(targetPath)}
+              >
+                <CardHeader className="pb-2">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <CardTitle className="text-lg">{model.name}</CardTitle>
+                      <CardDescription className="font-mono text-xs">
+                        {model.slug}
+                      </CardDescription>
+                    </div>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                        <Button variant="ghost" size="icon" className="size-8">
+                          <MoreHorizontal className="size-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem asChild>
+                          <Link to={`/projects/${projectId}/models/${model.id}/schema`}>
+                            <Settings className="mr-2 size-4" />
+                            Edit Schema
+                          </Link>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem asChild>
+                          <Link to={`/projects/${projectId}/models/${model.id}/data`}>
+                            <Table className="mr-2 size-4" />
+                            View Data
+                          </Link>
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          className="text-destructive"
+                          onClick={() => deleteDialog.open(model.id)}
+                        >
+                          <Trash2 className="mr-2 size-4" />
+                          Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="size-8">
-                        <MoreHorizontal className="size-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem asChild>
-                        <Link to={`/projects/${projectId}/models/${model.id}/schema`}>
-                          <Settings className="mr-2 size-4" />
-                          Edit Schema
-                        </Link>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem asChild>
-                        <Link to={`/projects/${projectId}/models/${model.id}/data`}>
-                          <Table className="mr-2 size-4" />
-                          View Data
-                        </Link>
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem
-                        className="text-destructive"
-                        onClick={() => deleteDialog.open(model.id)}
-                      >
-                        <Trash2 className="mr-2 size-4" />
-                        Delete
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center gap-2">
+                </CardHeader>
+                <CardContent>
                   <Badge variant="secondary">
                     {model.fields.length} fields
                   </Badge>
-                </div>
-                <div className="mt-3 flex gap-2">
-                  <Button asChild variant="outline" size="sm" className="flex-1">
-                    <Link to={`/projects/${projectId}/models/${model.id}/schema`}>
-                      <Settings className="mr-2 size-4" />
-                      Schema
-                    </Link>
-                  </Button>
-                  <Button asChild size="sm" className="flex-1">
-                    <Link to={`/projects/${projectId}/models/${model.id}/data`}>
-                      <Table className="mr-2 size-4" />
-                      Data
-                    </Link>
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       )}
 

@@ -76,7 +76,7 @@ export function DataTable({
   }, [visibleColumns, visibleSystemColumns, getColumnWidth]);
 
   return (
-    <div className="rounded-md border overflow-x-auto">
+    <div className="rounded-md border overflow-x-auto dark:bg-zinc-950">
       <Table
         className="table-fixed"
         style={{ width: tableWidth, minWidth: tableWidth }}
