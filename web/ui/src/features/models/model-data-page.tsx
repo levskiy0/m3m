@@ -494,7 +494,11 @@ export function ModelDataPage() {
       {hasSearchable && (
         <div className="flex items-center gap-2">
           <div className="relative flex-1 max-w-sm">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+            {isFetching && searchQuery ? (
+              <Loader2 className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground animate-spin" />
+            ) : (
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+            )}
             <Input
               ref={searchInputRef}
               placeholder={`Search in ${tableConfig.searchable?.join(', ')}...`}
