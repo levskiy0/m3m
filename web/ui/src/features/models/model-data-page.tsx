@@ -449,7 +449,8 @@ export function ModelDataPage() {
     setPage(1);
   };
 
-  const isLoading = modelLoading || dataLoading;
+  // Only show loading skeleton on initial load, not during search/filter
+  const isLoading = modelLoading || (dataLoading && !dataResponse);
   const data = dataResponse?.data || [];
   const totalPages = dataResponse?.totalPages || 1;
   const hasSearchable = (tableConfig.searchable?.length || 0) > 0;
