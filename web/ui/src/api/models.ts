@@ -102,4 +102,15 @@ export const modelsApi = {
   ): Promise<void> => {
     return api.delete(`/api/projects/${projectId}/models/${modelId}/data/${dataId}`);
   },
+
+  bulkDeleteData: async (
+    projectId: string,
+    modelId: string,
+    ids: string[]
+  ): Promise<{ deleted_count: number }> => {
+    return api.post<{ deleted_count: number }>(
+      `/api/projects/${projectId}/models/${modelId}/data/bulk-delete`,
+      { ids }
+    );
+  },
 };

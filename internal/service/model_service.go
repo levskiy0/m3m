@@ -230,6 +230,16 @@ func (s *ModelService) DeleteData(ctx context.Context, modelID, dataID primitive
 	return s.modelRepo.DeleteData(ctx, model, dataID)
 }
 
+// DeleteManyData deletes multiple data records by their IDs
+func (s *ModelService) DeleteManyData(ctx context.Context, modelID primitive.ObjectID, dataIDs []primitive.ObjectID) (int64, error) {
+	model, err := s.modelRepo.FindByID(ctx, modelID)
+	if err != nil {
+		return 0, err
+	}
+
+	return s.modelRepo.DeleteManyData(ctx, model, dataIDs)
+}
+
 func (s *ModelService) applyDefaults(model *domain.Model, data map[string]interface{}) map[string]interface{} {
 	result := make(map[string]interface{})
 

@@ -41,6 +41,7 @@ func (h *ModelHandler) Register(r *gin.RouterGroup, authMiddleware *middleware.A
 		models.GET("/:modelId/data/:dataId", h.GetData)
 		models.PUT("/:modelId/data/:dataId", h.UpdateData)
 		models.DELETE("/:modelId/data/:dataId", h.DeleteData)
+		models.POST("/:modelId/data/bulk-delete", h.BulkDeleteData) // Bulk delete
 	}
 }
 
@@ -416,4 +417,48 @@ func (h *ModelHandler) DeleteData(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "data deleted successfully"})
+}
+
+// BulkDeleteData deletes multiple data records by their IDs
+func (h *ModelHandler) BulkDeleteData(c *gin.Context) {
+	_, ok := h.checkAccess(c)
+	if !ok {
+		return
+	}
+
+	modelID, err := primitive.ObjectIDFromHex(c.Param("modelId"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid model id"})
+		return
+	}
+
+	var req struct {
+		IDs []string `json:"ids" binding:"required,min=1"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Convert string IDs to ObjectIDs
+	objectIDs := make([]primitive.ObjectID, 0, len(req.IDs))
+	for _, idStr := range req.IDs {
+		id, err := primitive.ObjectIDFromHex(idStr)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid data id: " + idStr})
+			return
+		}
+		objectIDs = append(objectIDs, id)
+	}
+
+	deletedCount, err := h.modelService.DeleteManyData(c.Request.Context(), modelID, objectIDs)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message":       "data deleted successfully",
+		"deleted_count": deletedCount,
+	})
 }

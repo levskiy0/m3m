@@ -236,6 +236,18 @@ func (r *ModelRepository) DeleteData(ctx context.Context, model *domain.Model, i
 	return nil
 }
 
+// DeleteManyData deletes multiple documents by their IDs
+func (r *ModelRepository) DeleteManyData(ctx context.Context, model *domain.Model, ids []primitive.ObjectID) (int64, error) {
+	collectionName := r.dataCollectionName(model.ProjectID, model.Slug)
+	collection := r.db.Collection(collectionName)
+
+	result, err := collection.DeleteMany(ctx, bson.M{"_id": bson.M{"$in": ids}})
+	if err != nil {
+		return 0, err
+	}
+	return result.DeletedCount, nil
+}
+
 func (r *ModelRepository) DropDataCollection(ctx context.Context, model *domain.Model) error {
 	collectionName := r.dataCollectionName(model.ProjectID, model.Slug)
 	return r.db.Collection(collectionName).Drop(ctx)

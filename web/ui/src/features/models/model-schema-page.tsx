@@ -23,7 +23,7 @@ import { CSS } from '@dnd-kit/utilities';
 
 import { modelsApi } from '@/api';
 import { FIELD_TYPES } from '@/lib/constants';
-import type { ModelField, FieldType, TableConfig, FormConfig } from '@/types';
+import type { ModelField, FieldType, TableConfig, FormConfig, Model } from '@/types';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -162,9 +162,11 @@ interface SortableSchemaFieldProps {
   field: ModelField;
   onUpdate: (updates: Partial<ModelField>) => void;
   onRemove: () => void;
+  models: Model[];
+  currentModelId?: string;
 }
 
-function SortableSchemaField({ id, field, onUpdate, onRemove }: SortableSchemaFieldProps) {
+function SortableSchemaField({ id, field, onUpdate, onRemove, models, currentModelId }: SortableSchemaFieldProps) {
   const {
     attributes,
     listeners,
@@ -178,6 +180,9 @@ function SortableSchemaField({ id, field, onUpdate, onRemove }: SortableSchemaFi
     transform: CSS.Transform.toString(transform),
     transition,
   };
+
+  // Filter out current model from ref options
+  const availableModels = models.filter(m => m.id !== currentModelId);
 
   return (
     <div
@@ -211,7 +216,14 @@ function SortableSchemaField({ id, field, onUpdate, onRemove }: SortableSchemaFi
           <FieldLabel>Type</FieldLabel>
           <Select
             value={field.type}
-            onValueChange={(v) => onUpdate({ type: v as FieldType })}
+            onValueChange={(v) => {
+              const updates: Partial<ModelField> = { type: v as FieldType };
+              // Clear refModel when switching away from ref type
+              if (v !== 'ref') {
+                updates.refModel = undefined;
+              }
+              onUpdate(updates);
+            }}
           >
             <SelectTrigger>
               <SelectValue />
@@ -225,14 +237,35 @@ function SortableSchemaField({ id, field, onUpdate, onRemove }: SortableSchemaFi
             </SelectContent>
           </Select>
         </Field>
-        <Field>
-          <FieldLabel>Default Value</FieldLabel>
-          <DefaultValueInput
-            type={field.type}
-            value={field.default_value}
-            onChange={(value) => onUpdate({ default_value: value })}
-          />
-        </Field>
+        {field.type === 'ref' ? (
+          <Field>
+            <FieldLabel>Reference Model</FieldLabel>
+            <Select
+              value={field.refModel || ''}
+              onValueChange={(v) => onUpdate({ refModel: v })}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select model" />
+              </SelectTrigger>
+              <SelectContent>
+                {availableModels.map((m) => (
+                  <SelectItem key={m.id} value={m.slug}>
+                    {m.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </Field>
+        ) : (
+          <Field>
+            <FieldLabel>Default Value</FieldLabel>
+            <DefaultValueInput
+              type={field.type}
+              value={field.default_value}
+              onChange={(value) => onUpdate({ default_value: value })}
+            />
+          </Field>
+        )}
         <Field>
           <FieldLabel>Required</FieldLabel>
           <div className="flex items-center h-10">
@@ -292,6 +325,13 @@ export function ModelSchemaPage() {
     queryKey: ['model', projectId, modelId],
     queryFn: () => modelsApi.get(projectId!, modelId!),
     enabled: !!projectId && !!modelId,
+  });
+
+  // Fetch all models for ref field selection
+  const { data: allModels = [] } = useQuery({
+    queryKey: ['models', projectId],
+    queryFn: () => modelsApi.list(projectId!),
+    enabled: !!projectId,
   });
 
   useEffect(() => {
@@ -566,6 +606,8 @@ export function ModelSchemaPage() {
                           field={field}
                           onUpdate={(updates) => updateField(index, updates)}
                           onRemove={() => removeField(index)}
+                          models={allModels}
+                          currentModelId={modelId}
                         />
                       ))}
                     </div>
