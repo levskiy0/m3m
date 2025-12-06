@@ -409,8 +409,8 @@ export function ModelDataPage() {
     // Initialize form with default values
     const defaults: Record<string, unknown> = {};
     model?.fields.forEach((field) => {
-      if (field.defaultValue !== undefined) {
-        defaults[field.key] = field.defaultValue;
+      if (field.default_value !== undefined) {
+        defaults[field.key] = field.default_value;
       }
     });
     setFormData(defaults);

@@ -229,8 +229,8 @@ function SortableSchemaField({ id, field, onUpdate, onRemove }: SortableSchemaFi
           <FieldLabel>Default Value</FieldLabel>
           <DefaultValueInput
             type={field.type}
-            value={field.defaultValue}
-            onChange={(value) => onUpdate({ defaultValue: value })}
+            value={field.default_value}
+            onChange={(value) => onUpdate({ default_value: value })}
           />
         </Field>
         <Field>
