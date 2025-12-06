@@ -72,6 +72,7 @@ import { ConfirmDialog } from '@/components/shared/confirm-dialog';
 import { EmptyState } from '@/components/shared/empty-state';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { DatePicker, DateTimePicker } from '@/components/ui/datetime-picker';
 
 interface FieldInputProps {
   field: ModelField;
@@ -169,18 +170,16 @@ function FieldInput({ field, value, onChange, view }: FieldInputProps) {
       );
     case 'date':
       return (
-        <Input
-          type="date"
-          value={(value as string) || ''}
-          onChange={(e) => onChange(e.target.value)}
+        <DatePicker
+          value={(value as string) || undefined}
+          onChange={(v) => onChange(v || '')}
         />
       );
     case 'datetime':
       return (
-        <Input
-          type="datetime-local"
-          value={(value as string) || ''}
-          onChange={(e) => onChange(e.target.value)}
+        <DateTimePicker
+          value={(value as string) || undefined}
+          onChange={(v) => onChange(v || '')}
         />
       );
     default:
@@ -738,6 +737,9 @@ export function ModelDataPage() {
                   }
                   view={formConfig.field_views[field.key]}
                 />
+                {fieldErrors[field.key] && (
+                  <p className="text-sm text-destructive mt-1">{fieldErrors[field.key]}</p>
+                )}
               </Field>
             ))}
           </FieldGroup>
@@ -776,6 +778,9 @@ export function ModelDataPage() {
                   }
                   view={formConfig.field_views[field.key]}
                 />
+                {fieldErrors[field.key] && (
+                  <p className="text-sm text-destructive mt-1">{fieldErrors[field.key]}</p>
+                )}
               </Field>
             ))}
           </FieldGroup>
