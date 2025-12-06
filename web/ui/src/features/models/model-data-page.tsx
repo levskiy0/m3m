@@ -6,8 +6,6 @@ import {
   Trash2,
   Edit,
   Settings,
-  ChevronLeft,
-  ChevronRight,
   Search,
   ArrowUpDown,
   ArrowUp,
@@ -34,7 +32,7 @@ const SYSTEM_FIELD_LABELS: Record<SystemField, string> = {
 };
 
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import {
   Select,
   SelectContent,
@@ -869,14 +867,13 @@ export function ModelDataPage() {
         <ResizablePanelGroup direction="horizontal" className="h-full">
           {/* Table Panel */}
           <ResizablePanel defaultSize={panelMode === 'closed' ? 100 : 60} minSize={40}>
-            <Card className="h-full flex flex-col overflow-hidden">
-              <CardContent className="p-0 h-full flex flex-col overflow-hidden">
-                {data.length === 0 ? (
-                  searchQuery || activeFilters.length > 0 ? (
+            <div className="h-full flex flex-col">
+              {data.length === 0 ? (
+                <div className="flex-1 flex items-center justify-center border rounded-md">
+                  {searchQuery || activeFilters.length > 0 ? (
                     <EmptyState
                       title="No results found"
                       description={searchQuery ? `No records match "${searchQuery}"` : "No records match the current filters"}
-                      className="py-12"
                     />
                   ) : (
                     <EmptyState
@@ -888,15 +885,16 @@ export function ModelDataPage() {
                           Create Record
                         </Button>
                       }
-                      className="py-12"
                     />
-                  )
-                ) : (
-                  <Table wrapperClassName="h-[calc(100vh-371px)] overflow-auto [&_thead]:sticky [&_thead]:top-0 [&_thead]:z-10 [&_thead]:bg-card">
+                  )}
+                </div>
+              ) : (
+                <div className="overflow-hidden rounded-md border">
+                  <Table wrapperClassName="h-[calc(100vh-325px)] overflow-auto [&_thead]:sticky [&_thead]:top-0 [&_thead]:z-10 [&_thead]:bg-background">
                       <TableHeader>
                         <TableRow>
                           {/* Checkbox column */}
-                          <TableHead className="w-12 min-w-12 bg-card">
+                          <TableHead className="w-12 min-w-12 bg-background">
                             <Checkbox
                               checked={allSelected}
                               onCheckedChange={handleSelectAll}
@@ -909,7 +907,7 @@ export function ModelDataPage() {
                             return (
                               <TableHead
                                 key={field.key}
-                                className={`whitespace-nowrap bg-card ${isSortable ? 'cursor-pointer select-none hover:bg-muted/50' : ''}`}
+                                className={`whitespace-nowrap bg-background ${isSortable ? 'cursor-pointer select-none hover:bg-muted/50' : ''}`}
                                 onClick={() => isSortable && handleSort(field.key)}
                               >
                                 <div className="flex items-center gap-2">
@@ -991,51 +989,58 @@ export function ModelDataPage() {
                         ))}
                       </TableBody>
                     </Table>
+                  </div>
                 )}
 
                 {/* Pagination */}
-                <div className="flex items-center justify-between p-4 border-t shrink-0">
-                  <Select
-                    value={limit.toString()}
-                    onValueChange={(v) => {
-                      setLimit(parseInt(v));
-                      setPage(1);
-                    }}
-                  >
-                    <SelectTrigger className="w-32">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="10">10 per page</SelectItem>
-                      <SelectItem value="25">25 per page</SelectItem>
-                      <SelectItem value="50">50 per page</SelectItem>
-                      <SelectItem value="100">100 per page</SelectItem>
-                    </SelectContent>
-                  </Select>
+                <div className="flex items-center justify-between py-4">
                   <div className="flex items-center gap-2">
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={() => setPage(page - 1)}
-                      disabled={page === 1}
-                    >
-                      <ChevronLeft className="size-4" />
-                    </Button>
-                    <span className="text-sm">
-                      Page {page} of {totalPages || 1}
+                    <span className="text-sm text-muted-foreground">
+                      {selectedIds.size > 0 ? `${selectedIds.size} of ${total} selected` : `${total} rows`}
                     </span>
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={() => setPage(page + 1)}
-                      disabled={page >= totalPages}
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <Select
+                      value={limit.toString()}
+                      onValueChange={(v) => {
+                        setLimit(parseInt(v));
+                        setPage(1);
+                      }}
                     >
-                      <ChevronRight className="size-4" />
-                    </Button>
+                      <SelectTrigger className="w-[100px]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="10">10</SelectItem>
+                        <SelectItem value="25">25</SelectItem>
+                        <SelectItem value="50">50</SelectItem>
+                        <SelectItem value="100">100</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setPage(page - 1)}
+                        disabled={page === 1}
+                      >
+                        Previous
+                      </Button>
+                      <span className="text-sm">
+                        {page} / {totalPages || 1}
+                      </span>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setPage(page + 1)}
+                        disabled={page >= totalPages}
+                      >
+                        Next
+                      </Button>
+                    </div>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
           </ResizablePanel>
 
           {/* Side Panel */}
