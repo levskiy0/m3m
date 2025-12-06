@@ -447,6 +447,7 @@ export function ModelDataPage() {
       editData[field.key] = data[field.key];
     });
     setFormData(editData);
+    setFieldErrors({});
     setEditOpen(true);
   };
 
