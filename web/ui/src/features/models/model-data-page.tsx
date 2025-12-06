@@ -19,6 +19,16 @@ import { toast } from 'sonner';
 
 import { modelsApi } from '@/api';
 import type { ModelData, ModelField, FieldType, FormConfig, TableConfig, FieldView } from '@/types';
+
+// System fields that can be displayed in tables and views
+const SYSTEM_FIELDS = ['_id', '_created_at', '_updated_at'] as const;
+type SystemField = typeof SYSTEM_FIELDS[number];
+
+const SYSTEM_FIELD_LABELS: Record<SystemField, string> = {
+  '_id': 'ID',
+  '_created_at': 'Created At',
+  '_updated_at': 'Updated At',
+};
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import {
@@ -208,6 +218,22 @@ function formatCellValue(value: unknown, type: FieldType): string {
   return str.length > 50 ? str.slice(0, 50) + '...' : str;
 }
 
+function formatSystemFieldValue(key: SystemField, value: unknown): string {
+  if (value === null || value === undefined) return '-';
+  if (key === '_id') {
+    const str = String(value);
+    return str.length > 24 ? str.slice(0, 24) + '...' : str;
+  }
+  if (key === '_created_at' || key === '_updated_at') {
+    return new Date(value as string).toLocaleString();
+  }
+  return String(value);
+}
+
+function isSystemField(key: string): key is SystemField {
+  return SYSTEM_FIELDS.includes(key as SystemField);
+}
+
 export function ModelDataPage() {
   const { projectId, modelId } = useParams<{ projectId: string; modelId: string }>();
   const queryClient = useQueryClient();
@@ -281,14 +307,20 @@ export function ModelDataPage() {
     staleTime: 0, // Always refetch on parameter change
   });
 
-  // Get visible columns based on tableConfig
+  // Get visible columns based on tableConfig (regular fields)
   const visibleColumns = useMemo(() => {
     if (!model) return [];
     const fieldMap = new Map(model.fields.map(f => [f.key, f]));
     return tableConfig.columns
+      .filter(key => !isSystemField(key))
       .map(key => fieldMap.get(key))
       .filter((f): f is ModelField => f !== undefined);
   }, [model, tableConfig]);
+
+  // Get visible system columns based on tableConfig
+  const visibleSystemColumns = useMemo(() => {
+    return tableConfig.columns.filter(key => isSystemField(key)) as SystemField[];
+  }, [tableConfig]);
 
   // Get ordered fields for forms based on formConfig
   const orderedFormFields = useMemo(() => {
@@ -509,6 +541,11 @@ export function ModelDataPage() {
                         </TableHead>
                       );
                     })}
+                    {visibleSystemColumns.map((key) => (
+                      <TableHead key={key} className="text-muted-foreground">
+                        {SYSTEM_FIELD_LABELS[key]}
+                      </TableHead>
+                    ))}
                     <TableHead className="w-12"></TableHead>
                   </TableRow>
                 </TableHeader>
@@ -518,6 +555,11 @@ export function ModelDataPage() {
                       {visibleColumns.map((field) => (
                         <TableCell key={field.key}>
                           {formatCellValue(row[field.key], field.type)}
+                        </TableCell>
+                      ))}
+                      {visibleSystemColumns.map((key) => (
+                        <TableCell key={key} className="text-muted-foreground text-xs font-mono">
+                          {formatSystemFieldValue(key, row[key])}
                         </TableCell>
                       ))}
                       <TableCell>
