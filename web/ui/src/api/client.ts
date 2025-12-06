@@ -22,20 +22,38 @@ export class ApiClient {
     this.baseURL = baseURL;
   }
 
+  private getAuthHeaders(): HeadersInit {
+    const token = getToken();
+    const headers: Record<string, string> = {};
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+    return headers;
+  }
+
+  private async handleErrorResponse(response: Response): Promise<never> {
+    if (response.status === 401) {
+      removeToken();
+      window.location.href = '/login';
+      throw new Error('Unauthorized');
+    }
+
+    const error: ApiError = await response.json().catch(() => ({
+      error: 'Unknown error',
+    }));
+
+    throw new Error(error.message || error.error || 'Request failed');
+  }
+
   private async request<T>(
     endpoint: string,
     options: RequestInit = {}
   ): Promise<T> {
-    const token = getToken();
-
     const headers: HeadersInit = {
       'Content-Type': 'application/json',
+      ...this.getAuthHeaders(),
       ...options.headers,
     };
-
-    if (token) {
-      (headers as Record<string, string>)['Authorization'] = `Bearer ${token}`;
-    }
 
     const response = await fetch(`${this.baseURL}${endpoint}`, {
       ...options,
@@ -43,17 +61,7 @@ export class ApiClient {
     });
 
     if (!response.ok) {
-      if (response.status === 401) {
-        removeToken();
-        window.location.href = '/login';
-        throw new Error('Unauthorized');
-      }
-
-      const error: ApiError = await response.json().catch(() => ({
-        error: 'Unknown error',
-      }));
-
-      throw new Error(error.message || error.error || 'Request failed');
+      return this.handleErrorResponse(response);
     }
 
     if (response.status === 204) {
@@ -68,25 +76,13 @@ export class ApiClient {
   }
 
   async getText(endpoint: string): Promise<string> {
-    const token = getToken();
-
-    const headers: HeadersInit = {};
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
-    }
-
     const response = await fetch(`${this.baseURL}${endpoint}`, {
       method: 'GET',
-      headers,
+      headers: this.getAuthHeaders(),
     });
 
     if (!response.ok) {
-      if (response.status === 401) {
-        removeToken();
-        window.location.href = '/login';
-        throw new Error('Unauthorized');
-      }
-      throw new Error('Request failed');
+      return this.handleErrorResponse(response);
     }
 
     return response.text();
@@ -107,33 +103,17 @@ export class ApiClient {
   }
 
   async putText(endpoint: string, text: string): Promise<void> {
-    const token = getToken();
-
-    const headers: HeadersInit = {
-      'Content-Type': 'text/plain',
-    };
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
-    }
-
     const response = await fetch(`${this.baseURL}${endpoint}`, {
       method: 'PUT',
-      headers,
+      headers: {
+        'Content-Type': 'text/plain',
+        ...this.getAuthHeaders(),
+      },
       body: text,
     });
 
     if (!response.ok) {
-      if (response.status === 401) {
-        removeToken();
-        window.location.href = '/login';
-        throw new Error('Unauthorized');
-      }
-
-      const error = await response.json().catch(() => ({
-        error: 'Unknown error',
-      }));
-
-      throw new Error(error.message || error.error || 'Request failed');
+      return this.handleErrorResponse(response);
     }
   }
 
@@ -142,48 +122,26 @@ export class ApiClient {
   }
 
   async upload<T>(endpoint: string, file: File, fieldName: string = 'file'): Promise<T> {
-    const token = getToken();
     const formData = new FormData();
     formData.append(fieldName, file);
 
-    const headers: HeadersInit = {};
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
-    }
-
     const response = await fetch(`${this.baseURL}${endpoint}`, {
       method: 'POST',
-      headers,
+      headers: this.getAuthHeaders(),
       body: formData,
     });
 
     if (!response.ok) {
-      if (response.status === 401) {
-        removeToken();
-        window.location.href = '/login';
-        throw new Error('Unauthorized');
-      }
-
-      const error: ApiError = await response.json().catch(() => ({
-        error: 'Unknown error',
-      }));
-
-      throw new Error(error.message || error.error || 'Upload failed');
+      return this.handleErrorResponse(response);
     }
 
     return response.json();
   }
 
   async download(endpoint: string): Promise<Blob> {
-    const token = getToken();
-    const headers: HeadersInit = {};
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
-    }
-
     const response = await fetch(`${this.baseURL}${endpoint}`, {
       method: 'GET',
-      headers,
+      headers: this.getAuthHeaders(),
     });
 
     if (!response.ok) {

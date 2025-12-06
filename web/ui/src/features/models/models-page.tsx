@@ -5,6 +5,8 @@ import { Plus, Database, Settings, Table, Trash2, MoreHorizontal } from 'lucide-
 import { toast } from 'sonner';
 
 import { modelsApi } from '@/api';
+import { queryKeys } from '@/lib/query-keys';
+import { useAutoSlug, useDeleteDialog } from '@/hooks';
 import type { CreateModelRequest, ModelField } from '@/types';
 import { Button } from '@/components/ui/button';
 import {
@@ -33,9 +35,9 @@ import { Input } from '@/components/ui/input';
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { ConfirmDialog } from '@/components/shared/confirm-dialog';
 import { EmptyState } from '@/components/shared/empty-state';
+import { PageHeader } from '@/components/shared/page-header';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
-import { slugify } from '@/lib/utils';
 
 export function ModelsPage() {
   const { projectId } = useParams<{ projectId: string }>();
@@ -43,15 +45,11 @@ export function ModelsPage() {
   const queryClient = useQueryClient();
 
   const [createOpen, setCreateOpen] = useState(false);
-  const [deleteOpen, setDeleteOpen] = useState(false);
-  const [modelToDelete, setModelToDelete] = useState<string | null>(null);
-
-  const [name, setName] = useState('');
-  const [slug, setSlug] = useState('');
-  const [slugEdited, setSlugEdited] = useState(false);
+  const deleteDialog = useDeleteDialog<string>();
+  const { name, slug, setName, setSlug, reset: resetSlug } = useAutoSlug({ separator: '_' });
 
   const { data: models = [], isLoading } = useQuery({
-    queryKey: ['models', projectId],
+    queryKey: queryKeys.models.all(projectId!),
     queryFn: () => modelsApi.list(projectId!),
     enabled: !!projectId,
   });
@@ -59,9 +57,9 @@ export function ModelsPage() {
   const createMutation = useMutation({
     mutationFn: (data: CreateModelRequest) => modelsApi.create(projectId!, data),
     onSuccess: (model) => {
-      queryClient.invalidateQueries({ queryKey: ['models', projectId] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.models.all(projectId!) });
       setCreateOpen(false);
-      resetForm();
+      resetSlug();
       toast.success('Model created');
       navigate(`/projects/${projectId}/models/${model.id}/schema`);
     },
@@ -73,9 +71,8 @@ export function ModelsPage() {
   const deleteMutation = useMutation({
     mutationFn: (modelId: string) => modelsApi.delete(projectId!, modelId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['models', projectId] });
-      setDeleteOpen(false);
-      setModelToDelete(null);
+      queryClient.invalidateQueries({ queryKey: queryKeys.models.all(projectId!) });
+      deleteDialog.close();
       toast.success('Model deleted');
     },
     onError: (err) => {
@@ -83,21 +80,7 @@ export function ModelsPage() {
     },
   });
 
-  const resetForm = () => {
-    setName('');
-    setSlug('');
-    setSlugEdited(false);
-  };
-
-  const handleNameChange = (value: string) => {
-    setName(value);
-    if (!slugEdited) {
-      setSlug(slugify(value, '_'));
-    }
-  };
-
   const handleCreate = () => {
-    // Create with default fields
     const defaultFields: ModelField[] = [
       { key: 'name', type: 'string', required: true },
     ];
@@ -119,18 +102,16 @@ export function ModelsPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Models</h1>
-          <p className="text-muted-foreground">
-            Define data schemas and manage records
-          </p>
-        </div>
-        <Button onClick={() => setCreateOpen(true)}>
-          <Plus className="mr-2 size-4" />
-          New Model
-        </Button>
-      </div>
+      <PageHeader
+        title="Models"
+        description="Define data schemas and manage records"
+        action={
+          <Button onClick={() => setCreateOpen(true)}>
+            <Plus className="mr-2 size-4" />
+            New Model
+          </Button>
+        }
+      />
 
       {models.length === 0 ? (
         <EmptyState
@@ -178,10 +159,7 @@ export function ModelsPage() {
                       <DropdownMenuSeparator />
                       <DropdownMenuItem
                         className="text-destructive"
-                        onClick={() => {
-                          setModelToDelete(model.id);
-                          setDeleteOpen(true);
-                        }}
+                        onClick={() => deleteDialog.open(model.id)}
                       >
                         <Trash2 className="mr-2 size-4" />
                         Delete
@@ -216,7 +194,6 @@ export function ModelsPage() {
         </div>
       )}
 
-      {/* Create Model Dialog */}
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
         <DialogContent>
           <DialogHeader>
@@ -230,7 +207,7 @@ export function ModelsPage() {
               <FieldLabel>Name</FieldLabel>
               <Input
                 value={name}
-                onChange={(e) => handleNameChange(e.target.value)}
+                onChange={(e) => setName(e.target.value)}
                 placeholder="User Profile"
               />
             </Field>
@@ -238,10 +215,7 @@ export function ModelsPage() {
               <FieldLabel>Slug</FieldLabel>
               <Input
                 value={slug}
-                onChange={(e) => {
-                  setSlug(slugify(e.target.value, '_'));
-                  setSlugEdited(true);
-                }}
+                onChange={(e) => setSlug(e.target.value)}
                 placeholder="user_profile"
               />
             </Field>
@@ -260,15 +234,14 @@ export function ModelsPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Delete Confirm */}
       <ConfirmDialog
-        open={deleteOpen}
-        onOpenChange={setDeleteOpen}
+        open={deleteDialog.isOpen}
+        onOpenChange={(open) => !open && deleteDialog.close()}
         title="Delete Model"
         description="Are you sure you want to delete this model? All data will be lost."
         confirmLabel="Delete"
         variant="destructive"
-        onConfirm={() => modelToDelete && deleteMutation.mutate(modelToDelete)}
+        onConfirm={() => deleteDialog.itemToDelete && deleteMutation.mutate(deleteDialog.itemToDelete)}
         isLoading={deleteMutation.isPending}
       />
     </div>

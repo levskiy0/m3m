@@ -15,7 +15,10 @@ import {
 
 import { goalsApi } from '@/api';
 import { GOAL_TYPES } from '@/lib/constants';
-import { formatNumber } from '@/lib/format';
+import { queryKeys } from '@/lib/query-keys';
+import { formatNumber, calculateTrend } from '@/lib/format';
+import { cn } from '@/lib/utils';
+import { useAutoSlug, useFormDialog, useDeleteDialog } from '@/hooks';
 import type { Goal, CreateGoalRequest, UpdateGoalRequest, GoalType, GoalStats } from '@/types';
 import { Button } from '@/components/ui/button';
 import {
@@ -53,46 +56,40 @@ import { Field, FieldGroup, FieldLabel, FieldDescription } from '@/components/ui
 import { ColorPicker } from '@/components/shared/color-picker';
 import { ConfirmDialog } from '@/components/shared/confirm-dialog';
 import { EmptyState } from '@/components/shared/empty-state';
+import { PageHeader } from '@/components/shared/page-header';
 import { Sparkline } from '@/components/shared/sparkline';
 import { Skeleton } from '@/components/ui/skeleton';
-import { cn, slugify } from '@/lib/utils';
 
 export function GoalsPage() {
   const { projectId } = useParams<{ projectId: string }>();
   const queryClient = useQueryClient();
 
-  const [createOpen, setCreateOpen] = useState(false);
-  const [editOpen, setEditOpen] = useState(false);
-  const [deleteOpen, setDeleteOpen] = useState(false);
-  const [selectedGoal, setSelectedGoal] = useState<Goal | null>(null);
+  const formDialog = useFormDialog<Goal>();
+  const deleteDialog = useDeleteDialog<Goal>();
 
-  // Form state
-  const [name, setName] = useState('');
-  const [slug, setSlug] = useState('');
-  const [slugEdited, setSlugEdited] = useState(false);
   const [color, setColor] = useState<string | undefined>();
   const [type, setType] = useState<GoalType>('counter');
   const [description, setDescription] = useState('');
+  const { name, slug, setName, setSlug, reset: resetSlug } = useAutoSlug();
 
   const { data: goals = [], isLoading } = useQuery({
-    queryKey: ['project-goals', projectId],
+    queryKey: queryKeys.goals.project(projectId!),
     queryFn: () => goalsApi.listProject(projectId!),
     enabled: !!projectId,
   });
 
   const { data: goalStats = [] } = useQuery({
-    queryKey: ['project-goal-stats', projectId, goals.map(g => g.id)],
+    queryKey: queryKeys.goals.stats(projectId!, goals.map(g => g.id)),
     queryFn: () => goalsApi.getStats({ goalIds: goals.map(g => g.id) }),
     enabled: !!projectId && goals.length > 0,
     refetchInterval: 10000,
   });
 
   const createMutation = useMutation({
-    mutationFn: (data: CreateGoalRequest) =>
-      goalsApi.createProject(projectId!, data),
+    mutationFn: (data: CreateGoalRequest) => goalsApi.createProject(projectId!, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['project-goals', projectId] });
-      setCreateOpen(false);
+      queryClient.invalidateQueries({ queryKey: queryKeys.goals.project(projectId!) });
+      formDialog.close();
       resetForm();
       toast.success('Goal created');
     },
@@ -103,11 +100,10 @@ export function GoalsPage() {
 
   const updateMutation = useMutation({
     mutationFn: (data: UpdateGoalRequest) =>
-      goalsApi.updateProject(projectId!, selectedGoal!.id, data),
+      goalsApi.updateProject(projectId!, formDialog.selectedItem!.id, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['project-goals', projectId] });
-      setEditOpen(false);
-      setSelectedGoal(null);
+      queryClient.invalidateQueries({ queryKey: queryKeys.goals.project(projectId!) });
+      formDialog.close();
       resetForm();
       toast.success('Goal updated');
     },
@@ -117,11 +113,10 @@ export function GoalsPage() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: () => goalsApi.deleteProject(projectId!, selectedGoal!.id),
+    mutationFn: () => goalsApi.deleteProject(projectId!, deleteDialog.itemToDelete!.id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['project-goals', projectId] });
-      setDeleteOpen(false);
-      setSelectedGoal(null);
+      queryClient.invalidateQueries({ queryKey: queryKeys.goals.project(projectId!) });
+      deleteDialog.close();
       toast.success('Goal deleted');
     },
     onError: (err) => {
@@ -130,40 +125,29 @@ export function GoalsPage() {
   });
 
   const resetForm = () => {
-    setName('');
-    setSlug('');
-    setSlugEdited(false);
+    resetSlug();
     setColor(undefined);
     setType('counter');
     setDescription('');
   };
 
-  const handleNameChange = (value: string) => {
-    setName(value);
-    if (!slugEdited) {
-      setSlug(slugify(value));
-    }
-  };
-
-  const handleCreate = () => {
-    createMutation.mutate({ name, slug, color, type, description });
-  };
-
   const handleEdit = (goal: Goal) => {
-    setSelectedGoal(goal);
     setName(goal.name);
     setSlug(goal.slug);
     setColor(goal.color);
     setType(goal.type);
     setDescription(goal.description || '');
-    setEditOpen(true);
+    formDialog.openEdit(goal);
   };
 
-  const handleUpdate = () => {
-    updateMutation.mutate({ name, color, description });
+  const handleSubmit = () => {
+    if (formDialog.mode === 'create') {
+      createMutation.mutate({ name, slug, color, type, description });
+    } else {
+      updateMutation.mutate({ name, color, description });
+    }
   };
 
-  // Create stats map for quick lookup
   const statsMap = new Map<string, GoalStats>();
   goalStats.forEach((s) => statsMap.set(s.goalID, s));
 
@@ -182,18 +166,16 @@ export function GoalsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Goals</h1>
-          <p className="text-muted-foreground">
-            Track metrics and counters for this project
-          </p>
-        </div>
-        <Button onClick={() => setCreateOpen(true)}>
-          <Plus className="mr-2 size-4" />
-          New Goal
-        </Button>
-      </div>
+      <PageHeader
+        title="Goals"
+        description="Track metrics and counters for this project"
+        action={
+          <Button onClick={() => { resetForm(); formDialog.open(); }}>
+            <Plus className="mr-2 size-4" />
+            New Goal
+          </Button>
+        }
+      />
 
       {goals.length === 0 ? (
         <EmptyState
@@ -201,7 +183,7 @@ export function GoalsPage() {
           title="No goals yet"
           description="Create goals to track metrics in your service"
           action={
-            <Button onClick={() => setCreateOpen(true)}>
+            <Button onClick={() => { resetForm(); formDialog.open(); }}>
               <Plus className="mr-2 size-4" />
               Create Goal
             </Button>
@@ -209,39 +191,34 @@ export function GoalsPage() {
         />
       ) : (
         <div className="grid gap-4 md:grid-cols-2">
-          {goals.map((goal) => {
-            const stats = statsMap.get(goal.id);
-            return (
-              <GoalCard
-                key={goal.id}
-                goal={goal}
-                stats={stats}
-                onEdit={() => handleEdit(goal)}
-                onDelete={() => {
-                  setSelectedGoal(goal);
-                  setDeleteOpen(true);
-                }}
-              />
-            );
-          })}
+          {goals.map((goal) => (
+            <GoalCard
+              key={goal.id}
+              goal={goal}
+              stats={statsMap.get(goal.id)}
+              onEdit={() => handleEdit(goal)}
+              onDelete={() => deleteDialog.open(goal)}
+            />
+          ))}
         </div>
       )}
 
-      {/* Create Dialog */}
-      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+      <Dialog open={formDialog.isOpen} onOpenChange={(open) => !open && formDialog.close()}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Create Goal</DialogTitle>
-            <DialogDescription>
-              Define a new metric to track in your service
-            </DialogDescription>
+            <DialogTitle>{formDialog.mode === 'create' ? 'Create Goal' : 'Edit Goal'}</DialogTitle>
+            {formDialog.mode === 'create' && (
+              <DialogDescription>
+                Define a new metric to track in your service
+              </DialogDescription>
+            )}
           </DialogHeader>
           <FieldGroup>
             <Field>
               <FieldLabel>Name</FieldLabel>
               <Input
                 value={name}
-                onChange={(e) => handleNameChange(e.target.value)}
+                onChange={(e) => setName(e.target.value)}
                 placeholder="Page Views"
               />
             </Field>
@@ -249,30 +226,37 @@ export function GoalsPage() {
               <FieldLabel>Slug</FieldLabel>
               <Input
                 value={slug}
-                onChange={(e) => {
-                  setSlug(slugify(e.target.value));
-                  setSlugEdited(true);
-                }}
+                onChange={(e) => setSlug(e.target.value)}
                 placeholder="page-views"
+                disabled={formDialog.mode === 'edit'}
               />
-              <FieldDescription>
-                Use in runtime: goals.increment("{slug}")
-              </FieldDescription>
+              {formDialog.mode === 'create' && (
+                <FieldDescription>
+                  Use in runtime: goals.increment("{slug}")
+                </FieldDescription>
+              )}
             </Field>
             <Field>
               <FieldLabel>Type</FieldLabel>
-              <Select value={type} onValueChange={(v) => setType(v as GoalType)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {GOAL_TYPES.map((t) => (
-                    <SelectItem key={t.value} value={t.value}>
-                      {t.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              {formDialog.mode === 'create' ? (
+                <Select value={type} onValueChange={(v) => setType(v as GoalType)}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {GOAL_TYPES.map((t) => (
+                      <SelectItem key={t.value} value={t.value}>
+                        {t.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <Input
+                  value={type === 'counter' ? 'Counter' : 'Daily Counter'}
+                  disabled
+                />
+              )}
             </Field>
             <Field>
               <FieldLabel>Color</FieldLabel>
@@ -289,78 +273,26 @@ export function GoalsPage() {
             </Field>
           </FieldGroup>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setCreateOpen(false)}>
+            <Button variant="outline" onClick={() => formDialog.close()}>
               Cancel
             </Button>
             <Button
-              onClick={handleCreate}
-              disabled={!name || !slug || createMutation.isPending}
+              onClick={handleSubmit}
+              disabled={!name || !slug || createMutation.isPending || updateMutation.isPending}
             >
-              {createMutation.isPending ? 'Creating...' : 'Create'}
+              {createMutation.isPending || updateMutation.isPending
+                ? 'Saving...'
+                : formDialog.mode === 'create' ? 'Create' : 'Save'}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Edit Dialog */}
-      <Dialog open={editOpen} onOpenChange={setEditOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Edit Goal</DialogTitle>
-          </DialogHeader>
-          <FieldGroup>
-            <Field>
-              <FieldLabel>Name</FieldLabel>
-              <Input
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-              />
-            </Field>
-            <Field>
-              <FieldLabel>Slug</FieldLabel>
-              <Input value={slug} disabled />
-              <FieldDescription>Slug cannot be changed</FieldDescription>
-            </Field>
-            <Field>
-              <FieldLabel>Type</FieldLabel>
-              <Input
-                value={type === 'counter' ? 'Counter' : 'Daily Counter'}
-                disabled
-              />
-            </Field>
-            <Field>
-              <FieldLabel>Color</FieldLabel>
-              <ColorPicker value={color} onChange={setColor} />
-            </Field>
-            <Field>
-              <FieldLabel>Description</FieldLabel>
-              <Textarea
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                rows={3}
-              />
-            </Field>
-          </FieldGroup>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setEditOpen(false)}>
-              Cancel
-            </Button>
-            <Button
-              onClick={handleUpdate}
-              disabled={updateMutation.isPending}
-            >
-              {updateMutation.isPending ? 'Saving...' : 'Save'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Delete Confirm */}
       <ConfirmDialog
-        open={deleteOpen}
-        onOpenChange={setDeleteOpen}
+        open={deleteDialog.isOpen}
+        onOpenChange={(open) => !open && deleteDialog.close()}
         title="Delete Goal"
-        description={`Are you sure you want to delete "${selectedGoal?.name}"? All statistics will be lost.`}
+        description={`Are you sure you want to delete "${deleteDialog.itemToDelete?.name}"? All statistics will be lost.`}
         confirmLabel="Delete"
         variant="destructive"
         onConfirm={() => deleteMutation.mutate()}
@@ -370,7 +302,6 @@ export function GoalsPage() {
   );
 }
 
-// Enhanced Goal Card with chart
 function GoalCard({
   goal,
   stats,
@@ -387,17 +318,11 @@ function GoalCard({
     value: d.value,
   })) || [];
 
-  // Calculate trend
   const trend = stats?.dailyStats && stats.dailyStats.length >= 2
-    ? (() => {
-        const recent = stats.dailyStats.slice(-7);
-        const older = stats.dailyStats.slice(-14, -7);
-        if (recent.length === 0 || older.length === 0) return null;
-        const recentSum = recent.reduce((a, b) => a + b.value, 0);
-        const olderSum = older.reduce((a, b) => a + b.value, 0);
-        if (olderSum === 0) return null;
-        return ((recentSum - olderSum) / olderSum) * 100;
-      })()
+    ? calculateTrend(
+        stats.dailyStats.slice(-7).map(d => d.value),
+        stats.dailyStats.slice(-14, -7).map(d => d.value)
+      )
     : null;
 
   return (
@@ -430,10 +355,7 @@ function GoalCard({
                 Edit
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem
-                className="text-destructive"
-                onClick={onDelete}
-              >
+              <DropdownMenuItem className="text-destructive" onClick={onDelete}>
                 <Trash2 className="mr-2 size-4" />
                 Delete
               </DropdownMenuItem>
@@ -442,103 +364,83 @@ function GoalCard({
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* Value, sparkline and trend */}
         <div className="flex items-end justify-between gap-4">
-          {/* 7-day sparkline for quick overview */}
           {goal.type === 'daily_counter' && stats?.dailyStats && stats.dailyStats.length > 1 && (
-              <Sparkline
-                  data={stats.dailyStats.slice(-7).map(d => d.value)}
-                  width={80}
-                  height={36}
-                  color={goal.color || '#6b7280'}
-                  strokeWidth={2}
-                  fillOpacity={0.2}
-              />
+            <Sparkline
+              data={stats.dailyStats.slice(-7).map(d => d.value)}
+              width={80}
+              height={36}
+              color={goal.color || '#6b7280'}
+              strokeWidth={2}
+              fillOpacity={0.2}
+            />
           )}
         </div>
 
-        {/* Chart */}
         {chartData.length > 0 && (
-            <div className="h-32">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={chartData}>
-                  <defs>
-                    <linearGradient id={`gradient-${goal.id}`} x1="0" y1="0" x2="0" y2="1">
-                      <stop
-                          offset="0%"
-                          stopColor={goal.color || '#6b7280'}
-                          stopOpacity={0.3}
-                      />
-                      <stop
-                          offset="100%"
-                          stopColor={goal.color || '#6b7280'}
-                          stopOpacity={0}
-                      />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted"/>
-                  <XAxis
-                      dataKey="date"
-                      tick={{fontSize: 10}}
-                      tickLine={false}
-                      axisLine={false}
-                      className="text-muted-foreground"
-                  />
-                  <YAxis
-                      tick={{fontSize: 10}}
-                      tickLine={false}
-                      axisLine={false}
-                      width={30}
-                      className="text-muted-foreground"
-                  />
-                  <RechartsTooltip
-                      contentStyle={{
-                        backgroundColor: 'hsl(var(--popover))',
-                        border: '1px solid hsl(var(--border))',
-                        borderRadius: '6px',
-                        fontSize: '12px',
-                      }}
-                  />
-                  <Area
-                      type="monotone"
-                      dataKey="value"
-                      stroke={goal.color || '#6b7280'}
-                      fill={`url(#gradient-${goal.id})`}
-                      strokeWidth={2}
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
+          <div className="h-32">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={chartData}>
+                <defs>
+                  <linearGradient id={`gradient-${goal.id}`} x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor={goal.color || '#6b7280'} stopOpacity={0.3} />
+                    <stop offset="100%" stopColor={goal.color || '#6b7280'} stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                <XAxis
+                  dataKey="date"
+                  tick={{ fontSize: 10 }}
+                  tickLine={false}
+                  axisLine={false}
+                  className="text-muted-foreground"
+                />
+                <YAxis
+                  tick={{ fontSize: 10 }}
+                  tickLine={false}
+                  axisLine={false}
+                  width={30}
+                  className="text-muted-foreground"
+                />
+                <RechartsTooltip
+                  contentStyle={{
+                    backgroundColor: 'hsl(var(--popover))',
+                    border: '1px solid hsl(var(--border))',
+                    borderRadius: '6px',
+                    fontSize: '12px',
+                  }}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="value"
+                  stroke={goal.color || '#6b7280'}
+                  fill={`url(#gradient-${goal.id})`}
+                  strokeWidth={2}
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
         )}
 
         <div className="flex-1">
-          <p className="text-3xl font-bold">
-            {formatNumber(stats?.value ?? 0)}
-          </p>
+          <p className="text-3xl font-bold">{formatNumber(stats?.value ?? 0)}</p>
           <div className="flex items-center gap-2 mt-1">
             {trend !== null && (
-                <div className={cn(
-                    "flex items-center gap-1 text-xs font-medium",
-                    trend > 0 ? "text-green-500" : trend < 0 ? "text-red-500" : "text-muted-foreground"
-                )}>
-                  {trend > 0 ? (
-                      <TrendingUp className="size-3"/>
-                  ) : trend < 0 ? (
-                      <TrendingDown className="size-3"/>
-                  ) : null}
-                  {trend > 0 ? '+' : ''}{trend.toFixed(0)}%
-                </div>
+              <div className={cn(
+                "flex items-center gap-1 text-xs font-medium",
+                trend > 0 ? "text-green-500" : trend < 0 ? "text-red-500" : "text-muted-foreground"
+              )}>
+                {trend > 0 ? <TrendingUp className="size-3" /> : trend < 0 ? <TrendingDown className="size-3" /> : null}
+                {trend > 0 ? '+' : ''}{trend.toFixed(0)}%
+              </div>
             )}
           </div>
         </div>
 
         {goal.description && (
-            <p className="text-sm text-muted-foreground">
-              {goal.description}
-            </p>
+          <p className="text-sm text-muted-foreground">{goal.description}</p>
         )}
 
-        {/* Usage hint */}
         <div className="rounded-md bg-muted/50 p-2">
           <code className="text-xs text-muted-foreground">
             $goals.increment("{goal.slug}")

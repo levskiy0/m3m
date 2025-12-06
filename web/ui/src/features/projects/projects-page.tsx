@@ -17,7 +17,10 @@ import { toast } from 'sonner';
 
 import { projectsApi, runtimeApi, pipelineApi } from '@/api';
 import { config } from '@/lib/config';
+import { queryKeys } from '@/lib/query-keys';
+import { formatUptime } from '@/lib/format';
 import { useAuth } from '@/providers/auth-provider';
+import { useAutoSlug } from '@/hooks';
 import type { Project, CreateProjectRequest } from '@/types';
 import { Button } from '@/components/ui/button';
 import {
@@ -47,29 +50,9 @@ import { Field, FieldGroup, FieldLabel, FieldError } from '@/components/ui/field
 import { ColorPicker } from '@/components/shared/color-picker';
 import { StatusBadge } from '@/components/shared/status-badge';
 import { EmptyState } from '@/components/shared/empty-state';
+import { PageHeader } from '@/components/shared/page-header';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-
-function slugify(text: string): string {
-  return text
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-|-$/g, '');
-}
-
-function formatUptime(seconds: number): string {
-  const days = Math.floor(seconds / 86400);
-  const hours = Math.floor((seconds % 86400) / 3600);
-  const minutes = Math.floor((seconds % 3600) / 60);
-
-  if (days > 0) {
-    return `${days}d ${hours}h`;
-  }
-  if (hours > 0) {
-    return `${hours}h ${minutes}m`;
-  }
-  return `${minutes}m`;
-}
 
 export function ProjectsPage() {
   const location = useLocation();
@@ -78,30 +61,26 @@ export function ProjectsPage() {
   const { user } = useAuth();
 
   const [createOpen, setCreateOpen] = useState(false);
-  const [name, setName] = useState('');
-  const [slug, setSlug] = useState('');
   const [color, setColor] = useState<string | undefined>();
-  const [slugManuallyEdited, setSlugManuallyEdited] = useState(false);
   const [error, setError] = useState('');
+  const { name, slug, setName, setSlug, reset: resetSlug } = useAutoSlug();
 
-  // Open create dialog if state says so
   useEffect(() => {
     if (location.state?.openCreate) {
       setCreateOpen(true);
-      // Clear the state
       navigate(location.pathname, { replace: true, state: {} });
     }
   }, [location.state, location.pathname, navigate]);
 
   const { data: projects = [], isLoading } = useQuery({
-    queryKey: ['projects'],
+    queryKey: queryKeys.projects.all,
     queryFn: projectsApi.list,
   });
 
   const createMutation = useMutation({
     mutationFn: (data: CreateProjectRequest) => projectsApi.create(data),
     onSuccess: (project) => {
-      queryClient.invalidateQueries({ queryKey: ['projects'] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.projects.all });
       setCreateOpen(false);
       resetForm();
       toast.success('Project created successfully');
@@ -115,8 +94,8 @@ export function ProjectsPage() {
   const startMutation = useMutation({
     mutationFn: (projectId: string) => runtimeApi.start(projectId),
     onSuccess: (_, projectId) => {
-      queryClient.invalidateQueries({ queryKey: ['projects'] });
-      queryClient.invalidateQueries({ queryKey: ['project-status', projectId] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.projects.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.projects.status(projectId) });
       toast.success('Service started');
     },
     onError: (err) => {
@@ -127,8 +106,8 @@ export function ProjectsPage() {
   const stopMutation = useMutation({
     mutationFn: (projectId: string) => runtimeApi.stop(projectId),
     onSuccess: (_, projectId) => {
-      queryClient.invalidateQueries({ queryKey: ['projects'] });
-      queryClient.invalidateQueries({ queryKey: ['project-status', projectId] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.projects.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.projects.status(projectId) });
       toast.success('Service stopped');
     },
     onError: (err) => {
@@ -139,8 +118,8 @@ export function ProjectsPage() {
   const restartMutation = useMutation({
     mutationFn: (projectId: string) => runtimeApi.restart(projectId),
     onSuccess: (_, projectId) => {
-      queryClient.invalidateQueries({ queryKey: ['projects'] });
-      queryClient.invalidateQueries({ queryKey: ['project-status', projectId] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.projects.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.projects.status(projectId) });
       toast.success('Service restarted');
     },
     onError: (err) => {
@@ -149,23 +128,9 @@ export function ProjectsPage() {
   });
 
   const resetForm = () => {
-    setName('');
-    setSlug('');
+    resetSlug();
     setColor(undefined);
-    setSlugManuallyEdited(false);
     setError('');
-  };
-
-  const handleNameChange = (value: string) => {
-    setName(value);
-    if (!slugManuallyEdited) {
-      setSlug(slugify(value));
-    }
-  };
-
-  const handleSlugChange = (value: string) => {
-    setSlug(slugify(value));
-    setSlugManuallyEdited(true);
   };
 
   const handleCreate = (e: React.FormEvent) => {
@@ -175,8 +140,6 @@ export function ProjectsPage() {
   };
 
   const canCreateProjects = user?.permissions?.createProjects || user?.isRoot;
-
-  // Count running and stopped
   const runningCount = projects.filter((p) => p.status === 'running').length;
   const stoppedCount = projects.filter((p) => p.status === 'stopped').length;
 
@@ -203,34 +166,31 @@ export function ProjectsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Projects</h1>
-          <p className="text-muted-foreground">
-            Manage your mini-services and workers
-          </p>
-        </div>
-        <div className="flex items-center gap-4">
-          {projects.length > 0 && (
-            <div className="flex items-center gap-3 text-sm text-muted-foreground">
-              <span className="flex items-center gap-1.5">
-                <span className="size-2 rounded-full bg-green-500 animate-pulse" />
-                {runningCount} running
-              </span>
-              <span className="flex items-center gap-1.5">
-                <span className="size-2 rounded-full bg-gray-400" />
-                {stoppedCount} stopped
-              </span>
-            </div>
-          )}
-          {canCreateProjects && (
+      <PageHeader
+        title="Projects"
+        description="Manage your mini-services and workers"
+        action={
+          canCreateProjects && (
             <Button onClick={() => setCreateOpen(true)}>
               <Plus className="mr-2 size-4" />
               New Project
             </Button>
-          )}
-        </div>
-      </div>
+          )
+        }
+      >
+        {projects.length > 0 && (
+          <div className="flex items-center gap-3 text-sm text-muted-foreground">
+            <span className="flex items-center gap-1.5">
+              <span className="size-2 rounded-full bg-green-500 animate-pulse" />
+              {runningCount} running
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="size-2 rounded-full bg-gray-400" />
+              {stoppedCount} stopped
+            </span>
+          </div>
+        )}
+      </PageHeader>
 
       {projects.length === 0 ? (
         <EmptyState
@@ -277,7 +237,7 @@ export function ProjectsPage() {
                   <Input
                     id="name"
                     value={name}
-                    onChange={(e) => handleNameChange(e.target.value)}
+                    onChange={(e) => setName(e.target.value)}
                     placeholder="My Project"
                     required
                   />
@@ -287,7 +247,7 @@ export function ProjectsPage() {
                   <Input
                     id="slug"
                     value={slug}
-                    onChange={(e) => handleSlugChange(e.target.value)}
+                    onChange={(e) => setSlug(e.target.value)}
                     placeholder="my-project"
                     required
                   />
@@ -339,19 +299,17 @@ function ProjectCard({
   const navigate = useNavigate();
   const isRunning = project.status === 'running';
 
-  // Fetch runtime status for running projects
   const { data: status } = useQuery({
-    queryKey: ['project-status', project.id],
+    queryKey: queryKeys.projects.status(project.id),
     queryFn: () => runtimeApi.status(project.id),
     enabled: isRunning,
     refetchInterval: isRunning ? 10000 : false,
   });
 
-  // Fetch releases to show active version
   const { data: releases = [] } = useQuery({
-    queryKey: ['project-releases', project.id],
+    queryKey: queryKeys.projects.releases(project.id),
     queryFn: () => pipelineApi.listReleases(project.id),
-    staleTime: 60000, // Cache for 1 minute
+    staleTime: 60000,
   });
 
   const activeRelease = releases.find((r) => r.isActive);
@@ -457,7 +415,6 @@ function ProjectCard({
           )}
         </div>
 
-        {/* Runtime info for running projects */}
         {isRunning && status?.uptime && (
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
             <Clock className="size-3" />
@@ -465,7 +422,6 @@ function ProjectCard({
           </div>
         )}
 
-        {/* No releases warning */}
         {releases.length === 0 && (
           <p className="text-xs text-amber-500">
             No releases - create one to start

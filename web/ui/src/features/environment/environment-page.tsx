@@ -6,12 +6,13 @@ import { toast } from 'sonner';
 
 import { environmentApi } from '@/api';
 import { ENV_TYPES } from '@/lib/constants';
+import { queryKeys } from '@/lib/query-keys';
+import { formatEnvValue } from '@/lib/format';
+import { copyToClipboard } from '@/lib/utils';
+import { useFormDialog, useDeleteDialog } from '@/hooks';
 import type { Environment, CreateEnvRequest, UpdateEnvRequest, EnvType } from '@/types';
 import { Button } from '@/components/ui/button';
-import {
-  Card,
-  CardContent,
-} from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import {
   Dialog,
   DialogContent,
@@ -41,14 +42,19 @@ import { Switch } from '@/components/ui/switch';
 import { Field, FieldGroup, FieldLabel, FieldDescription } from '@/components/ui/field';
 import { ConfirmDialog } from '@/components/shared/confirm-dialog';
 import { EmptyState } from '@/components/shared/empty-state';
+import { PageHeader } from '@/components/shared/page-header';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 
-function getValueInput(
-  type: EnvType,
-  value: string,
-  onChange: (value: string) => void
-) {
+function TypedInput({
+  type,
+  value,
+  onChange,
+}: {
+  type: EnvType;
+  value: string;
+  onChange: (value: string) => void;
+}) {
   switch (type) {
     case 'text':
     case 'json':
@@ -93,10 +99,7 @@ function getValueInput(
       );
     default:
       return (
-        <Input
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-        />
+        <Input value={value} onChange={(e) => onChange(e.target.value)} />
       );
   }
 }
@@ -105,29 +108,25 @@ export function EnvironmentPage() {
   const { projectId } = useParams<{ projectId: string }>();
   const queryClient = useQueryClient();
 
-  const [createOpen, setCreateOpen] = useState(false);
-  const [editOpen, setEditOpen] = useState(false);
-  const [deleteOpen, setDeleteOpen] = useState(false);
-  const [selectedEnv, setSelectedEnv] = useState<Environment | null>(null);
+  const formDialog = useFormDialog<Environment>();
+  const deleteDialog = useDeleteDialog<Environment>();
   const [showValues, setShowValues] = useState<Record<string, boolean>>({});
 
-  // Form state
   const [key, setKey] = useState('');
   const [type, setType] = useState<EnvType>('string');
   const [value, setValue] = useState('');
 
   const { data: envVars = [], isLoading } = useQuery({
-    queryKey: ['environment', projectId],
+    queryKey: queryKeys.environment.all(projectId!),
     queryFn: () => environmentApi.list(projectId!),
     enabled: !!projectId,
   });
 
   const createMutation = useMutation({
-    mutationFn: (data: CreateEnvRequest) =>
-      environmentApi.create(projectId!, data),
+    mutationFn: (data: CreateEnvRequest) => environmentApi.create(projectId!, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['environment', projectId] });
-      setCreateOpen(false);
+      queryClient.invalidateQueries({ queryKey: queryKeys.environment.all(projectId!) });
+      formDialog.close();
       resetForm();
       toast.success('Variable created');
     },
@@ -138,11 +137,10 @@ export function EnvironmentPage() {
 
   const updateMutation = useMutation({
     mutationFn: (data: UpdateEnvRequest) =>
-      environmentApi.update(projectId!, selectedEnv!.key, data),
+      environmentApi.update(projectId!, formDialog.selectedItem!.key, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['environment', projectId] });
-      setEditOpen(false);
-      setSelectedEnv(null);
+      queryClient.invalidateQueries({ queryKey: queryKeys.environment.all(projectId!) });
+      formDialog.close();
       resetForm();
       toast.success('Variable updated');
     },
@@ -152,11 +150,10 @@ export function EnvironmentPage() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: () => environmentApi.delete(projectId!, selectedEnv!.key),
+    mutationFn: () => environmentApi.delete(projectId!, deleteDialog.itemToDelete!.key),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['environment', projectId] });
-      setDeleteOpen(false);
-      setSelectedEnv(null);
+      queryClient.invalidateQueries({ queryKey: queryKeys.environment.all(projectId!) });
+      deleteDialog.close();
       toast.success('Variable deleted');
     },
     onError: (err) => {
@@ -170,46 +167,30 @@ export function EnvironmentPage() {
     setValue('');
   };
 
-  const handleCreate = () => {
-    createMutation.mutate({ key, type, value });
-  };
-
   const handleEdit = (env: Environment) => {
-    setSelectedEnv(env);
     setKey(env.key);
     setType(env.type);
     setValue(env.value);
-    setEditOpen(true);
+    formDialog.openEdit(env);
   };
 
-  const handleUpdate = () => {
-    updateMutation.mutate({ type, value });
-  };
-
-  const toggleShowValue = (key: string) => {
-    setShowValues((prev) => ({ ...prev, [key]: !prev[key] }));
-  };
-
-  const copyValue = (value: string) => {
-    navigator.clipboard.writeText(value);
-    toast.success('Copied to clipboard');
-  };
-
-  const formatDisplayValue = (env: Environment, show: boolean): string => {
-    if (!show) {
-      return '••••••••';
+  const handleSubmit = () => {
+    if (formDialog.mode === 'create') {
+      createMutation.mutate({ key, type, value });
+    } else {
+      updateMutation.mutate({ type, value });
     }
-    if (env.type === 'boolean') {
-      return env.value === 'true' ? 'True' : 'False';
+  };
+
+  const toggleShowValue = (envKey: string) => {
+    setShowValues((prev) => ({ ...prev, [envKey]: !prev[envKey] }));
+  };
+
+  const handleCopy = async (val: string) => {
+    const success = await copyToClipboard(val);
+    if (success) {
+      toast.success('Copied to clipboard');
     }
-    if (env.type === 'json') {
-      try {
-        return JSON.stringify(JSON.parse(env.value), null, 2);
-      } catch {
-        return env.value;
-      }
-    }
-    return env.value.length > 50 ? env.value.slice(0, 50) + '...' : env.value;
   };
 
   if (isLoading) {
@@ -223,18 +204,16 @@ export function EnvironmentPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Environment</h1>
-          <p className="text-muted-foreground">
-            Configure environment variables for your service
-          </p>
-        </div>
-        <Button onClick={() => setCreateOpen(true)}>
-          <Plus className="mr-2 size-4" />
-          Add Variable
-        </Button>
-      </div>
+      <PageHeader
+        title="Environment"
+        description="Configure environment variables for your service"
+        action={
+          <Button onClick={() => { resetForm(); formDialog.open(); }}>
+            <Plus className="mr-2 size-4" />
+            Add Variable
+          </Button>
+        }
+      />
 
       {envVars.length === 0 ? (
         <EmptyState
@@ -242,7 +221,7 @@ export function EnvironmentPage() {
           title="No environment variables"
           description="Add variables to configure your service at runtime"
           action={
-            <Button onClick={() => setCreateOpen(true)}>
+            <Button onClick={() => { resetForm(); formDialog.open(); }}>
               <Plus className="mr-2 size-4" />
               Add Variable
             </Button>
@@ -271,7 +250,7 @@ export function EnvironmentPage() {
                     </TableCell>
                     <TableCell>
                       <code className="text-sm text-muted-foreground">
-                        {formatDisplayValue(env, showValues[env.key])}
+                        {formatEnvValue(env.value, env.type, { masked: !showValues[env.key] })}
                       </code>
                     </TableCell>
                     <TableCell>
@@ -282,17 +261,13 @@ export function EnvironmentPage() {
                           className="size-8"
                           onClick={() => toggleShowValue(env.key)}
                         >
-                          {showValues[env.key] ? (
-                            <EyeOff className="size-4" />
-                          ) : (
-                            <Eye className="size-4" />
-                          )}
+                          {showValues[env.key] ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
                         </Button>
                         <Button
                           variant="ghost"
                           size="icon"
                           className="size-8"
-                          onClick={() => copyValue(env.value)}
+                          onClick={() => handleCopy(env.value)}
                         >
                           <Copy className="size-4" />
                         </Button>
@@ -308,10 +283,7 @@ export function EnvironmentPage() {
                           variant="ghost"
                           size="icon"
                           className="size-8"
-                          onClick={() => {
-                            setSelectedEnv(env);
-                            setDeleteOpen(true);
-                          }}
+                          onClick={() => deleteDialog.open(env)}
                         >
                           <Trash2 className="size-4 text-destructive" />
                         </Button>
@@ -325,14 +297,15 @@ export function EnvironmentPage() {
         </Card>
       )}
 
-      {/* Create Dialog */}
-      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+      <Dialog open={formDialog.isOpen} onOpenChange={(open) => !open && formDialog.close()}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Add Variable</DialogTitle>
-            <DialogDescription>
-              Create a new environment variable
-            </DialogDescription>
+            <DialogTitle>
+              {formDialog.mode === 'create' ? 'Add Variable' : 'Edit Variable'}
+            </DialogTitle>
+            {formDialog.mode === 'create' && (
+              <DialogDescription>Create a new environment variable</DialogDescription>
+            )}
           </DialogHeader>
           <FieldGroup>
             <Field>
@@ -343,10 +316,11 @@ export function EnvironmentPage() {
                   setKey(e.target.value.toUpperCase().replace(/[^A-Z0-9_]/g, '_'))
                 }
                 placeholder="API_KEY"
+                disabled={formDialog.mode === 'edit'}
               />
-              <FieldDescription>
-                Use uppercase letters and underscores
-              </FieldDescription>
+              {formDialog.mode === 'create' && (
+                <FieldDescription>Use uppercase letters and underscores</FieldDescription>
+              )}
             </Field>
             <Field>
               <FieldLabel>Type</FieldLabel>
@@ -365,74 +339,30 @@ export function EnvironmentPage() {
             </Field>
             <Field>
               <FieldLabel>Value</FieldLabel>
-              {getValueInput(type, value, setValue)}
+              <TypedInput type={type} value={value} onChange={setValue} />
             </Field>
           </FieldGroup>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setCreateOpen(false)}>
+            <Button variant="outline" onClick={() => formDialog.close()}>
               Cancel
             </Button>
             <Button
-              onClick={handleCreate}
-              disabled={!key || createMutation.isPending}
+              onClick={handleSubmit}
+              disabled={!key || createMutation.isPending || updateMutation.isPending}
             >
-              {createMutation.isPending ? 'Creating...' : 'Create'}
+              {createMutation.isPending || updateMutation.isPending
+                ? 'Saving...'
+                : formDialog.mode === 'create' ? 'Create' : 'Save'}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Edit Dialog */}
-      <Dialog open={editOpen} onOpenChange={setEditOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Edit Variable</DialogTitle>
-          </DialogHeader>
-          <FieldGroup>
-            <Field>
-              <FieldLabel>Key</FieldLabel>
-              <Input value={key} disabled />
-            </Field>
-            <Field>
-              <FieldLabel>Type</FieldLabel>
-              <Select value={type} onValueChange={(v) => setType(v as EnvType)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {ENV_TYPES.map((t) => (
-                    <SelectItem key={t.value} value={t.value}>
-                      {t.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </Field>
-            <Field>
-              <FieldLabel>Value</FieldLabel>
-              {getValueInput(type, value, setValue)}
-            </Field>
-          </FieldGroup>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setEditOpen(false)}>
-              Cancel
-            </Button>
-            <Button
-              onClick={handleUpdate}
-              disabled={updateMutation.isPending}
-            >
-              {updateMutation.isPending ? 'Saving...' : 'Save'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Delete Confirm */}
       <ConfirmDialog
-        open={deleteOpen}
-        onOpenChange={setDeleteOpen}
+        open={deleteDialog.isOpen}
+        onOpenChange={(open) => !open && deleteDialog.close()}
         title="Delete Variable"
-        description={`Are you sure you want to delete "${selectedEnv?.key}"?`}
+        description={`Are you sure you want to delete "${deleteDialog.itemToDelete?.key}"?`}
         confirmLabel="Delete"
         variant="destructive"
         onConfirm={() => deleteMutation.mutate()}

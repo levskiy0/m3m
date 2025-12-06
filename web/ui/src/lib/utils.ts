@@ -55,3 +55,35 @@ export async function copyToClipboard(text: string): Promise<boolean> {
     return false;
   }
 }
+
+/**
+ * Get initials from a name (e.g., "John Doe" -> "JD")
+ */
+export function getInitials(name: string): string {
+  return name
+    .split(' ')
+    .map((n) => n[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 2);
+}
+
+/**
+ * Toggle an item in an array (add if not present, remove if present)
+ */
+export function toggleInArray<T>(array: T[], item: T): T[] {
+  return array.includes(item)
+    ? array.filter((i) => i !== item)
+    : [...array, item];
+}
+
+/**
+ * Parse a path into segments for breadcrumb navigation
+ */
+export function parsePath(path: string): { name: string; path: string }[] {
+  const segments = path.split('/').filter(Boolean);
+  return segments.map((segment, index) => ({
+    name: segment,
+    path: '/' + segments.slice(0, index + 1).join('/'),
+  }));
+}

@@ -12,7 +12,10 @@ import {
 import { toast } from 'sonner';
 
 import { usersApi, projectsApi } from '@/api';
+import { queryKeys } from '@/lib/query-keys';
+import { getInitials, toggleInArray } from '@/lib/utils';
 import { useAuth } from '@/providers/auth-provider';
+import { useFormDialog, useDeleteDialog } from '@/hooks';
 import type { User, CreateUserRequest, UpdateUserRequest } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -45,29 +48,18 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Field, FieldGroup, FieldLabel, FieldDescription } from '@/components/ui/field';
 import { ConfirmDialog } from '@/components/shared/confirm-dialog';
 import { EmptyState } from '@/components/shared/empty-state';
+import { PageHeader } from '@/components/shared/page-header';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-
-function getInitials(name: string): string {
-  return name
-    .split(' ')
-    .map((n) => n[0])
-    .join('')
-    .toUpperCase()
-    .slice(0, 2);
-}
 
 export function UsersPage() {
   const { user: currentUser } = useAuth();
   const queryClient = useQueryClient();
 
-  const [createOpen, setCreateOpen] = useState(false);
-  const [editOpen, setEditOpen] = useState(false);
-  const [deleteOpen, setDeleteOpen] = useState(false);
-  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const formDialog = useFormDialog<User>();
+  const deleteDialog = useDeleteDialog<User>();
 
-  // Form state
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
@@ -76,20 +68,20 @@ export function UsersPage() {
   const [projectAccess, setProjectAccess] = useState<string[]>([]);
 
   const { data: users = [], isLoading: usersLoading } = useQuery({
-    queryKey: ['users'],
+    queryKey: queryKeys.users.all,
     queryFn: usersApi.list,
   });
 
   const { data: projects = [] } = useQuery({
-    queryKey: ['projects'],
+    queryKey: queryKeys.projects.all,
     queryFn: projectsApi.list,
   });
 
   const createMutation = useMutation({
     mutationFn: (data: CreateUserRequest) => usersApi.create(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['users'] });
-      setCreateOpen(false);
+      queryClient.invalidateQueries({ queryKey: queryKeys.users.all });
+      formDialog.close();
       resetForm();
       toast.success('User created');
     },
@@ -100,11 +92,10 @@ export function UsersPage() {
 
   const updateMutation = useMutation({
     mutationFn: (data: UpdateUserRequest) =>
-      usersApi.update(selectedUser!.id, data),
+      usersApi.update(formDialog.selectedItem!.id, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['users'] });
-      setEditOpen(false);
-      setSelectedUser(null);
+      queryClient.invalidateQueries({ queryKey: queryKeys.users.all });
+      formDialog.close();
       resetForm();
       toast.success('User updated');
     },
@@ -114,11 +105,10 @@ export function UsersPage() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: () => usersApi.delete(selectedUser!.id),
+    mutationFn: () => usersApi.delete(deleteDialog.itemToDelete!.id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['users'] });
-      setDeleteOpen(false);
-      setSelectedUser(null);
+      queryClient.invalidateQueries({ queryKey: queryKeys.users.all });
+      deleteDialog.close();
       toast.success('User deleted');
     },
     onError: (err) => {
@@ -129,7 +119,7 @@ export function UsersPage() {
   const blockMutation = useMutation({
     mutationFn: (userId: string) => usersApi.block(userId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['users'] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.users.all });
       toast.success('User blocked');
     },
     onError: (err) => {
@@ -140,7 +130,7 @@ export function UsersPage() {
   const unblockMutation = useMutation({
     mutationFn: (userId: string) => usersApi.unblock(userId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['users'] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.users.all });
       toast.success('User unblocked');
     },
     onError: (err) => {
@@ -162,40 +152,23 @@ export function UsersPage() {
       email,
       password,
       name,
-      permissions: {
-        createProjects,
-        manageUsers,
-        projectAccess,
-      },
+      permissions: { createProjects, manageUsers, projectAccess },
     });
   };
 
   const handleEdit = (user: User) => {
-    setSelectedUser(user);
     setName(user.name);
     setCreateProjects(user.permissions.createProjects);
     setManageUsers(user.permissions.manageUsers);
     setProjectAccess(user.permissions.projectAccess || []);
-    setEditOpen(true);
+    formDialog.openEdit(user);
   };
 
   const handleUpdate = () => {
     updateMutation.mutate({
       name,
-      permissions: {
-        createProjects,
-        manageUsers,
-        projectAccess,
-      },
+      permissions: { createProjects, manageUsers, projectAccess },
     });
-  };
-
-  const toggleProjectAccess = (projectId: string) => {
-    setProjectAccess((prev) =>
-      prev.includes(projectId)
-        ? prev.filter((id) => id !== projectId)
-        : [...prev, projectId]
-    );
   };
 
   if (usersLoading) {
@@ -209,18 +182,16 @@ export function UsersPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Users</h1>
-          <p className="text-muted-foreground">
-            Manage system users and permissions
-          </p>
-        </div>
-        <Button onClick={() => setCreateOpen(true)}>
-          <Plus className="mr-2 size-4" />
-          Add User
-        </Button>
-      </div>
+      <PageHeader
+        title="Users"
+        description="Manage system users and permissions"
+        action={
+          <Button onClick={() => { resetForm(); formDialog.open(); }}>
+            <Plus className="mr-2 size-4" />
+            Add User
+          </Button>
+        }
+      />
 
       {users.length === 0 ? (
         <EmptyState
@@ -228,7 +199,7 @@ export function UsersPage() {
           title="No users"
           description="Add users to grant access to the system"
           action={
-            <Button onClick={() => setCreateOpen(true)}>
+            <Button onClick={() => { resetForm(); formDialog.open(); }}>
               <Plus className="mr-2 size-4" />
               Add User
             </Button>
@@ -303,16 +274,12 @@ export function UsersPage() {
                               Edit
                             </DropdownMenuItem>
                             {user.isBlocked ? (
-                              <DropdownMenuItem
-                                onClick={() => unblockMutation.mutate(user.id)}
-                              >
+                              <DropdownMenuItem onClick={() => unblockMutation.mutate(user.id)}>
                                 <ShieldOff className="mr-2 size-4" />
                                 Unblock
                               </DropdownMenuItem>
                             ) : (
-                              <DropdownMenuItem
-                                onClick={() => blockMutation.mutate(user.id)}
-                              >
+                              <DropdownMenuItem onClick={() => blockMutation.mutate(user.id)}>
                                 <Ban className="mr-2 size-4" />
                                 Block
                               </DropdownMenuItem>
@@ -320,10 +287,7 @@ export function UsersPage() {
                             <DropdownMenuSeparator />
                             <DropdownMenuItem
                               className="text-destructive"
-                              onClick={() => {
-                                setSelectedUser(user);
-                                setDeleteOpen(true);
-                              }}
+                              onClick={() => deleteDialog.open(user)}
                             >
                               <Trash2 className="mr-2 size-4" />
                               Delete
@@ -340,76 +304,84 @@ export function UsersPage() {
         </Card>
       )}
 
-      {/* Create Dialog */}
-      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+      <Dialog open={formDialog.isOpen} onOpenChange={(open) => !open && formDialog.close()}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Add User</DialogTitle>
-            <DialogDescription>Create a new user account</DialogDescription>
+            <DialogTitle>{formDialog.mode === 'create' ? 'Add User' : 'Edit User'}</DialogTitle>
+            {formDialog.mode === 'create' && (
+              <DialogDescription>Create a new user account</DialogDescription>
+            )}
           </DialogHeader>
           <FieldGroup>
-            <div className="grid grid-cols-2 gap-4">
-              <Field>
-                <FieldLabel>Name</FieldLabel>
-                <Input
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="John Doe"
-                />
-              </Field>
-              <Field>
-                <FieldLabel>Email</FieldLabel>
-                <Input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="john@example.com"
-                />
-              </Field>
-            </div>
-            <Field>
-              <FieldLabel>Password</FieldLabel>
-              <Input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-              />
-            </Field>
+            {formDialog.mode === 'create' ? (
+              <>
+                <div className="grid grid-cols-2 gap-4">
+                  <Field>
+                    <FieldLabel>Name</FieldLabel>
+                    <Input
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      placeholder="John Doe"
+                    />
+                  </Field>
+                  <Field>
+                    <FieldLabel>Email</FieldLabel>
+                    <Input
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="john@example.com"
+                    />
+                  </Field>
+                </div>
+                <Field>
+                  <FieldLabel>Password</FieldLabel>
+                  <Input
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="••••••••"
+                  />
+                </Field>
+              </>
+            ) : (
+              <>
+                <Field>
+                  <FieldLabel>Name</FieldLabel>
+                  <Input value={name} onChange={(e) => setName(e.target.value)} />
+                </Field>
+                <Field>
+                  <FieldLabel>Email</FieldLabel>
+                  <Input value={formDialog.selectedItem?.email} disabled />
+                </Field>
+              </>
+            )}
             <Field>
               <FieldLabel>Permissions</FieldLabel>
               <div className="space-y-3 mt-2">
                 <div className="flex items-center gap-2">
-                  <Switch
-                    checked={createProjects}
-                    onCheckedChange={setCreateProjects}
-                  />
+                  <Switch checked={createProjects} onCheckedChange={setCreateProjects} />
                   <span className="text-sm">Can create projects</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Switch
-                    checked={manageUsers}
-                    onCheckedChange={setManageUsers}
-                  />
+                  <Switch checked={manageUsers} onCheckedChange={setManageUsers} />
                   <span className="text-sm">Can manage users</span>
                 </div>
               </div>
             </Field>
             <Field>
               <FieldLabel>Project Access</FieldLabel>
-              <FieldDescription>
-                Select which projects this user can access
-              </FieldDescription>
+              <FieldDescription>Select which projects this user can access</FieldDescription>
               <div className="mt-2 space-y-2 max-h-48 overflow-y-auto border rounded-md p-3">
                 {projects.map((project) => (
                   <div key={project.id} className="flex items-center gap-2">
                     <Checkbox
-                      id={`create-${project.id}`}
+                      id={`${formDialog.mode}-${project.id}`}
                       checked={projectAccess.includes(project.id)}
-                      onCheckedChange={() => toggleProjectAccess(project.id)}
+                      onCheckedChange={() => setProjectAccess(toggleInArray(projectAccess, project.id))}
                     />
                     <label
-                      htmlFor={`create-${project.id}`}
+                      htmlFor={`${formDialog.mode}-${project.id}`}
                       className="text-sm flex items-center gap-2 cursor-pointer"
                     >
                       <span
@@ -424,103 +396,30 @@ export function UsersPage() {
             </Field>
           </FieldGroup>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setCreateOpen(false)}>
+            <Button variant="outline" onClick={() => formDialog.close()}>
               Cancel
             </Button>
             <Button
-              onClick={handleCreate}
+              onClick={formDialog.mode === 'create' ? handleCreate : handleUpdate}
               disabled={
-                !name || !email || !password || createMutation.isPending
+                formDialog.mode === 'create'
+                  ? !name || !email || !password || createMutation.isPending
+                  : updateMutation.isPending
               }
             >
-              {createMutation.isPending ? 'Creating...' : 'Create'}
+              {createMutation.isPending || updateMutation.isPending
+                ? 'Saving...'
+                : formDialog.mode === 'create' ? 'Create' : 'Save'}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Edit Dialog */}
-      <Dialog open={editOpen} onOpenChange={setEditOpen}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Edit User</DialogTitle>
-          </DialogHeader>
-          <FieldGroup>
-            <Field>
-              <FieldLabel>Name</FieldLabel>
-              <Input
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-              />
-            </Field>
-            <Field>
-              <FieldLabel>Email</FieldLabel>
-              <Input value={selectedUser?.email} disabled />
-            </Field>
-            <Field>
-              <FieldLabel>Permissions</FieldLabel>
-              <div className="space-y-3 mt-2">
-                <div className="flex items-center gap-2">
-                  <Switch
-                    checked={createProjects}
-                    onCheckedChange={setCreateProjects}
-                  />
-                  <span className="text-sm">Can create projects</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Switch
-                    checked={manageUsers}
-                    onCheckedChange={setManageUsers}
-                  />
-                  <span className="text-sm">Can manage users</span>
-                </div>
-              </div>
-            </Field>
-            <Field>
-              <FieldLabel>Project Access</FieldLabel>
-              <div className="mt-2 space-y-2 max-h-48 overflow-y-auto border rounded-md p-3">
-                {projects.map((project) => (
-                  <div key={project.id} className="flex items-center gap-2">
-                    <Checkbox
-                      id={`edit-${project.id}`}
-                      checked={projectAccess.includes(project.id)}
-                      onCheckedChange={() => toggleProjectAccess(project.id)}
-                    />
-                    <label
-                      htmlFor={`edit-${project.id}`}
-                      className="text-sm flex items-center gap-2 cursor-pointer"
-                    >
-                      <span
-                        className="size-2 rounded-full"
-                        style={{ backgroundColor: project.color || '#6b7280' }}
-                      />
-                      {project.name}
-                    </label>
-                  </div>
-                ))}
-              </div>
-            </Field>
-          </FieldGroup>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setEditOpen(false)}>
-              Cancel
-            </Button>
-            <Button
-              onClick={handleUpdate}
-              disabled={updateMutation.isPending}
-            >
-              {updateMutation.isPending ? 'Saving...' : 'Save'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Delete Confirm */}
       <ConfirmDialog
-        open={deleteOpen}
-        onOpenChange={setDeleteOpen}
+        open={deleteDialog.isOpen}
+        onOpenChange={(open) => !open && deleteDialog.close()}
         title="Delete User"
-        description={`Are you sure you want to delete "${selectedUser?.name}"?`}
+        description={`Are you sure you want to delete "${deleteDialog.itemToDelete?.name}"?`}
         confirmLabel="Delete"
         variant="destructive"
         onConfirm={() => deleteMutation.mutate()}
