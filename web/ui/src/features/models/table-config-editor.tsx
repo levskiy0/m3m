@@ -316,13 +316,6 @@ export function TableConfigEditor({ fields, config, onChange }: TableConfigEdito
             </div>
           </DndContext>
         )}
-
-        <div className="mt-4 text-xs text-muted-foreground space-y-1">
-          <p><strong>Column:</strong> Show this field as a column in the table</p>
-          <p><strong>Filter:</strong> Allow filtering by this field</p>
-          <p><strong>Sort:</strong> Allow sorting by this field</p>
-          <p><strong>Search:</strong> Include in full-text search (only string/text fields)</p>
-        </div>
       </CardContent>
     </Card>
   );

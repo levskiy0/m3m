@@ -218,9 +218,9 @@ function SortableSchemaField({ id, field, onUpdate, onRemove, models, currentMod
             value={field.type}
             onValueChange={(v) => {
               const updates: Partial<ModelField> = { type: v as FieldType };
-              // Clear refModel when switching away from ref type
+              // Clear ref_model when switching away from ref type
               if (v !== 'ref') {
-                updates.refModel = undefined;
+                updates.ref_model = undefined;
               }
               onUpdate(updates);
             }}
@@ -241,8 +241,8 @@ function SortableSchemaField({ id, field, onUpdate, onRemove, models, currentMod
           <Field>
             <FieldLabel>Reference Model</FieldLabel>
             <Select
-              value={field.refModel || ''}
-              onValueChange={(v) => onUpdate({ refModel: v })}
+              value={field.ref_model || ''}
+              onValueChange={(v) => onUpdate({ ref_model: v })}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Select model" />

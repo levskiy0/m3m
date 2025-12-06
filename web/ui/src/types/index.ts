@@ -246,7 +246,7 @@ export interface ModelField {
   type: FieldType;
   required: boolean;
   default_value?: unknown;
-  refModel?: string;
+  ref_model?: string;
   options?: FieldOptions;
 }
 

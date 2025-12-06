@@ -244,12 +244,6 @@ export function FormConfigEditor({ fields, config, onChange }: FormConfigEditorP
             </SortableContext>
           </DndContext>
         )}
-
-        <div className="mt-4 text-xs text-muted-foreground space-y-1">
-          <p><strong>Order:</strong> Drag fields to reorder them in the form</p>
-          <p><strong>Widget:</strong> Choose how the field is displayed in forms</p>
-          <p><strong>Visibility:</strong> Click the eye icon to show/hide fields from forms</p>
-        </div>
       </CardContent>
     </Card>
   );
