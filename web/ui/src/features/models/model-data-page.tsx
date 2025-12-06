@@ -208,12 +208,25 @@ function getDefaultView(type: FieldType): FieldView {
   }
 }
 
+// Format datetime without timezone conversion
+function formatDateTimeDisplay(value: string): string {
+  // Remove timezone suffix to display as stored (without local conversion)
+  const cleanValue = value.replace(/Z$/, '').replace(/[+-]\d{2}:\d{2}$/, '');
+  const [datePart, timePart] = cleanValue.split('T');
+  const [year, month, day] = datePart.split('-');
+  if (!timePart) {
+    return `${day}.${month}.${year}`;
+  }
+  const [hour, minute, second = '00'] = timePart.split(':');
+  return `${day}.${month}.${year} ${hour}:${minute}:${second}`;
+}
+
 function formatCellValue(value: unknown, type: FieldType): string {
   if (value === null || value === undefined) return '-';
   if (type === 'bool') return value ? 'Yes' : 'No';
   if (type === 'document') return JSON.stringify(value).slice(0, 50) + '...';
   if (type === 'date' || type === 'datetime') {
-    return new Date(value as string).toLocaleString();
+    return formatDateTimeDisplay(value as string);
   }
   const str = String(value);
   return str.length > 50 ? str.slice(0, 50) + '...' : str;
@@ -226,7 +239,7 @@ function formatSystemFieldValue(key: SystemField, value: unknown): string {
     return str.length > 24 ? str.slice(0, 24) + '...' : str;
   }
   if (key === '_created_at' || key === '_updated_at') {
-    return new Date(value as string).toLocaleString();
+    return formatDateTimeDisplay(value as string);
   }
   return String(value);
 }
