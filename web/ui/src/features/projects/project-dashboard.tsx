@@ -44,7 +44,7 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { EditorTabs, EditorTab } from '@/components/ui/editor-tabs';
 import { StatusBadge } from '@/components/shared/status-badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -79,6 +79,7 @@ import type { LogEntry, Goal, GoalStats, Widget, WidgetVariant, CreateWidgetRequ
 import type { StartOptions } from '@/api/runtime';
 
 type LogLevel = 'all' | 'debug' | 'info' | 'warn' | 'error';
+type OverviewTab = 'instance' | 'logs';
 
 const LOG_LEVEL_COLORS: Record<string, string> = {
   debug: 'text-gray-400',
@@ -105,7 +106,8 @@ export function ProjectDashboard() {
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // Get initial tab from location state
-  const initialTab = (location.state as { tab?: string } | null)?.tab || 'instance';
+  const initialTab = (location.state as { tab?: string } | null)?.tab as OverviewTab || 'instance';
+  const [activeTab, setActiveTab] = useState<OverviewTab>(initialTab);
 
   const { data: project, isLoading: projectLoading } = useQuery({
     queryKey: ['project', projectId],
@@ -445,25 +447,34 @@ export function ProjectDashboard() {
       )}
 
       {/* Main Content Tabs */}
-      <Tabs defaultValue={initialTab} className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="instance" className="gap-2">
-            <Activity className="size-4" />
+      <div className="w-full">
+        <EditorTabs>
+          <EditorTab
+            active={activeTab === 'instance'}
+            onClick={() => setActiveTab('instance')}
+            icon={<Activity className="size-4" />}
+          >
             Instance
-          </TabsTrigger>
-          <TabsTrigger value="logs" className="gap-2">
-            <Code className="size-4" />
+          </EditorTab>
+          <EditorTab
+            active={activeTab === 'logs'}
+            onClick={() => setActiveTab('logs')}
+            icon={<Code className="size-4" />}
+            badge={
+              logs.filter(l => l.level === 'error').length > 0 ? (
+                <Badge variant="destructive" className="ml-1 h-5 px-1.5 text-xs">
+                  {logs.filter(l => l.level === 'error').length}
+                </Badge>
+              ) : undefined
+            }
+          >
             Logs
-            {logs.filter(l => l.level === 'error').length > 0 && (
-              <Badge variant="destructive" className="ml-1 h-5 px-1.5 text-xs">
-                {logs.filter(l => l.level === 'error').length}
-              </Badge>
-            )}
-          </TabsTrigger>
-        </TabsList>
+          </EditorTab>
+        </EditorTabs>
 
         {/* Instance Tab */}
-        <TabsContent value="instance" className="space-y-6">
+        {activeTab === 'instance' && (
+          <div className="space-y-6 pt-4">
           {/* Runtime Stats - Row 1 */}
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             {/* Uptime */}
@@ -731,95 +742,93 @@ export function ProjectDashboard() {
               </Card>
             )}
           </div>
-        </TabsContent>
+          </div>
+        )}
 
         {/* Logs Tab */}
-        <TabsContent value="logs" className="space-y-4">
-          <Card>
-            <CardHeader className="pb-2">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <CardTitle className="text-sm font-medium">
-                    {filteredLogs.length} log entries
-                  </CardTitle>
-                  <Select
-                    value={levelFilter}
-                    onValueChange={(v) => setLevelFilter(v as LogLevel)}
-                  >
-                    <SelectTrigger className="w-32 h-8">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Levels</SelectItem>
-                      <SelectItem value="debug">Debug</SelectItem>
-                      <SelectItem value="info">Info</SelectItem>
-                      <SelectItem value="warn">Warning</SelectItem>
-                      <SelectItem value="error">Error</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setAutoScroll(!autoScroll)}
-                    className={cn("h-8", autoScroll && "bg-muted")}
-                  >
-                    Auto-scroll: {autoScroll ? 'On' : 'Off'}
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8"
-                    onClick={() => {
-                      if (scrollRef.current) {
-                        scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-                      }
-                    }}
-                  >
-                    <ArrowDown className="size-4" />
-                  </Button>
-                  <Button variant="outline" size="sm" onClick={handleDownloadLogs} className="h-8">
-                    <Download className="mr-2 size-4" />
-                    Download
-                  </Button>
-                </div>
+        {activeTab === 'logs' && (
+          <Card className="flex flex-col gap-0 rounded-t-none py-0 overflow-hidden" style={{ height: 'calc(100vh - 280px)' }}>
+            {/* Logs Header */}
+            <div className="flex items-center justify-between flex-shrink-0 px-4 py-3 border-b">
+              <div className="flex items-center gap-4">
+                <span className="text-sm font-medium">
+                  {filteredLogs.length} log entries
+                </span>
+                <Select
+                  value={levelFilter}
+                  onValueChange={(v) => setLevelFilter(v as LogLevel)}
+                >
+                  <SelectTrigger className="w-32 h-8">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Levels</SelectItem>
+                    <SelectItem value="debug">Debug</SelectItem>
+                    <SelectItem value="info">Info</SelectItem>
+                    <SelectItem value="warn">Warning</SelectItem>
+                    <SelectItem value="error">Error</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
-            </CardHeader>
-            <CardContent>
-              <ScrollArea
-                ref={scrollRef}
-                className="h-[500px] rounded-md border bg-zinc-950 p-4 font-mono text-sm"
-              >
-                {filteredLogs.length === 0 ? (
-                  <div className="flex items-center justify-center h-full text-muted-foreground">
-                    No logs available
-                  </div>
-                ) : (
-                  <div className="space-y-1">
-                    {filteredLogs.map((log, index) => (
-                      <div key={index} className="flex gap-3 text-gray-300 leading-relaxed">
-                        <span className="text-gray-500 shrink-0 text-xs">
-                          {new Date(log.timestamp).toLocaleTimeString()}
-                        </span>
-                        <span
-                          className={cn(
-                            'shrink-0 uppercase w-14 text-xs font-medium',
-                            LOG_LEVEL_COLORS[log.level]
-                          )}
-                        >
-                          [{log.level}]
-                        </span>
-                        <span className="break-all text-gray-200">{log.message}</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </ScrollArea>
-            </CardContent>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setAutoScroll(!autoScroll)}
+                  className={cn("h-8", autoScroll && "bg-muted")}
+                >
+                  Auto-scroll: {autoScroll ? 'On' : 'Off'}
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={() => {
+                    if (scrollRef.current) {
+                      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+                    }
+                  }}
+                >
+                  <ArrowDown className="size-4" />
+                </Button>
+                <Button variant="outline" size="sm" onClick={handleDownloadLogs} className="h-8">
+                  <Download className="mr-2 size-4" />
+                  Download
+                </Button>
+              </div>
+            </div>
+            <ScrollArea
+              ref={scrollRef}
+              className="flex-1 bg-zinc-950 font-mono text-xs"
+            >
+              {filteredLogs.length === 0 ? (
+                <div className="flex items-center justify-center h-full text-muted-foreground py-12">
+                  No logs available
+                </div>
+              ) : (
+                <div className="space-y-0.5 p-4">
+                  {filteredLogs.map((log, index) => (
+                    <div key={index} className="flex gap-2 text-gray-300">
+                      <span className="text-gray-500 shrink-0">
+                        {new Date(log.timestamp).toLocaleTimeString()}
+                      </span>
+                      <span
+                        className={cn(
+                          'shrink-0 uppercase w-12',
+                          LOG_LEVEL_COLORS[log.level]
+                        )}
+                      >
+                        [{log.level}]
+                      </span>
+                      <span className="text-gray-200 break-all">{log.message}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </ScrollArea>
           </Card>
-        </TabsContent>
-      </Tabs>
+        )}
+      </div>
 
       {/* Add Widget Dialog */}
       <Dialog open={addWidgetOpen} onOpenChange={setAddWidgetOpen}>
