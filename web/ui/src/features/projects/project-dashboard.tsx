@@ -453,6 +453,7 @@ export function ProjectDashboard() {
             active={activeTab === 'instance'}
             onClick={() => setActiveTab('instance')}
             icon={<Activity className="size-4" />}
+            className={activeTab === 'instance' ? 'bg-background' : undefined}
           >
             Instance
           </EditorTab>
@@ -474,7 +475,9 @@ export function ProjectDashboard() {
 
         {/* Instance Tab */}
         {activeTab === 'instance' && (
-          <div className="space-y-6 pt-4">
+          <div className="bg-background rounded-b-xl">
+            <div className="border-b" />
+            <div className="space-y-6 p-4">
           {/* Runtime Stats - Row 1 */}
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             {/* Uptime */}
@@ -741,6 +744,7 @@ export function ProjectDashboard() {
                 </CardContent>
               </Card>
             )}
+            </div>
           </div>
           </div>
         )}
