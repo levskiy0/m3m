@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
@@ -240,9 +240,22 @@ export function ModelDataPage() {
 
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
+  const [searchInput, setSearchInput] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [sortField, setSortField] = useState<string | null>(null);
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  // Debounce search input
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (searchInput !== searchQuery) {
+        setSearchQuery(searchInput);
+        setPage(1);
+      }
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchInput, searchQuery]);
 
   const [createOpen, setCreateOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
@@ -481,12 +494,10 @@ export function ModelDataPage() {
           <div className="relative flex-1 max-w-sm">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
             <Input
+              ref={searchInputRef}
               placeholder={`Search in ${tableConfig.searchable?.join(', ')}...`}
-              value={searchQuery}
-              onChange={(e) => {
-                setSearchQuery(e.target.value);
-                setPage(1);
-              }}
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
               className="pl-9"
             />
           </div>
@@ -496,17 +507,25 @@ export function ModelDataPage() {
       <Card>
         <CardContent className="p-0">
           {data.length === 0 ? (
-            <EmptyState
-              title="No records"
-              description="Create your first record to get started"
-              action={
-                <Button onClick={handleCreate}>
-                  <Plus className="mr-2 size-4" />
-                  Create Record
-                </Button>
-              }
-              className="py-12"
-            />
+            searchInput ? (
+              <EmptyState
+                title="No results found"
+                description={`No records match "${searchInput}"`}
+                className="py-12"
+              />
+            ) : (
+              <EmptyState
+                title="No records"
+                description="Create your first record to get started"
+                action={
+                  <Button onClick={handleCreate}>
+                    <Plus className="mr-2 size-4" />
+                    Create Record
+                  </Button>
+                }
+                className="py-12"
+              />
+            )
           ) : (
             <ScrollArea className="w-full">
               <Table>
