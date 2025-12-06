@@ -190,7 +190,7 @@ function SortableSchemaField({ id, field, onUpdate, onRemove }: SortableSchemaFi
       <div
         {...attributes}
         {...listeners}
-        className="cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground transition-colors mt-6"
+        className="cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground transition-colors"
       >
         <GripVertical className="size-5" />
       </div>
