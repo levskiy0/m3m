@@ -4,6 +4,12 @@ import type { ModelField, TableConfig } from '@/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 
+// System fields that can be displayed in tables
+const SYSTEM_FIELDS = [
+  { key: '_created_at', label: 'Created At', type: 'datetime' },
+  { key: '_updated_at', label: 'Updated At', type: 'datetime' },
+] as const;
+
 interface TableConfigEditorProps {
   fields: ModelField[];
   config: TableConfig;

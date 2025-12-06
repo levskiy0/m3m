@@ -726,6 +726,20 @@ export function ModelDataPage() {
             <DialogTitle>View Record</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
+            {/* System fields at the top */}
+            <div className="pb-3 mb-3 border-b space-y-2">
+              {SYSTEM_FIELDS.map((key) => (
+                <div key={key} className="grid grid-cols-3 gap-4">
+                  <span className="font-medium text-muted-foreground text-sm">
+                    {SYSTEM_FIELD_LABELS[key]}
+                  </span>
+                  <span className="col-span-2 font-mono text-xs text-muted-foreground">
+                    {formatSystemFieldValue(key, selectedData?.[key])}
+                  </span>
+                </div>
+              ))}
+            </div>
+            {/* Regular fields */}
             {orderedFormFields.map((field) => (
               <div key={field.key} className="grid grid-cols-3 gap-4">
                 <span className="font-medium text-muted-foreground">
