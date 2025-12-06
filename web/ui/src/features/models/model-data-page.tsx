@@ -975,7 +975,7 @@ export function ModelDataPage() {
                             </TableCell>
                             {visibleColumns.map((field) => (
                               <TableCell key={field.key} className="max-w-[300px]">
-                                <span className="block truncate">
+                                <span className="block truncate font-mono whitespace-nowrap">
                                   {formatCellValue(row[field.key], field.type)}
                                 </span>
                               </TableCell>
@@ -1048,12 +1048,13 @@ export function ModelDataPage() {
             <>
               <ResizableHandle withHandle className="w-4 bg-transparent" />
               <ResizablePanel defaultSize={40} minSize={30} maxSize={60}>
-                <Card className="h-full flex flex-col overflow-hidden">
-                  <div className="flex items-center justify-between p-4 border-b shrink-0">
-                    <h3 className="font-semibold">
-                      {panelMode === 'create' && 'Create Record'}
+                <div className="h-full flex flex-col">
+                  {/* Header */}
+                  <div className="flex items-center justify-between py-4 shrink-0">
+                    <h3 className="text-lg font-semibold">
+                      {panelMode === 'create' && 'New Record'}
                       {panelMode === 'edit' && 'Edit Record'}
-                      {panelMode === 'view' && 'View Record'}
+                      {panelMode === 'view' && 'Record Details'}
                     </h3>
                     <div className="flex items-center gap-2">
                       {panelMode === 'view' && (
@@ -1067,9 +1068,10 @@ export function ModelDataPage() {
                             Edit
                           </Button>
                           <Button
-                            variant="destructive"
+                            variant="outline"
                             size="sm"
                             onClick={() => handleDelete(selectedData!)}
+                            className="text-destructive hover:text-destructive"
                           >
                             <Trash2 className="size-4" />
                           </Button>
@@ -1081,20 +1083,19 @@ export function ModelDataPage() {
                     </div>
                   </div>
 
-                  <div
-                    className="overflow-auto"
-                  >
-                    <div className="p-4">
+                  {/* Content */}
+                  <div className="flex-1 overflow-hidden rounded-md border">
+                    <div className="h-full overflow-auto p-4">
                       {panelMode === 'view' && selectedData && (
-                        <div className="space-y-4">
-                          {/* System fields at the top */}
-                          <div className="pb-3 mb-3 border-b space-y-2">
+                        <div className="space-y-3">
+                          {/* System fields */}
+                          <div className="pb-3 border-b space-y-2">
                             {SYSTEM_FIELDS.map((key) => (
-                              <div key={key} className="grid grid-cols-3 gap-4">
-                                <span className="font-medium text-muted-foreground text-sm">
+                              <div key={key} className="flex justify-between text-sm">
+                                <span className="text-muted-foreground">
                                   {SYSTEM_FIELD_LABELS[key]}
                                 </span>
-                                <span className="col-span-2 font-mono text-xs text-muted-foreground break-all">
+                                <span className="font-mono text-xs text-muted-foreground">
                                   {formatSystemFieldValue(key, selectedData[key])}
                                 </span>
                               </div>
@@ -1102,32 +1103,32 @@ export function ModelDataPage() {
                           </div>
                           {/* Regular fields */}
                           {orderedFormFields.map((field) => (
-                            <div key={field.key} className="grid grid-cols-3 gap-4">
-                              <span className="font-medium text-muted-foreground">
+                            <div key={field.key} className="space-y-1">
+                              <div className="text-sm font-medium text-muted-foreground">
                                 {formatFieldLabel(field.key)}
-                              </span>
-                              <span className="col-span-2 break-words">
+                              </div>
+                              <div className="text-sm">
                                 {field.type === 'document' ? (
                                   <pre className="text-xs bg-muted p-2 rounded overflow-auto max-h-32">
                                     {JSON.stringify(selectedData[field.key], null, 2)}
                                   </pre>
                                 ) : (
-                                  formatCellValue(selectedData[field.key], field.type)
+                                  formatCellValue(selectedData[field.key], field.type) || <span className="text-muted-foreground">—</span>
                                 )}
-                              </span>
+                              </div>
                             </div>
                           ))}
                         </div>
                       )}
 
                       {(panelMode === 'create' || panelMode === 'edit') && (
-                        <FieldGroup>
+                        <div className="space-y-4">
                           {orderedFormFields.map((field) => (
-                            <Field key={field.key}>
-                              <FieldLabel>
+                            <div key={field.key} className="space-y-2">
+                              <label className="text-sm font-medium">
                                 {formatFieldLabel(field.key)}
                                 {field.required && <span className="text-destructive ml-1">*</span>}
-                              </FieldLabel>
+                              </label>
                               <FieldInput
                                 field={field}
                                 value={formData[field.key]}
@@ -1137,19 +1138,20 @@ export function ModelDataPage() {
                                 view={formConfig.field_views[field.key]}
                               />
                               {fieldErrors[field.key] && (
-                                <FieldDescription className="text-destructive">
+                                <p className="text-sm text-destructive">
                                   {fieldErrors[field.key]}
-                                </FieldDescription>
+                                </p>
                               )}
-                            </Field>
+                            </div>
                           ))}
-                        </FieldGroup>
+                        </div>
                       )}
                     </div>
                   </div>
 
+                  {/* Footer */}
                   {(panelMode === 'create' || panelMode === 'edit') && (
-                    <div className="p-4 border-t flex gap-2 shrink-0">
+                    <div className="py-4 flex gap-2 shrink-0">
                       <Button variant="outline" onClick={closePanel} className="flex-1">
                         Cancel
                       </Button>
@@ -1168,7 +1170,7 @@ export function ModelDataPage() {
                       </Button>
                     </div>
                   )}
-                </Card>
+                </div>
               </ResizablePanel>
             </>
           )}
