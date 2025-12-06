@@ -138,6 +138,50 @@ export function TableConfigEditor({ fields, config, onChange }: TableConfigEdito
                     </td>
                   </tr>
                 ))}
+                {/* System fields */}
+                {SYSTEM_FIELDS.map((sysField) => (
+                  <tr key={sysField.key} className="border-t bg-muted/30">
+                    <td className="p-3">
+                      <div className="flex flex-col">
+                        <span className="font-mono text-sm text-muted-foreground">{sysField.label}</span>
+                        <span className="text-xs text-muted-foreground">{sysField.type} (system)</span>
+                      </div>
+                    </td>
+                    <td className="p-3 text-center">
+                      <div className="flex items-center justify-center">
+                        <Checkbox
+                          id={`col-${sysField.key}`}
+                          checked={config.columns.includes(sysField.key)}
+                          onCheckedChange={() => toggleColumn(sysField.key)}
+                        />
+                      </div>
+                    </td>
+                    <td className="p-3 text-center">
+                      <div className="flex items-center justify-center">
+                        <Checkbox
+                          id={`filter-${sysField.key}`}
+                          disabled
+                        />
+                      </div>
+                    </td>
+                    <td className="p-3 text-center">
+                      <div className="flex items-center justify-center">
+                        <Checkbox
+                          id={`sort-${sysField.key}`}
+                          disabled
+                        />
+                      </div>
+                    </td>
+                    <td className="p-3 text-center">
+                      <div className="flex items-center justify-center">
+                        <Checkbox
+                          id={`search-${sysField.key}`}
+                          disabled
+                        />
+                      </div>
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>
