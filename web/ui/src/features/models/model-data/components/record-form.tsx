@@ -1,5 +1,5 @@
 import { formatFieldLabel } from '@/lib/format';
-import type { ModelField, FormConfig } from '@/types';
+import type { ModelField, FormConfig, Model } from '@/types';
 import { Button } from '@/components/ui/button';
 import { FieldInput } from './field-input';
 import type { Tab } from '../types';
@@ -12,6 +12,8 @@ interface RecordFormProps {
   onSave: () => void;
   onCancel: () => void;
   isSaving: boolean;
+  projectId?: string;
+  models?: Model[];
 }
 
 export function RecordForm({
@@ -22,6 +24,8 @@ export function RecordForm({
   onSave,
   onCancel,
   isSaving,
+  projectId,
+  models,
 }: RecordFormProps) {
   return (
     <>
@@ -38,6 +42,8 @@ export function RecordForm({
                 value={tab.formData?.[field.key]}
                 onChange={(value) => onFormDataChange(tab.id, { ...tab.formData, [field.key]: value })}
                 view={formConfig.field_views[field.key]}
+                projectId={projectId}
+                models={models}
               />
               {tab.fieldErrors?.[field.key] && (
                 <p className="text-sm text-destructive">{tab.fieldErrors[field.key]}</p>

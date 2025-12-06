@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import {
   Plus,
   Settings,
@@ -12,6 +13,7 @@ import {
 } from 'lucide-react';
 
 import type { ModelData } from '@/types';
+import { modelsApi } from '@/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ConfirmDialog } from '@/components/shared/confirm-dialog';
@@ -35,6 +37,13 @@ import {
 
 export function ModelDataPage() {
   const { projectId, modelId } = useParams<{ projectId: string; modelId: string }>();
+
+  // Load all models for ref field lookups
+  const { data: allModels = [] } = useQuery({
+    queryKey: ['models', projectId],
+    queryFn: () => modelsApi.list(projectId!),
+    enabled: !!projectId,
+  });
 
   // Data and model state
   const {
@@ -327,6 +336,8 @@ export function ModelDataPage() {
             }}
             onCancel={() => closeTab(activeTab.id)}
             isSaving={createMutation.isPending || updateMutation.isPending}
+            projectId={projectId}
+            models={allModels}
           />
         )}
       </div>

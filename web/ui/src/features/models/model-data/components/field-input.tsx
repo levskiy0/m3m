@@ -1,22 +1,51 @@
-import type { ModelField, FieldView } from '@/types';
+import type { ModelField, FieldView, Model } from '@/types';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Checkbox } from '@/components/ui/checkbox';
 import { DatePicker, DateTimePicker } from '@/components/ui/datetime-picker';
 import { getDefaultView } from '../utils';
+import { RefFieldInput } from './ref-field-input';
+import { FileFieldInput } from './file-field-input';
 
 interface FieldInputProps {
   field: ModelField;
   value: unknown;
   onChange: (value: unknown) => void;
   view?: FieldView;
+  projectId?: string;
+  models?: Model[];
 }
 
-export function FieldInput({ field, value, onChange, view }: FieldInputProps) {
+export function FieldInput({ field, value, onChange, view, projectId, models }: FieldInputProps) {
   const widget = view || getDefaultView(field.type);
 
   switch (field.type) {
+    case 'file':
+      if (!projectId) {
+        return <Input value={(value as string) || ''} onChange={(e) => onChange(e.target.value)} />;
+      }
+      return (
+        <FileFieldInput
+          value={(value as string) || null}
+          onChange={(v) => onChange(v || '')}
+          projectId={projectId}
+          view={widget}
+        />
+      );
+    case 'ref':
+      if (!projectId || !models || !field.ref_model) {
+        return <Input value={(value as string) || ''} onChange={(e) => onChange(e.target.value)} />;
+      }
+      return (
+        <RefFieldInput
+          value={(value as string) || null}
+          onChange={(v) => onChange(v || '')}
+          projectId={projectId}
+          refModelSlug={field.ref_model}
+          models={models}
+        />
+      );
     case 'string':
       return (
         <Input

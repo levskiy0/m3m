@@ -129,7 +129,7 @@ function SortableRow({
             id={`search-${item.key}`}
             checked={(config.searchable || []).includes(item.key)}
             onCheckedChange={() => onToggleSearchable(item.key)}
-            disabled={(!isSearchableType && !(config.searchable || []).includes(item.key)) || item.isSystem}
+            disabled={!isSearchableType || item.isSystem}
           />
         </div>
       </td>
@@ -217,6 +217,15 @@ export function TableConfigEditor({ fields, config, onChange }: TableConfigEdito
   };
 
   const toggleSearchable = (key: string) => {
+    // Find the field to check its type
+    const field = fields.find(f => f.key === key);
+    const isSearchableType = field && ['string', 'text'].includes(field.type);
+
+    // Only allow adding if it's a searchable type
+    if (!isSearchableType && !(config.searchable || []).includes(key)) {
+      return; // Don't allow adding non-string fields
+    }
+
     const searchable = (config.searchable || []).includes(key)
       ? (config.searchable || []).filter((s) => s !== key)
       : [...(config.searchable || []), key];

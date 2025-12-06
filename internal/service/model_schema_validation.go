@@ -315,12 +315,27 @@ func (v *ModelSchemaValidator) validateTableConfig(config *domain.TableConfig, f
 		}
 	}
 
-	// Validate searchable fields (only user-defined fields)
+	// Build field type map for searchable validation
+	fieldTypeMap := make(map[string]domain.FieldType)
+	for _, f := range fields {
+		fieldTypeMap[f.Key] = f.Type
+	}
+
+	// Validate searchable fields (only string and text types allowed)
 	for i, searchField := range config.Searchable {
 		if !fieldMap[searchField] {
 			errors = append(errors, ValidationError{
 				Field:   fmt.Sprintf("table_config.searchable[%d]", i),
 				Message: fmt.Sprintf("unknown field '%s'", searchField),
+			})
+			continue
+		}
+		// Check that searchable field is string or text type
+		fieldType := fieldTypeMap[searchField]
+		if fieldType != domain.FieldTypeString && fieldType != domain.FieldTypeText {
+			errors = append(errors, ValidationError{
+				Field:   fmt.Sprintf("table_config.searchable[%d]", i),
+				Message: fmt.Sprintf("field '%s' must be string or text type to be searchable", searchField),
 			})
 		}
 	}
