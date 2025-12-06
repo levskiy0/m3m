@@ -14,6 +14,7 @@ import {
   ArrowUpDown,
   ArrowUp,
   ArrowDown,
+  Loader2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -295,7 +296,7 @@ export function ModelDataPage() {
     };
   }, [model]);
 
-  const { data: dataResponse, isLoading: dataLoading } = useQuery({
+  const { data: dataResponse, isLoading: dataLoading, isFetching } = useQuery({
     queryKey: ['model-data', projectId, modelId, page, limit, sortField, sortOrder, searchQuery],
     queryFn: () => {
       // Use queryData for search, listData otherwise
@@ -317,7 +318,8 @@ export function ModelDataPage() {
       });
     },
     enabled: !!projectId && !!modelId,
-    staleTime: 0, // Always refetch on parameter change
+    staleTime: 0,
+    placeholderData: (prev) => prev, // Keep previous data while fetching
   });
 
   // Get visible columns based on tableConfig (regular fields)
@@ -507,10 +509,10 @@ export function ModelDataPage() {
       <Card>
         <CardContent className="p-0">
           {data.length === 0 ? (
-            searchInput ? (
+            searchQuery ? (
               <EmptyState
                 title="No results found"
-                description={`No records match "${searchInput}"`}
+                description={`No records match "${searchQuery}"`}
                 className="py-12"
               />
             ) : (
