@@ -8,6 +8,7 @@ import {
   Eye,
   Edit,
   Table2,
+  RefreshCw,
 } from 'lucide-react';
 
 import type { ModelData } from '@/types';
@@ -63,6 +64,7 @@ export function ModelDataPage() {
     visibleColumns,
     visibleSystemColumns,
     orderedFormFields,
+    refetch,
   } = useModelData({ projectId, modelId });
 
   // Tab management
@@ -168,13 +170,23 @@ export function ModelDataPage() {
 
       {/* Toolbar: Search, Filters */}
       <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
-        <FilterPopover
-          activeFilters={activeFilters}
-          filterableFields={filterableFields}
-          modelFields={model.fields}
-          onFiltersChange={setActiveFilters}
-          onPageReset={() => setPage(1)}
-        />
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => refetch()}
+            disabled={isFetching}
+          >
+            <RefreshCw className={`size-4 ${isFetching ? 'animate-spin' : ''}`} />
+          </Button>
+          <FilterPopover
+            activeFilters={activeFilters}
+            filterableFields={filterableFields}
+            modelFields={model.fields}
+            onFiltersChange={setActiveFilters}
+            onPageReset={() => setPage(1)}
+          />
+        </div>
 
         {/* Search */}
         {hasSearchable && (
@@ -231,7 +243,7 @@ export function ModelDataPage() {
         {activeTabId === 'table' && (
           <>
             {data.length === 0 ? (
-              <div className="flex-1 flex items-center justify-center border rounded-md">
+              <div className="flex-1 flex items-center justify-center border rounded-md dark:bg-zinc-950">
                 {searchQuery || activeFilters.length > 0 ? (
                   <EmptyState
                     title="No results found"

@@ -77,7 +77,7 @@ export function useModelData({ projectId, modelId }: UseModelDataOptions) {
     }));
   }, [activeFilters]);
 
-  const { data: dataResponse, isLoading: dataLoading, isFetching } = useQuery({
+  const { data: dataResponse, isLoading: dataLoading, isFetching, refetch } = useQuery({
     queryKey: ['model-data', projectId, modelId, page, limit, sortField, sortOrder, searchQuery, filterConditions],
     queryFn: () => {
       return modelsApi.queryData(projectId!, modelId!, {
@@ -167,6 +167,7 @@ export function useModelData({ projectId, modelId }: UseModelDataOptions) {
     dataLoading,
     isFetching,
     isLoading,
+    refetch,
 
     // Pagination
     page,
