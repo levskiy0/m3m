@@ -43,7 +43,7 @@ import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Field, FieldLabel } from '@/components/ui/field';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { EditorTabs, EditorTab } from '@/components/ui/editor-tabs';
 import { TableConfigEditor } from './table-config-editor';
 import { FormConfigEditor } from './form-config-editor';
 
@@ -313,6 +313,7 @@ export function ModelSchemaPage() {
     field_views: {},
   });
   const [hasChanges, setHasChanges] = useState(false);
+  const [activeTab, setActiveTab] = useState<'schema' | 'table' | 'form'>('schema');
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -551,24 +552,31 @@ export function ModelSchemaPage() {
         </div>
       </div>
 
-      <Tabs defaultValue="schema">
-        <TabsList>
-          <TabsTrigger value="schema">
-            <Database className="mr-2 size-4" />
-            Schema
-          </TabsTrigger>
-          <TabsTrigger value="table">
-            <Table className="mr-2 size-4" />
-            Table View
-          </TabsTrigger>
-          <TabsTrigger value="form">
-            <FileText className="mr-2 size-4" />
-            Form
-          </TabsTrigger>
-        </TabsList>
+      <EditorTabs className="px-0 mb-[-1px] relative z-10">
+        <EditorTab
+          active={activeTab === 'schema'}
+          onClick={() => setActiveTab('schema')}
+          icon={<Database className="size-4" />}
+        >
+          Schema
+        </EditorTab>
+        <EditorTab
+          active={activeTab === 'table'}
+          onClick={() => setActiveTab('table')}
+          icon={<Table className="size-4" />}
+        >
+          Table View
+        </EditorTab>
+        <EditorTab
+          active={activeTab === 'form'}
+          onClick={() => setActiveTab('form')}
+          icon={<FileText className="size-4" />}>
+          Form
+        </EditorTab>
+      </EditorTabs>
 
-        <TabsContent value="schema" className="space-y-4">
-          <Card>
+      {activeTab === 'schema' && (
+        <Card className="rounded-t-none !mt-0">
             <CardHeader>
               <div className="flex items-center justify-between">
                 <div>
@@ -616,24 +624,23 @@ export function ModelSchemaPage() {
               )}
             </CardContent>
           </Card>
-        </TabsContent>
+      )}
 
-        <TabsContent value="table">
-          <TableConfigEditor
-            fields={fields}
-            config={tableConfig}
-            onChange={handleTableConfigChange}
-          />
-        </TabsContent>
+      {activeTab === 'table' && (
+        <TableConfigEditor
+          fields={fields}
+          config={tableConfig}
+          onChange={handleTableConfigChange}
+        />
+      )}
 
-        <TabsContent value="form">
-          <FormConfigEditor
-            fields={fields}
-            config={formConfig}
-            onChange={handleFormConfigChange}
-          />
-        </TabsContent>
-      </Tabs>
+      {activeTab === 'form' && (
+        <FormConfigEditor
+          fields={fields}
+          config={formConfig}
+          onChange={handleFormConfigChange}
+        />
+      )}
     </div>
   );
 }

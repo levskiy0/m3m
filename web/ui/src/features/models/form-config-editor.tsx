@@ -200,7 +200,7 @@ export function FormConfigEditor({ fields, config, onChange }: FormConfigEditorP
   };
 
   return (
-    <Card>
+    <Card className="rounded-t-none !mt-0">
       <CardHeader>
         <CardTitle>Form Configuration</CardTitle>
         <CardDescription>

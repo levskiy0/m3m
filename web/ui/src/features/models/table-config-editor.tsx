@@ -244,7 +244,7 @@ export function TableConfigEditor({ fields, config, onChange }: TableConfigEdito
   };
 
   return (
-    <Card>
+    <Card className="rounded-t-none !mt-0">
       <CardHeader>
         <CardTitle>Table Configuration</CardTitle>
         <CardDescription>

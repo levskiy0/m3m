@@ -5,7 +5,7 @@ import { toast } from 'sonner';
 import { modelsApi } from '@/api';
 import { ApiValidationError } from '@/api/client';
 import type { FilterCondition, TableConfig, FormConfig, ModelField } from '@/types';
-import { isSystemField, type SystemField } from '../constants';
+import { isSystemField, SYSTEM_FIELDS, type SystemField } from '../constants';
 import type { ActiveFilter } from '../types';
 
 interface UseModelDataOptions {
@@ -46,11 +46,13 @@ export function useModelData({ projectId, modelId }: UseModelDataOptions) {
   const tableConfig = useMemo((): TableConfig => {
     const defaultColumns = model?.fields.map(f => f.key) || [];
     const defaultSearchable = model?.fields.filter(f => ['string', 'text'].includes(f.type)).map(f => f.key) || [];
+    // Include system fields in sortable columns by default
+    const defaultSortColumns = [...defaultColumns, ...SYSTEM_FIELDS];
 
     return {
       columns: model?.table_config?.columns ?? defaultColumns,
       filters: model?.table_config?.filters ?? [],
-      sort_columns: model?.table_config?.sort_columns ?? defaultColumns,
+      sort_columns: model?.table_config?.sort_columns ?? defaultSortColumns,
       searchable: model?.table_config?.searchable ?? defaultSearchable,
     };
   }, [model]);
