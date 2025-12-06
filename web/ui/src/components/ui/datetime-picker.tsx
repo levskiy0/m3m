@@ -29,7 +29,8 @@ export function DateTimePicker({
   const [date, setDate] = React.useState<Date | undefined>(() => {
     if (!value) return undefined;
     try {
-      return new Date(value);
+      const d = new Date(value);
+      return isNaN(d.getTime()) ? undefined : d;
     } catch {
       return undefined;
     }
@@ -38,6 +39,7 @@ export function DateTimePicker({
     if (!value) return '00:00';
     try {
       const d = new Date(value);
+      if (isNaN(d.getTime())) return '00:00';
       return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
     } catch {
       return '00:00';
@@ -85,7 +87,7 @@ export function DateTimePicker({
     }
   };
 
-  const displayValue = date
+  const displayValue = date && !isNaN(date.getTime())
     ? format(date, 'PPP') + ' ' + time
     : undefined;
 
