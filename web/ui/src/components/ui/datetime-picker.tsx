@@ -72,7 +72,7 @@ export function DateTimePicker({
     const [hours, minutes] = (newTime || '00:00').split(':').map(Number);
     const result = new Date(newDate);
     result.setHours(hours || 0, minutes || 0, 0, 0);
-    onChange(format(result, "yyyy-MM-dd'T'HH:mm"));
+    onChange(format(result, "yyyy-MM-dd'T'HH:mm:ss"));
   };
 
   const handleDateSelect = (selectedDate: Date | undefined) => {
