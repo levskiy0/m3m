@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 
 interface UseColumnResizeOptions {
   modelId: string | undefined;
@@ -17,18 +17,7 @@ function loadColumnWidths(modelId: string | undefined): Record<string, number> {
 export function useColumnResize({ modelId }: UseColumnResizeOptions) {
   const columnWidthsKey = `model-column-widths-${modelId}`;
 
-  // Use useMemo to derive state from modelId changes
-  const initialWidths = useMemo(() => loadColumnWidths(modelId), [modelId]);
-  const [columnWidths, setColumnWidths] = useState<Record<string, number>>(initialWidths);
-
-  // Reset when modelId changes
-  const prevModelIdRef = useRef(modelId);
-  if (prevModelIdRef.current !== modelId) {
-    prevModelIdRef.current = modelId;
-    // This is a render-time update pattern, not in useEffect
-    setColumnWidths(loadColumnWidths(modelId));
-  }
-
+  const [columnWidths, setColumnWidths] = useState<Record<string, number>>(() => loadColumnWidths(modelId));
   const resizingRef = useRef<{ column: string; startX: number; startWidth: number } | null>(null);
 
   // Save column widths to localStorage
@@ -37,6 +26,14 @@ export function useColumnResize({ modelId }: UseColumnResizeOptions) {
       localStorage.setItem(columnWidthsKey, JSON.stringify(columnWidths));
     }
   }, [columnWidths, columnWidthsKey, modelId]);
+
+  // Sync column widths with localStorage on modelId change
+  // This is intentional - we need to reset state when navigating between models
+  useEffect(() => {
+    const loadedWidths = loadColumnWidths(modelId);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setColumnWidths(loadedWidths);
+  }, [modelId]);
 
   const handleResizeStart = useCallback((e: React.MouseEvent, column: string, currentWidth: number) => {
     e.preventDefault();

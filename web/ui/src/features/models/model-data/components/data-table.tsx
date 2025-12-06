@@ -186,15 +186,17 @@ export function DataTable({
                 const width = getColumnWidth(key, 180);
                 return (
                   <TableCell
-                    key={key}
-                    className="text-muted-foreground font-mono whitespace-nowrap"
-                    style={{ width, minWidth: width, maxWidth: width }}
-                  >
+                        key={key}
+                        className="text-muted-foreground font-mono whitespace-nowrap"
+                        style={{width, minWidth: width, maxWidth: width}}
+                    >
+                    <span className="block truncate font-mono whitespace-nowrap">
                     {formatSystemFieldValue(key, row[key])}
+                    </span>
                   </TableCell>
-                );
+              );
               })}
-              <TableCell className="w-12" onClick={(e) => e.stopPropagation()}>
+                <TableCell className="w-12" onClick={(e) => e.stopPropagation()}>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" size="icon" className="size-8">
