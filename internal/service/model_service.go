@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -39,13 +40,19 @@ func (s *ModelService) Create(ctx context.Context, projectID primitive.ObjectID,
 	} else {
 		// Default table config - show all fields
 		columns := make([]string, len(req.Fields))
+		searchable := make([]string, 0)
 		for i, f := range req.Fields {
 			columns[i] = f.Key
+			// Make string/text fields searchable by default
+			if f.Type == domain.FieldTypeString || f.Type == domain.FieldTypeText {
+				searchable = append(searchable, f.Key)
+			}
 		}
 		model.TableConfig = domain.TableConfig{
 			Columns:     columns,
 			Filters:     []string{},
 			SortColumns: columns,
+			Searchable:  searchable,
 		}
 	}
 
@@ -234,11 +241,27 @@ func (s *ModelService) applyDefaults(model *domain.Model, data map[string]interf
 	// Apply defaults for missing fields
 	for _, field := range model.Fields {
 		if _, exists := result[field.Key]; !exists && field.DefaultValue != nil {
-			result[field.Key] = field.DefaultValue
+			result[field.Key] = s.resolveDefaultValue(field)
 		}
 	}
 
 	return result
+}
+
+// resolveDefaultValue handles special default values like $now
+func (s *ModelService) resolveDefaultValue(field domain.ModelField) interface{} {
+	if strVal, ok := field.DefaultValue.(string); ok {
+		if strVal == "$now" {
+			now := time.Now()
+			switch field.Type {
+			case domain.FieldTypeDate:
+				return now.Format("2006-01-02")
+			case domain.FieldTypeDateTime:
+				return now.Format(time.RFC3339)
+			}
+		}
+	}
+	return field.DefaultValue
 }
 
 // GetProjectDataSize returns total size of all data collections for a project in bytes

@@ -45,6 +45,7 @@ type TableConfig struct {
 	Columns     []string `bson:"columns" json:"columns"`
 	Filters     []string `bson:"filters" json:"filters"`
 	SortColumns []string `bson:"sort_columns" json:"sort_columns"`
+	Searchable  []string `bson:"searchable" json:"searchable"`
 }
 
 type FormConfig struct {

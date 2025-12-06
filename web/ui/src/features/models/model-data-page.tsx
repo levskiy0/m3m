@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
@@ -10,11 +10,15 @@ import {
   ChevronRight,
   MoreHorizontal,
   Eye,
+  Search,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { modelsApi } from '@/api';
-import type { ModelData, ModelField, FieldType } from '@/types';
+import type { ModelData, ModelField, FieldType, FormConfig, TableConfig, FieldView } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import {
@@ -50,6 +54,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { ConfirmDialog } from '@/components/shared/confirm-dialog';
 import { EmptyState } from '@/components/shared/empty-state';
@@ -60,9 +65,13 @@ interface FieldInputProps {
   field: ModelField;
   value: unknown;
   onChange: (value: unknown) => void;
+  view?: FieldView;
 }
 
-function FieldInput({ field, value, onChange }: FieldInputProps) {
+function FieldInput({ field, value, onChange, view }: FieldInputProps) {
+  // Determine widget to use based on view or default
+  const widget = view || getDefaultView(field.type);
+
   switch (field.type) {
     case 'string':
       return (
@@ -72,6 +81,17 @@ function FieldInput({ field, value, onChange }: FieldInputProps) {
         />
       );
     case 'text':
+      if (widget === 'tiptap' || widget === 'markdown') {
+        // For now, use textarea for rich text (can be enhanced later)
+        return (
+          <Textarea
+            value={(value as string) || ''}
+            onChange={(e) => onChange(e.target.value)}
+            rows={6}
+            placeholder={widget === 'markdown' ? 'Write markdown...' : 'Write content...'}
+          />
+        );
+      }
       return (
         <Textarea
           value={(value as string) || ''}
@@ -81,6 +101,17 @@ function FieldInput({ field, value, onChange }: FieldInputProps) {
       );
     case 'number':
     case 'float':
+      if (widget === 'slider') {
+        // For now, use input for slider (can be enhanced later)
+        return (
+          <Input
+            type="number"
+            step={field.type === 'float' ? '0.01' : '1'}
+            value={(value as number)?.toString() || ''}
+            onChange={(e) => onChange(parseFloat(e.target.value) || 0)}
+          />
+        );
+      }
       return (
         <Input
           type="number"
@@ -90,11 +121,23 @@ function FieldInput({ field, value, onChange }: FieldInputProps) {
         />
       );
     case 'bool':
+      if (widget === 'checkbox') {
+        return (
+          <div className="flex items-center h-10">
+            <Checkbox
+              checked={!!value}
+              onCheckedChange={onChange}
+            />
+          </div>
+        );
+      }
       return (
-        <Switch
-          checked={!!value}
-          onCheckedChange={onChange}
-        />
+        <div className="flex items-center h-10">
+          <Switch
+            checked={!!value}
+            onCheckedChange={onChange}
+          />
+        </div>
       );
     case 'document':
       return (
@@ -138,6 +181,22 @@ function FieldInput({ field, value, onChange }: FieldInputProps) {
   }
 }
 
+function getDefaultView(type: FieldType): FieldView {
+  switch (type) {
+    case 'string': return 'input';
+    case 'text': return 'textarea';
+    case 'number': return 'input';
+    case 'float': return 'input';
+    case 'bool': return 'switch';
+    case 'document': return 'json';
+    case 'date': return 'datepicker';
+    case 'datetime': return 'datetimepicker';
+    case 'file': return 'file';
+    case 'ref': return 'select';
+    default: return 'input';
+  }
+}
+
 function formatCellValue(value: unknown, type: FieldType): string {
   if (value === null || value === undefined) return '-';
   if (type === 'bool') return value ? 'Yes' : 'No';
@@ -155,6 +214,9 @@ export function ModelDataPage() {
 
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [sortField, setSortField] = useState<string | null>(null);
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
 
   const [createOpen, setCreateOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
@@ -171,10 +233,76 @@ export function ModelDataPage() {
   });
 
   const { data: dataResponse, isLoading: dataLoading } = useQuery({
-    queryKey: ['model-data', projectId, modelId, page, limit],
-    queryFn: () => modelsApi.listData(projectId!, modelId!, { page, limit }),
+    queryKey: ['model-data', projectId, modelId, page, limit, sortField, sortOrder, searchQuery],
+    queryFn: () => modelsApi.listData(projectId!, modelId!, {
+      page,
+      limit,
+      sort: sortField || undefined,
+      order: sortOrder,
+    }),
     enabled: !!projectId && !!modelId,
   });
+
+  // Get table config or defaults
+  const tableConfig = useMemo((): TableConfig => {
+    if (model?.tableConfig) {
+      return model.tableConfig;
+    }
+    // Default config - show all fields
+    const columns = model?.fields.map(f => f.key) || [];
+    return {
+      columns,
+      filters: [],
+      sort_columns: columns,
+      searchable: model?.fields.filter(f => ['string', 'text'].includes(f.type)).map(f => f.key) || [],
+    };
+  }, [model]);
+
+  // Get form config or defaults
+  const formConfig = useMemo((): FormConfig => {
+    if (model?.formConfig) {
+      return model.formConfig;
+    }
+    return {
+      field_order: model?.fields.map(f => f.key) || [],
+      hidden_fields: [],
+      field_views: {},
+    };
+  }, [model]);
+
+  // Get visible columns based on tableConfig
+  const visibleColumns = useMemo(() => {
+    if (!model) return [];
+    const fieldMap = new Map(model.fields.map(f => [f.key, f]));
+    return tableConfig.columns
+      .map(key => fieldMap.get(key))
+      .filter((f): f is ModelField => f !== undefined);
+  }, [model, tableConfig]);
+
+  // Get ordered fields for forms based on formConfig
+  const orderedFormFields = useMemo(() => {
+    if (!model) return [];
+    const fieldMap = new Map(model.fields.map(f => [f.key, f]));
+    const ordered: ModelField[] = [];
+
+    // First add fields in specified order
+    for (const key of formConfig.field_order) {
+      const field = fieldMap.get(key);
+      if (field && !formConfig.hidden_fields.includes(key)) {
+        ordered.push(field);
+        fieldMap.delete(key);
+      }
+    }
+
+    // Then add remaining fields not in the order and not hidden
+    for (const [key, field] of fieldMap) {
+      if (!formConfig.hidden_fields.includes(key)) {
+        ordered.push(field);
+      }
+    }
+
+    return ordered;
+  }, [model, formConfig]);
 
   const createMutation = useMutation({
     mutationFn: (data: Record<string, unknown>) =>
@@ -251,9 +379,22 @@ export function ModelDataPage() {
     setDeleteOpen(true);
   };
 
+  const handleSort = (fieldKey: string) => {
+    if (!tableConfig.sort_columns.includes(fieldKey)) return;
+
+    if (sortField === fieldKey) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(fieldKey);
+      setSortOrder('asc');
+    }
+    setPage(1);
+  };
+
   const isLoading = modelLoading || dataLoading;
   const data = dataResponse?.data || [];
   const totalPages = dataResponse?.totalPages || 1;
+  const hasSearchable = (tableConfig.searchable?.length || 0) > 0;
 
   if (isLoading) {
     return (
@@ -291,6 +432,24 @@ export function ModelDataPage() {
         </div>
       </div>
 
+      {/* Search bar */}
+      {hasSearchable && (
+        <div className="flex items-center gap-2">
+          <div className="relative flex-1 max-w-sm">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+            <Input
+              placeholder={`Search in ${tableConfig.searchable?.join(', ')}...`}
+              value={searchQuery}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                setPage(1);
+              }}
+              className="pl-9"
+            />
+          </div>
+        </div>
+      )}
+
       <Card>
         <CardContent className="p-0">
           {data.length === 0 ? (
@@ -310,16 +469,42 @@ export function ModelDataPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    {model.fields.slice(0, 5).map((field) => (
-                      <TableHead key={field.key}>{field.key}</TableHead>
-                    ))}
+                    {visibleColumns.map((field) => {
+                      const isSortable = tableConfig.sort_columns.includes(field.key);
+                      const isCurrentSort = sortField === field.key;
+
+                      return (
+                        <TableHead
+                          key={field.key}
+                          className={isSortable ? 'cursor-pointer select-none hover:bg-muted/50' : ''}
+                          onClick={() => isSortable && handleSort(field.key)}
+                        >
+                          <div className="flex items-center gap-1">
+                            {field.key}
+                            {isSortable && (
+                              <span className="text-muted-foreground">
+                                {isCurrentSort ? (
+                                  sortOrder === 'asc' ? (
+                                    <ArrowUp className="size-4" />
+                                  ) : (
+                                    <ArrowDown className="size-4" />
+                                  )
+                                ) : (
+                                  <ArrowUpDown className="size-3 opacity-50" />
+                                )}
+                              </span>
+                            )}
+                          </div>
+                        </TableHead>
+                      );
+                    })}
                     <TableHead className="w-12"></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {data.map((row) => (
                     <TableRow key={row._id}>
-                      {model.fields.slice(0, 5).map((field) => (
+                      {visibleColumns.map((field) => (
                         <TableCell key={field.key}>
                           {formatCellValue(row[field.key], field.type)}
                         </TableCell>
@@ -412,7 +597,7 @@ export function ModelDataPage() {
             <DialogDescription>Add a new record to {model.name}</DialogDescription>
           </DialogHeader>
           <FieldGroup>
-            {model.fields.map((field) => (
+            {orderedFormFields.map((field) => (
               <Field key={field.key}>
                 <FieldLabel>
                   {field.key}
@@ -424,6 +609,7 @@ export function ModelDataPage() {
                   onChange={(value) =>
                     setFormData({ ...formData, [field.key]: value })
                   }
+                  view={formConfig.field_views[field.key]}
                 />
               </Field>
             ))}
@@ -449,7 +635,7 @@ export function ModelDataPage() {
             <DialogTitle>Edit Record</DialogTitle>
           </DialogHeader>
           <FieldGroup>
-            {model.fields.map((field) => (
+            {orderedFormFields.map((field) => (
               <Field key={field.key}>
                 <FieldLabel>
                   {field.key}
@@ -461,6 +647,7 @@ export function ModelDataPage() {
                   onChange={(value) =>
                     setFormData({ ...formData, [field.key]: value })
                   }
+                  view={formConfig.field_views[field.key]}
                 />
               </Field>
             ))}
@@ -486,7 +673,7 @@ export function ModelDataPage() {
             <DialogTitle>View Record</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
-            {model.fields.map((field) => (
+            {orderedFormFields.map((field) => (
               <div key={field.key} className="grid grid-cols-3 gap-4">
                 <span className="font-medium text-muted-foreground">
                   {field.key}

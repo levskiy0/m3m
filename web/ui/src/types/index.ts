@@ -271,24 +271,32 @@ export type FieldType =
 
 export interface TableConfig {
   columns: string[];
-  sortableColumns: string[];
-  filterableColumns: string[];
-  defaultSort?: {
-    column: string;
-    direction: 'asc' | 'desc';
-  };
+  filters: string[];
+  sort_columns: string[];
+  searchable?: string[];
 }
 
 export interface FormConfig {
-  fields: FormFieldConfig[];
+  field_order: string[];
+  hidden_fields: string[];
+  field_views: Record<string, FieldView>;
 }
 
-export interface FormFieldConfig {
-  key: string;
-  hidden?: boolean;
-  order?: number;
-  widget?: 'input' | 'textarea' | 'richtext' | 'select' | 'checkbox' | 'datepicker' | 'filepicker';
-}
+export type FieldView =
+  | 'input'
+  | 'select'
+  | 'textarea'
+  | 'tiptap'
+  | 'markdown'
+  | 'slider'
+  | 'checkbox'
+  | 'switch'
+  | 'datepicker'
+  | 'datetimepicker'
+  | 'file'
+  | 'image'
+  | 'combobox'
+  | 'json';
 
 export interface CreateModelRequest {
   name: string;

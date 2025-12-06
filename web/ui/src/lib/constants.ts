@@ -43,6 +43,50 @@ export const FIELD_TYPES: { value: FieldType; label: string }[] = [
   { value: 'datetime', label: 'DateTime' },
 ];
 
+// Field views per field type (what widgets can be used for each type)
+export const FIELD_VIEWS: Record<FieldType, { value: string; label: string }[]> = {
+  string: [
+    { value: 'input', label: 'Input' },
+    { value: 'select', label: 'Select' },
+  ],
+  text: [
+    { value: 'textarea', label: 'Textarea' },
+    { value: 'tiptap', label: 'Rich Text (TipTap)' },
+    { value: 'markdown', label: 'Markdown' },
+  ],
+  number: [
+    { value: 'input', label: 'Input' },
+    { value: 'slider', label: 'Slider' },
+  ],
+  float: [
+    { value: 'input', label: 'Input' },
+    { value: 'slider', label: 'Slider' },
+  ],
+  bool: [
+    { value: 'checkbox', label: 'Checkbox' },
+    { value: 'switch', label: 'Switch' },
+  ],
+  date: [
+    { value: 'datepicker', label: 'Date Picker' },
+    { value: 'input', label: 'Input' },
+  ],
+  datetime: [
+    { value: 'datetimepicker', label: 'DateTime Picker' },
+    { value: 'input', label: 'Input' },
+  ],
+  file: [
+    { value: 'file', label: 'File Upload' },
+    { value: 'image', label: 'Image Upload' },
+  ],
+  ref: [
+    { value: 'select', label: 'Select' },
+    { value: 'combobox', label: 'Combobox' },
+  ],
+  document: [
+    { value: 'json', label: 'JSON Editor' },
+  ],
+};
+
 export const ENV_TYPES: { value: EnvType; label: string }[] = [
   { value: 'string', label: 'String' },
   { value: 'text', label: 'Text' },

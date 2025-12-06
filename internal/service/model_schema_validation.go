@@ -249,6 +249,10 @@ func (v *ModelSchemaValidator) validateDefaultValue(field domain.ModelField) err
 		}
 	case domain.FieldTypeDate, domain.FieldTypeDateTime:
 		if str, ok := value.(string); ok {
+			// Allow special $now value for current date/time
+			if str == "$now" {
+				return nil
+			}
 			// Validate date format
 			validator := &DataValidator{}
 			if field.Type == domain.FieldTypeDate {
@@ -301,6 +305,16 @@ func (v *ModelSchemaValidator) validateTableConfig(config *domain.TableConfig, f
 			errors = append(errors, ValidationError{
 				Field:   fmt.Sprintf("table_config.sort_columns[%d]", i),
 				Message: fmt.Sprintf("unknown field '%s'", sortCol),
+			})
+		}
+	}
+
+	// Validate searchable fields
+	for i, searchField := range config.Searchable {
+		if !fieldMap[searchField] {
+			errors = append(errors, ValidationError{
+				Field:   fmt.Sprintf("table_config.searchable[%d]", i),
+				Message: fmt.Sprintf("unknown field '%s'", searchField),
 			})
 		}
 	}
