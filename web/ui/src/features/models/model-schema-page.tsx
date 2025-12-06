@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus, Trash2, GripVertical, Save, Table, Database, FileText } from 'lucide-react';
@@ -260,6 +260,14 @@ export function ModelSchemaPage() {
   const queryClient = useQueryClient();
 
   const [fields, setFields] = useState<ModelField[]>([]);
+  const fieldIdsRef = useRef<string[]>([]);
+  const idCounterRef = useRef(0);
+
+  const generateFieldId = () => {
+    idCounterRef.current += 1;
+    return `field-${idCounterRef.current}-${Date.now()}`;
+  };
+
   const [tableConfig, setTableConfig] = useState<TableConfig>({
     columns: [],
     filters: [],
@@ -289,6 +297,8 @@ export function ModelSchemaPage() {
   useEffect(() => {
     if (model) {
       setFields(model.fields);
+      // Generate stable IDs for loaded fields
+      fieldIdsRef.current = model.fields.map(() => generateFieldId());
       setTableConfig(model.tableConfig || {
         columns: model.fields.map(f => f.key),
         filters: [],
@@ -329,6 +339,7 @@ export function ModelSchemaPage() {
     };
     const newFields = [...fields, newField];
     setFields(newFields);
+    fieldIdsRef.current = [...fieldIdsRef.current, generateFieldId()];
 
     // Auto-add to configs
     setTableConfig(prev => ({
@@ -381,6 +392,7 @@ export function ModelSchemaPage() {
   const removeField = (index: number) => {
     const keyToRemove = fields[index].key;
     setFields(fields.filter((_, i) => i !== index));
+    fieldIdsRef.current = fieldIdsRef.current.filter((_, i) => i !== index);
 
     // Remove from configs
     setTableConfig(prev => ({
@@ -406,9 +418,13 @@ export function ModelSchemaPage() {
     const { active, over } = event;
 
     if (over && active.id !== over.id) {
-      const oldIndex = parseInt(active.id as string);
-      const newIndex = parseInt(over.id as string);
+      const oldIndex = fieldIdsRef.current.indexOf(active.id as string);
+      const newIndex = fieldIdsRef.current.indexOf(over.id as string);
+
+      if (oldIndex === -1 || newIndex === -1) return;
+
       const newFields = arrayMove(fields, oldIndex, newIndex);
+      fieldIdsRef.current = arrayMove(fieldIdsRef.current, oldIndex, newIndex);
       setFields(newFields);
 
       // Update configs with new field order
@@ -520,14 +536,14 @@ export function ModelSchemaPage() {
                   onDragEnd={handleDragEnd}
                 >
                   <SortableContext
-                    items={fields.map((_, i) => String(i))}
+                    items={fieldIdsRef.current}
                     strategy={verticalListSortingStrategy}
                   >
                     <div className="space-y-4">
                       {fields.map((field, index) => (
                         <SortableSchemaField
-                          key={index}
-                          id={String(index)}
+                          key={fieldIdsRef.current[index] || index}
+                          id={fieldIdsRef.current[index] || String(index)}
                           field={field}
                           onUpdate={(updates) => updateField(index, updates)}
                           onRemove={() => removeField(index)}
