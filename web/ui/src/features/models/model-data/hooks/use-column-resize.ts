@@ -15,25 +15,32 @@ function loadColumnWidths(modelId: string | undefined): Record<string, number> {
 }
 
 export function useColumnResize({ modelId }: UseColumnResizeOptions) {
-  const columnWidthsKey = `model-column-widths-${modelId}`;
-
   const [columnWidths, setColumnWidths] = useState<Record<string, number>>(() => loadColumnWidths(modelId));
   const resizingRef = useRef<{ column: string; startX: number; startWidth: number } | null>(null);
 
-  // Save column widths to localStorage
-  useEffect(() => {
-    if (modelId && Object.keys(columnWidths).length > 0) {
-      localStorage.setItem(columnWidthsKey, JSON.stringify(columnWidths));
-    }
-  }, [columnWidths, columnWidthsKey, modelId]);
+  // Track which modelId the current columnWidths belong to
+  // This prevents saving old model's widths to new model's localStorage
+  const loadedModelIdRef = useRef<string | undefined>(undefined);
 
-  // Sync column widths with localStorage on modelId change
-  // This is intentional - we need to reset state when navigating between models
+  // Load column widths when modelId changes
   useEffect(() => {
+    loadedModelIdRef.current = undefined; // Reset before loading
     const loadedWidths = loadColumnWidths(modelId);
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Required to sync state with localStorage on model change
     setColumnWidths(loadedWidths);
+    loadedModelIdRef.current = modelId; // Mark as loaded for this model
   }, [modelId]);
+
+  // Save column widths to localStorage - only when data belongs to current model
+  useEffect(() => {
+    // Only save if:
+    // 1. We have a valid modelId
+    // 2. The columnWidths belong to the current model (not stale data from previous model)
+    // 3. There's actually data to save
+    if (modelId && loadedModelIdRef.current === modelId && Object.keys(columnWidths).length > 0) {
+      localStorage.setItem(`model-column-widths-${modelId}`, JSON.stringify(columnWidths));
+    }
+  }, [columnWidths, modelId]);
 
   const handleResizeStart = useCallback((e: React.MouseEvent, column: string, currentWidth: number) => {
     e.preventDefault();
