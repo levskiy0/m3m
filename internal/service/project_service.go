@@ -15,12 +15,14 @@ import (
 
 type ProjectService struct {
 	projectRepo *repository.ProjectRepository
+	widgetRepo  *repository.WidgetRepository
 	config      *config.Config
 }
 
-func NewProjectService(projectRepo *repository.ProjectRepository, config *config.Config) *ProjectService {
+func NewProjectService(projectRepo *repository.ProjectRepository, widgetRepo *repository.WidgetRepository, config *config.Config) *ProjectService {
 	return &ProjectService{
 		projectRepo: projectRepo,
+		widgetRepo:  widgetRepo,
 		config:      config,
 	}
 }
@@ -48,11 +50,18 @@ func (s *ProjectService) Create(ctx context.Context, req *domain.CreateProjectRe
 		return nil, err
 	}
 
+	// Create default widg
 	return project, nil
 }
 
 func (s *ProjectService) GetByID(ctx context.Context, id primitive.ObjectID) (*domain.Project, error) {
 	return s.projectRepo.FindByID(ctx, id)
+ive.ObjectID) {
+	defaultWidgets := []domain.Widget{
+		{ProjectID: projectID, Type: domain.WidgetTypeUptime, Variant: domain.WidgetVariantMini, GridSpan: 1, Order: 0},
+		{ProjectID: projectID, Type: domain.WidgetTypeRequests, Variant: domain.WidgetVariantMini, GridSpan: 1, Order: 1},
+		{ProjectID: projectID, Type: domain.WidgetTypeStorage, Variant: domain.WidgetVariantMini, GridSpan: 1, Order: 2},
+		{ProjectID: projectID, Type: domain.Widg
 }
 
 func (s *ProjectService) GetBySlug(ctx context.Context, slug string) (*domain.Project, error) {

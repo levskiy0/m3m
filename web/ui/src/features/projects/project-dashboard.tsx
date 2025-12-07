@@ -6,25 +6,18 @@ import {
   Square,
   RotateCcw,
   Code,
-  HardDrive,
-  Database,
   Target,
   ExternalLink,
-  Clock,
   Activity,
   AlertTriangle,
-  Zap,
-  MemoryStick,
   ChevronRight,
   ChevronDown,
   Bug,
   Tag,
-  Cpu,
   Plus,
   LayoutGrid,
   BarChart3,
   Minus,
-  Edit,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -47,7 +40,6 @@ import { CSS } from '@dnd-kit/utilities';
 
 import { projectsApi, pipelineApi, goalsApi, widgetsApi } from '@/api';
 import { config } from '@/lib/config';
-import { formatBytes } from '@/lib/format';
 import { queryKeys } from '@/lib/query-keys';
 import { cn } from '@/lib/utils';
 import { useProjectRuntime } from '@/hooks';
@@ -493,72 +485,6 @@ export function ProjectDashboard() {
           <div className="bg-background rounded-b-xl">
             <div className="border-b" />
             <div className="space-y-6 px-0 py-4">
-              {/* Runtime Stats - Row 1 */}
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                <MetricCard
-                  label="Uptime"
-                  value={isRunning && stats?.uptime_formatted ? stats.uptime_formatted : '--'}
-                  subtext={stats?.started_at
-                    ? `Since ${new Date(stats.started_at).toLocaleString()}`
-                    : 'Service not running'}
-                  icon={Clock}
-                />
-                <MetricCard
-                  label="Requests"
-                  value={isRunning && stats?.total_requests != null
-                    ? stats.total_requests.toLocaleString()
-                    : '--'}
-                  subtext={isRunning && stats?.routes_count
-                    ? `${stats.routes_count} route${stats.routes_count !== 1 ? 's' : ''}`
-                    : 'No routes'}
-                  icon={Zap}
-                  sparklineData={stats?.history?.requests}
-                  sparklineColor="hsl(var(--primary))"
-                />
-                <MetricCard
-                  label="Scheduled Jobs"
-                  value={isRunning && stats?.scheduled_jobs != null ? stats.scheduled_jobs : '--'}
-                  subtext={isRunning && stats
-                    ? stats.scheduler_active ? 'Scheduler active' : 'Scheduler inactive'
-                    : 'No data'}
-                  icon={Clock}
-                  sparklineData={stats?.history?.jobs}
-                  sparklineColor="hsl(var(--chart-3))"
-                />
-                <MetricCard
-                  label="Storage"
-                  value={stats?.storage_bytes != null ? formatBytes(stats.storage_bytes) : '--'}
-                  subtext="Project files"
-                  icon={HardDrive}
-                />
-              </div>
-
-              {/* Runtime Stats - Row 2 */}
-              <div className="grid gap-4 md:grid-cols-3">
-                <MetricCard
-                  label="Database"
-                  value={stats?.database_bytes != null ? formatBytes(stats.database_bytes) : '--'}
-                  subtext="Collections data"
-                  icon={Database}
-                />
-                <MetricCard
-                  label="Memory"
-                  value={isRunning && stats?.memory?.alloc != null ? formatBytes(stats.memory.alloc) : '--'}
-                  subtext="Current usage"
-                  icon={MemoryStick}
-                  sparklineData={stats?.history?.memory}
-                  sparklineColor="hsl(var(--chart-2))"
-                />
-                <MetricCard
-                  label="CPU"
-                  value={stats?.cpu_percent != null ? `${stats.cpu_percent.toFixed(1)}%` : '--'}
-                  subtext="Process usage"
-                  icon={Cpu}
-                  sparklineData={stats?.history?.cpu}
-                  sparklineColor="hsl(var(--chart-4))"
-                />
-              </div>
-
               {/* Widgets Section */}
               <div>
                 <div className="flex items-center justify-between mb-4">
