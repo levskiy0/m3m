@@ -9,7 +9,7 @@ interface RecordFormProps {
   orderedFormFields: ModelField[];
   formConfig: FormConfig;
   onFormDataChange: (tabId: string, formData: Record<string, unknown>) => void;
-  onSave: () => void;
+  onSave: (closeAfterSave: boolean) => void;
   onCancel: () => void;
   isSaving: boolean;
   projectId?: string;
@@ -55,8 +55,13 @@ export function RecordForm({
       {/* Actions */}
       <div className="flex items-center gap-2 mt-4">
         <Button variant="outline" onClick={onCancel}>Cancel</Button>
-        <Button onClick={onSave} disabled={isSaving}>
-          {isSaving ? 'Saving...' : 'Save'}
+        {tab.type === 'edit' && (
+          <Button variant="outline" onClick={() => onSave(false)} disabled={isSaving}>
+            {isSaving ? 'Saving...' : 'Save'}
+          </Button>
+        )}
+        <Button onClick={() => onSave(true)} disabled={isSaving}>
+          {isSaving ? 'Saving...' : tab.type === 'edit' ? 'Save & Close' : 'Create'}
         </Button>
       </div>
     </>

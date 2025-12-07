@@ -211,8 +211,8 @@ export function useModelData({ projectId, modelId }: UseModelDataOptions) {
 interface UseModelMutationsOptions {
   projectId: string | undefined;
   modelId: string | undefined;
-  onCreateSuccess?: (tabId: string) => void;
-  onUpdateSuccess?: (tabId: string) => void;
+  onCreateSuccess?: (tabId: string, closeAfterSave: boolean) => void;
+  onUpdateSuccess?: (tabId: string, closeAfterSave: boolean) => void;
   onDeleteSuccess?: (dataId: string) => void;
   onBulkDeleteSuccess?: (count: number) => void;
   onValidationError?: (tabId: string, errors: Record<string, string>) => void;
@@ -230,11 +230,11 @@ export function useModelMutations({
   const queryClient = useQueryClient();
 
   const createMutation = useMutation({
-    mutationFn: (params: { tabId: string; data: Record<string, unknown> }) =>
+    mutationFn: (params: { tabId: string; data: Record<string, unknown>; closeAfterSave?: boolean }) =>
       modelsApi.createData(projectId!, modelId!, params.data),
-    onSuccess: (_, { tabId }) => {
+    onSuccess: (_, { tabId, closeAfterSave = true }) => {
       queryClient.invalidateQueries({ queryKey: ['model-data', projectId, modelId] });
-      onCreateSuccess?.(tabId);
+      onCreateSuccess?.(tabId, closeAfterSave);
       toast.success('Record created');
     },
     onError: (err, { tabId }) => {
@@ -252,11 +252,11 @@ export function useModelMutations({
   });
 
   const updateMutation = useMutation({
-    mutationFn: (params: { tabId: string; dataId: string; data: Record<string, unknown> }) =>
+    mutationFn: (params: { tabId: string; dataId: string; data: Record<string, unknown>; closeAfterSave?: boolean }) =>
       modelsApi.updateData(projectId!, modelId!, params.dataId, params.data),
-    onSuccess: (_, { tabId }) => {
+    onSuccess: (_, { tabId, closeAfterSave = true }) => {
       queryClient.invalidateQueries({ queryKey: ['model-data', projectId, modelId] });
-      onUpdateSuccess?.(tabId);
+      onUpdateSuccess?.(tabId, closeAfterSave);
       toast.success('Record updated');
     },
     onError: (err, { tabId }) => {

@@ -133,8 +133,12 @@ export function ModelDataPage() {
   const { createMutation, updateMutation, deleteMutation, bulkDeleteMutation } = useModelMutations({
     projectId,
     modelId,
-    onCreateSuccess: closeTab,
-    onUpdateSuccess: closeTab,
+    onCreateSuccess: (tabId, closeAfterSave) => {
+      if (closeAfterSave) closeTab(tabId);
+    },
+    onUpdateSuccess: (tabId, closeAfterSave) => {
+      if (closeAfterSave) closeTab(tabId);
+    },
     onDeleteSuccess: (dataId) => {
       setDeleteOpen(false);
       setDeleteTargetId(null);
@@ -365,18 +369,19 @@ export function ModelDataPage() {
             orderedFormFields={orderedFormFields}
             formConfig={formConfig}
             onFormDataChange={updateTabFormData}
-            onSave={() => {
+            onSave={(closeAfterSave) => {
               const normalizedData = model?.fields
                 ? normalizeFormData(activeTab.formData || {}, model.fields)
                 : activeTab.formData || {};
 
               if (activeTab.type === 'create') {
-                createMutation.mutate({ tabId: activeTab.id, data: normalizedData });
+                createMutation.mutate({ tabId: activeTab.id, data: normalizedData, closeAfterSave });
               } else if (activeTab.data) {
                 updateMutation.mutate({
                   tabId: activeTab.id,
                   dataId: activeTab.data._id,
                   data: normalizedData,
+                  closeAfterSave,
                 });
               }
             }}

@@ -51,8 +51,6 @@ export const FIELD_VIEWS: Record<FieldType, { value: string; label: string }[]> 
   ],
   text: [
     { value: 'textarea', label: 'Textarea' },
-    { value: 'tiptap', label: 'Rich Text (TipTap)' },
-    { value: 'markdown', label: 'Markdown' },
   ],
   number: [
     { value: 'input', label: 'Input' },
@@ -76,11 +74,9 @@ export const FIELD_VIEWS: Record<FieldType, { value: string; label: string }[]> 
   ],
   file: [
     { value: 'file', label: 'File Upload' },
-    { value: 'image', label: 'Image Upload' },
   ],
   ref: [
     { value: 'select', label: 'Select' },
-    { value: 'combobox', label: 'Combobox' },
   ],
   document: [
     { value: 'json', label: 'JSON Editor' },
