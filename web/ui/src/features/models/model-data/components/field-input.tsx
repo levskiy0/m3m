@@ -8,6 +8,7 @@ import { Switch } from '@/components/ui/switch';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
 import { DatePicker, DateTimePicker } from '@/components/ui/datetime-picker';
+import { Label } from '@/components/ui/label';
 import {
   Select,
   SelectContent,
@@ -28,6 +29,7 @@ import {
   CommandItem,
   CommandList,
 } from '@/components/ui/command';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { MultiSelect } from '@/components/ui/multi-select';
 import { getDefaultView } from '../utils';
 import { RefFieldInput } from './ref-field-input';
@@ -219,6 +221,24 @@ export function FieldInput({ field, value, onChange, view, projectId, models }: 
           />
         );
       }
+      if (widget === 'radiogroup') {
+        return (
+          <RadioGroup
+            value={(value as string) || ''}
+            onValueChange={onChange}
+            className="flex flex-col gap-2"
+          >
+            {(field.options || []).map((option) => (
+              <div key={option} className="flex items-center gap-2">
+                <RadioGroupItem value={option} id={`${field.key}-${option}`} />
+                <Label htmlFor={`${field.key}-${option}`} className="font-normal cursor-pointer">
+                  {option}
+                </Label>
+              </div>
+            ))}
+          </RadioGroup>
+        );
+      }
       return (
         <Select
           value={(value as string) || ''}
@@ -237,6 +257,32 @@ export function FieldInput({ field, value, onChange, view, projectId, models }: 
         </Select>
       );
     case 'multiselect':
+      if (widget === 'checkboxgroup') {
+        const selectedValues = Array.isArray(value) ? (value as string[]) : [];
+        const handleToggle = (option: string, checked: boolean) => {
+          if (checked) {
+            onChange([...selectedValues, option]);
+          } else {
+            onChange(selectedValues.filter((v) => v !== option));
+          }
+        };
+        return (
+          <div className="flex flex-col gap-2">
+            {(field.options || []).map((option) => (
+              <div key={option} className="flex items-center gap-2">
+                <Checkbox
+                  id={`${field.key}-${option}`}
+                  checked={selectedValues.includes(option)}
+                  onCheckedChange={(checked) => handleToggle(option, !!checked)}
+                />
+                <Label htmlFor={`${field.key}-${option}`} className="font-normal cursor-pointer">
+                  {option}
+                </Label>
+              </div>
+            ))}
+          </div>
+        );
+      }
       return (
         <MultiSelect
           options={field.options || []}

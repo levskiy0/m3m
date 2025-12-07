@@ -395,8 +395,8 @@ func (v *ModelSchemaValidator) validateFormConfig(config *domain.FormConfig, fie
 		"file":        {"file": true, "image": true},
 		"ref":         {"select": true, "combobox": true},
 		"document":    {"json": true},
-		"select":      {"select": true, "combobox": true},
-		"multiselect": {"multiselect": true, "combobox": true},
+		"select":      {"select": true, "combobox": true, "radiogroup": true},
+		"multiselect": {"multiselect": true, "checkboxgroup": true},
 	}
 
 	// Build field type map

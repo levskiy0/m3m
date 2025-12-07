@@ -299,7 +299,9 @@ export type FieldView =
   | 'file'
   | 'image'
   | 'combobox'
-  | 'json';
+  | 'json'
+  | 'radiogroup'
+  | 'checkboxgroup';
 
 export interface CreateModelRequest {
   name: string;
