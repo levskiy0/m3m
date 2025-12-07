@@ -216,18 +216,18 @@ export function ModelSchemaPage() {
                     <thead className="bg-muted/50">
                       <tr>
                         <th className="w-10 p-3"></th>
-                        <th className="text-left font-medium p-3">
+                        <th className="text-left font-medium p-3 w-50">
                           <div className="flex items-center gap-1.5">
                             <span>Key</span>
                           </div>
                         </th>
-                        <th className="text-left font-medium p-3 w-36">
+                        <th className="text-left font-medium p-3 w-[200px]">
                           <div className="flex items-center gap-1.5">
                             <Type className="size-4" />
                             <span>Type</span>
                           </div>
                         </th>
-                        <th className="text-left font-medium p-3 w-44">
+                        <th className="text-left font-medium p-3 w-[200px]">
                           <div className="flex items-center gap-1.5">
                             <Settings2 className="size-4" />
                             <span>Config</span>
