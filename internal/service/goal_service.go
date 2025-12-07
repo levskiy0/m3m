@@ -163,3 +163,7 @@ func (s *GoalService) Increment(ctx context.Context, goalSlug string, projectID 
 func (s *GoalService) GetStats(ctx context.Context, query *domain.GoalStatsQuery) ([]*domain.GoalStat, error) {
 	return s.goalRepo.GetStats(ctx, query)
 }
+
+func (s *GoalService) GetTotalValues(ctx context.Context, goalIDs []string) (map[string]int64, error) {
+	return s.goalRepo.GetTotalValues(ctx, goalIDs)
+}

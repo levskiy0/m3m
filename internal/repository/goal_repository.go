@@ -184,3 +184,46 @@ func (r *GoalRepository) GetStats(ctx context.Context, query *domain.GoalStatsQu
 	}
 	return stats, nil
 }
+
+// GetTotalValues returns the sum of all stats for each goal ID (across all dates)
+func (r *GoalRepository) GetTotalValues(ctx context.Context, goalIDs []string) (map[string]int64, error) {
+	goalOIDs := make([]primitive.ObjectID, 0, len(goalIDs))
+	for _, id := range goalIDs {
+		oid, err := primitive.ObjectIDFromHex(id)
+		if err == nil {
+			goalOIDs = append(goalOIDs, oid)
+		}
+	}
+
+	if len(goalOIDs) == 0 {
+		return make(map[string]int64), nil
+	}
+
+	pipeline := []bson.M{
+		{"$match": bson.M{"goal_id": bson.M{"$in": goalOIDs}}},
+		{"$group": bson.M{
+			"_id":   "$goal_id",
+			"total": bson.M{"$sum": "$value"},
+		}},
+	}
+
+	cursor, err := r.statsCollection.Aggregate(ctx, pipeline)
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(ctx)
+
+	result := make(map[string]int64)
+	for cursor.Next(ctx) {
+		var doc struct {
+			ID    primitive.ObjectID `bson:"_id"`
+			Total int64              `bson:"total"`
+		}
+		if err := cursor.Decode(&doc); err != nil {
+			continue
+		}
+		result[doc.ID.Hex()] = doc.Total
+	}
+
+	return result, nil
+}
