@@ -109,7 +109,7 @@ export function FileFieldInput({
       </div>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col">
+        <DialogContent className="w-[90vw] !max-w-[1200px] h-[85vh] flex flex-col">
           <DialogHeader>
             <DialogTitle>
               {isImage ? 'Select Image' : 'Select File'}
@@ -123,7 +123,7 @@ export function FileFieldInput({
               onSelect={handleSelect}
               accept={accept as 'all' | 'images'}
               showUpload={true}
-              className="h-[400px]"
+              className="h-full"
             />
           </div>
           <DialogFooter>

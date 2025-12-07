@@ -391,32 +391,32 @@ export function FileBrowser({
   return (
     <div className={cn('flex flex-col', className)}>
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b">
-        <div className="flex items-center gap-1 text-sm text-muted-foreground">
+      <div className="flex items-center justify-between px-4 py-3 border-b gap-4">
+        <div className="flex items-center gap-1 text-sm text-muted-foreground min-w-0 overflow-hidden">
           <Button
             variant="ghost"
             size="sm"
-            className="ml-[-5px] p-2"
+            className="ml-[-5px] p-2 shrink-0"
             onClick={() => setCurrentPath('')}
           >
             <Home className="size-3" />
           </Button>
           {pathSegments.map((segment, index) => (
-            <div key={index} className="flex items-center">
-              <ChevronRight className="size-3" />
+            <div key={index} className="flex items-center min-w-0 shrink">
+              <ChevronRight className="size-3 shrink-0" />
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-6 px-2"
+                className="h-6 px-2 min-w-0 max-w-[120px]"
                 onClick={() => navigateToPath(index)}
                 disabled={index === pathSegments.length - 1}
               >
-                {segment}
+                <span className="truncate">{segment}</span>
               </Button>
             </div>
           ))}
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0">
           <Button
             variant="outline"
             size="icon"
