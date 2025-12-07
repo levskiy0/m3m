@@ -185,6 +185,12 @@ func (r *GoalRepository) GetStats(ctx context.Context, query *domain.GoalStatsQu
 	return stats, nil
 }
 
+// ResetStats deletes all stats for a goal
+func (r *GoalRepository) ResetStats(ctx context.Context, goalID primitive.ObjectID) error {
+	_, err := r.statsCollection.DeleteMany(ctx, bson.M{"goal_id": goalID})
+	return err
+}
+
 // GetTotalValues returns the sum of all stats for each goal ID (across all dates)
 func (r *GoalRepository) GetTotalValues(ctx context.Context, goalIDs []string) (map[string]int64, error) {
 	goalOIDs := make([]primitive.ObjectID, 0, len(goalIDs))

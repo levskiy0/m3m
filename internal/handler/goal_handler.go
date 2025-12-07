@@ -62,6 +62,7 @@ func (h *GoalHandler) Register(r *gin.RouterGroup, authMiddleware *middleware.Au
 		projectGoals.POST("", h.CreateProject)
 		projectGoals.PUT("/:goalId", h.UpdateProject)
 		projectGoals.DELETE("/:goalId", h.DeleteProject)
+		projectGoals.POST("/:goalId/reset", h.ResetProjectGoal)
 	}
 }
 
@@ -412,4 +413,31 @@ func (h *GoalHandler) DeleteProject(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "goal deleted successfully"})
+}
+
+func (h *GoalHandler) ResetProjectGoal(c *gin.Context) {
+	projectID, err := primitive.ObjectIDFromHex(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid project id"})
+		return
+	}
+
+	goalID, err := primitive.ObjectIDFromHex(c.Param("goalId"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid goal id"})
+		return
+	}
+
+	user := middleware.GetCurrentUser(c)
+	if !h.projectService.CanUserAccess(c.Request.Context(), user.ID, projectID, user.IsRoot) {
+		c.JSON(http.StatusForbidden, gin.H{"error": "access denied"})
+		return
+	}
+
+	if err := h.goalService.ResetStats(c.Request.Context(), goalID); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "goal stats reset successfully"})
 }

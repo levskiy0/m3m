@@ -167,3 +167,7 @@ func (s *GoalService) GetStats(ctx context.Context, query *domain.GoalStatsQuery
 func (s *GoalService) GetTotalValues(ctx context.Context, goalIDs []string) (map[string]int64, error) {
 	return s.goalRepo.GetTotalValues(ctx, goalIDs)
 }
+
+func (s *GoalService) ResetStats(ctx context.Context, id primitive.ObjectID) error {
+	return s.goalRepo.ResetStats(ctx, id)
+}
