@@ -4,6 +4,7 @@ import type { ModelField, FilterCondition, Model } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
 import {
   Select,
   SelectContent,
@@ -62,16 +63,46 @@ export function FilterPopover({
     onPageReset();
   };
 
+  // Format filter value for display
+  const formatFilterValue = (filter: ActiveFilter, field?: ModelField): string => {
+    if (field?.type === 'bool') {
+      return filter.value ? 'Yes' : 'No';
+    }
+    const val = String(filter.value);
+    return val.length > 15 ? val.slice(0, 15) + '…' : val;
+  };
+
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <Button variant="outline" size="sm">
-          <Filter className="mr-2 size-4" />
+        <Button variant="outline" size="sm" className="h-8 border-dashed">
+          <Filter className="size-4" />
           Filter
           {activeFilters.length > 0 && (
-            <Badge variant="secondary" className="ml-2 px-1.5 py-0 text-xs">
-              {activeFilters.length}
-            </Badge>
+            <>
+              <Separator orientation="vertical" className="mx-2 h-4" />
+              <Badge variant="secondary" className="rounded-sm px-1 font-normal lg:hidden">
+                {activeFilters.length}
+              </Badge>
+              <div className="hidden gap-1 lg:flex">
+                {activeFilters.length > 2 ? (
+                  <Badge variant="secondary" className="rounded-sm px-1 font-normal">
+                    {activeFilters.length} selected
+                  </Badge>
+                ) : (
+                  activeFilters.map((f, i) => {
+                    const field = modelFields.find(fld => fld.key === f.field);
+                    const opLabel = FILTER_OPERATORS[field?.type || 'string']
+                      ?.find(op => op.value === f.operator)?.label || f.operator;
+                    return (
+                      <Badge key={i} variant="secondary" className="rounded-sm px-1 font-normal">
+                        {formatFieldLabel(f.field)} {opLabel} {formatFilterValue(f, field)}
+                      </Badge>
+                    );
+                  })
+                )}
+              </div>
+            </>
           )}
         </Button>
       </PopoverTrigger>
@@ -197,7 +228,7 @@ export function FilterPopover({
               );
             })
           )}
-          <div className="flex items-center gap-2 pt-2 border-t">
+          <div className="flex items-center justify-between pt-2 border-t">
             <Button
               variant="ghost"
               size="sm"
@@ -205,16 +236,16 @@ export function FilterPopover({
               onClick={handleAddFilter}
             >
               <Plus className="mr-1 size-3" />
-              Add
+              Add filter
             </Button>
             {activeFilters.length > 0 && (
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-7 text-xs text-muted-foreground"
+                className="h-7 text-xs"
                 onClick={handleClearAll}
               >
-                Clear all
+                Reset
               </Button>
             )}
           </div>
@@ -235,17 +266,28 @@ export function ActiveFilterBadges({
   modelFields,
   onRemoveFilter,
 }: ActiveFilterBadgesProps) {
+  // Only show detailed badges when there are more than 2 filters
+  // (since the button shows up to 2 inline on desktop)
+  if (activeFilters.length <= 2) {
+    return null;
+  }
+
   return (
-    <div className="flex items-center gap-2 mb-4 flex-wrap min-h-[22px]">
+    <div className="flex items-center gap-1.5 mb-4 flex-wrap">
       {activeFilters.map((f, i) => {
         const field = modelFields.find(fld => fld.key === f.field);
         const opLabel = FILTER_OPERATORS[field?.type || 'string']
           ?.find(op => op.value === f.operator)?.label || f.operator;
+        const displayValue = field?.type === 'bool'
+          ? (f.value ? 'Yes' : 'No')
+          : String(f.value).length > 20
+            ? String(f.value).slice(0, 20) + '…'
+            : String(f.value);
         return (
-          <Badge key={i} variant="secondary" className="gap-1 font-normal">
+          <Badge key={i} variant="secondary" className="gap-1 rounded-sm px-1.5 font-normal">
             <span className="text-muted-foreground">{formatFieldLabel(f.field)}</span>
             <span>{opLabel}</span>
-            <span className="font-medium">{String(f.value)}</span>
+            <span className="font-medium">{displayValue}</span>
             <button
               onClick={() => onRemoveFilter(i)}
               className="ml-0.5 hover:text-destructive"
