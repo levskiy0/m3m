@@ -149,6 +149,7 @@ func (v *ModelSchemaValidator) validateFields(fields []domain.ModelField) []Vali
 		domain.FieldTypeRef:      true,
 		domain.FieldTypeDate:     true,
 		domain.FieldTypeDateTime: true,
+		domain.FieldTypeSelect:   true,
 	}
 
 	for i, field := range fields {
@@ -247,6 +248,10 @@ func (v *ModelSchemaValidator) validateDefaultValue(field domain.ModelField) err
 		if _, ok := value.(map[string]interface{}); !ok {
 			return fmt.Errorf("default value must be an object")
 		}
+	case domain.FieldTypeSelect:
+		if _, ok := value.(string); !ok {
+			return fmt.Errorf("default value must be a string")
+		}
 	case domain.FieldTypeDate, domain.FieldTypeDateTime:
 		if str, ok := value.(string); ok {
 			// Allow special $now value for current date/time
@@ -330,9 +335,9 @@ func (v *ModelSchemaValidator) validateTableConfig(config *domain.TableConfig, f
 			})
 			continue
 		}
-		// Check that searchable field is string or text type
+		// Check that searchable field is string, text or select type
 		fieldType := fieldTypeMap[searchField]
-		if fieldType != domain.FieldTypeString && fieldType != domain.FieldTypeText {
+		if fieldType != domain.FieldTypeString && fieldType != domain.FieldTypeText && fieldType != domain.FieldTypeSelect {
 			errors = append(errors, ValidationError{
 				Field:   fmt.Sprintf("table_config.searchable[%d]", i),
 				Message: fmt.Sprintf("field '%s' must be string or text type to be searchable", searchField),
@@ -382,6 +387,7 @@ func (v *ModelSchemaValidator) validateFormConfig(config *domain.FormConfig, fie
 		"file":     {"file": true, "image": true},
 		"ref":      {"select": true, "combobox": true},
 		"document": {"json": true},
+		"select":   {"select": true, "combobox": true},
 	}
 
 	// Build field type map
