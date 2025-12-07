@@ -9,7 +9,7 @@ interface EditorTabsProps {
 
 export function EditorTabs({ children, className }: EditorTabsProps) {
   return (
-    <div className={cn('flex items-end px-4', className)}>
+    <div className={cn('flex items-end', className)}>
       {children}
     </div>
   );

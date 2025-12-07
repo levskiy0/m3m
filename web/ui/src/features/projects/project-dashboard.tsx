@@ -387,7 +387,7 @@ export function ProjectDashboard() {
         {activeTab === 'instance' && (
           <div className="bg-background rounded-b-xl">
             <div className="border-b" />
-            <div className="space-y-6 p-4">
+            <div className="space-y-6 px-0 py-4">
               {/* Runtime Stats - Row 1 */}
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                 <MetricCard
