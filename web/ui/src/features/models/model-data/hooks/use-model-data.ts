@@ -212,7 +212,7 @@ interface UseModelMutationsOptions {
   projectId: string | undefined;
   modelId: string | undefined;
   onCreateSuccess?: (tabId: string, closeAfterSave: boolean) => void;
-  onUpdateSuccess?: (tabId: string, closeAfterSave: boolean) => void;
+  onUpdateSuccess?: (tabId: string, closeAfterSave: boolean, dataId: string) => void;
   onDeleteSuccess?: (dataId: string) => void;
   onBulkDeleteSuccess?: (count: number) => void;
   onValidationError?: (tabId: string, errors: Record<string, string>) => void;
@@ -254,9 +254,9 @@ export function useModelMutations({
   const updateMutation = useMutation({
     mutationFn: (params: { tabId: string; dataId: string; data: Record<string, unknown>; closeAfterSave?: boolean }) =>
       modelsApi.updateData(projectId!, modelId!, params.dataId, params.data),
-    onSuccess: (_, { tabId, closeAfterSave = true }) => {
+    onSuccess: (_, { tabId, dataId, closeAfterSave = true }) => {
       queryClient.invalidateQueries({ queryKey: ['model-data', projectId, modelId] });
-      onUpdateSuccess?.(tabId, closeAfterSave);
+      onUpdateSuccess?.(tabId, closeAfterSave, dataId);
       toast.success('Record updated');
     },
     onError: (err, { tabId }) => {

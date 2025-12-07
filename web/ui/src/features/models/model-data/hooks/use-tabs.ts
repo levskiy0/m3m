@@ -62,6 +62,7 @@ export function useTabs(fields: ModelField[] = []) {
 
   const closeTabsForRecord = useCallback((recordId: string) => {
     setTabs(prev => prev.filter(t => !t.id.includes(recordId)));
+    setActiveTabId('table');
   }, []);
 
   const updateTabFormData = useCallback((tabId: string, formData: Record<string, unknown>) => {
