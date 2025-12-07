@@ -157,12 +157,18 @@ const GoalWidgetCard = forwardRef<HTMLDivElement, {
             <div className="flex items-end justify-between gap-4">
               <div>
                 <div className="flex items-baseline gap-2">
-                  <span className="text-2xl font-bold">
-                    {stats?.value?.toLocaleString() ?? 0}
-                  </span>
-                  {goal.showTotal && stats?.totalValue != null && (
-                    <span className="text-sm text-muted-foreground">
-                      / {stats.totalValue.toLocaleString()}
+                  {goal.showTotal && stats?.totalValue != null ? (
+                    <>
+                      <span className="text-2xl font-bold">
+                        {stats.totalValue.toLocaleString()}
+                      </span>
+                      <span className="text-sm text-muted-foreground">
+                        / {(stats?.value ?? 0).toLocaleString()} today
+                      </span>
+                    </>
+                  ) : (
+                    <span className="text-2xl font-bold">
+                      {stats?.value?.toLocaleString() ?? 0}
                     </span>
                   )}
                 </div>
@@ -234,12 +240,18 @@ const GoalWidgetCard = forwardRef<HTMLDivElement, {
           <div className="flex items-end justify-between gap-4">
             <div>
               <div className="flex items-baseline gap-2">
-                <span className="text-2xl font-bold">
-                  {stats?.value?.toLocaleString() ?? 0}
-                </span>
-                {isDailyCounter && goal.showTotal && stats?.totalValue != null && (
-                  <span className="text-sm text-muted-foreground">
-                    / {stats.totalValue.toLocaleString()}
+                {isDailyCounter && goal.showTotal && stats?.totalValue != null ? (
+                  <>
+                    <span className="text-2xl font-bold">
+                      {stats.totalValue.toLocaleString()}
+                    </span>
+                    <span className="text-sm text-muted-foreground">
+                      / {(stats?.value ?? 0).toLocaleString()} today
+                    </span>
+                  </>
+                ) : (
+                  <span className="text-2xl font-bold">
+                    {stats?.value?.toLocaleString() ?? 0}
                   </span>
                 )}
               </div>
@@ -296,12 +308,18 @@ const GoalWidgetCard = forwardRef<HTMLDivElement, {
       </CardHeader>
       <CardContent>
         <div className="flex items-baseline gap-2">
-          <span className="text-2xl font-bold">
-            {stats?.value?.toLocaleString() ?? 0}
-          </span>
-          {isDailyCounter && goal.showTotal && stats?.totalValue != null && (
-            <span className="text-sm text-muted-foreground">
-              / {stats.totalValue.toLocaleString()}
+          {isDailyCounter && goal.showTotal && stats?.totalValue != null ? (
+            <>
+              <span className="text-2xl font-bold">
+                {stats.totalValue.toLocaleString()}
+              </span>
+              <span className="text-sm text-muted-foreground">
+                / {(stats?.value ?? 0).toLocaleString()} today
+              </span>
+            </>
+          ) : (
+            <span className="text-2xl font-bold">
+              {stats?.value?.toLocaleString() ?? 0}
             </span>
           )}
         </div>

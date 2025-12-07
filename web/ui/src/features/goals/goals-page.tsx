@@ -772,11 +772,15 @@ function SortableGoalCard({
 
         <div className="flex-1">
           <div className="flex items-baseline gap-2">
-            <p className="text-3xl font-bold">{formatNumber(stats?.value ?? 0)}</p>
-            {isDailyCounter && goal.showTotal && stats?.totalValue != null && (
-              <p className="text-lg text-muted-foreground">
-                / {formatNumber(stats.totalValue)} total
-              </p>
+            {isDailyCounter && goal.showTotal && stats?.totalValue != null ? (
+              <>
+                <p className="text-3xl font-bold">{formatNumber(stats.totalValue)}</p>
+                <p className="text-lg text-muted-foreground">
+                  / {formatNumber(stats?.value ?? 0)} today
+                </p>
+              </>
+            ) : (
+              <p className="text-3xl font-bold">{formatNumber(stats?.value ?? 0)}</p>
             )}
           </div>
           <div className="flex items-center gap-2 mt-1">

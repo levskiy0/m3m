@@ -153,14 +153,24 @@ func (h *GoalHandler) GetStats(c *gin.Context) {
 
 	goalIds := strings.Split(goalIdsParam, ",")
 
-	// Calculate date range for last 14 days
-	endDate := time.Now()
-	startDate := endDate.AddDate(0, 0, -14)
+	// Parse date range from query parameters, default to last 14 days
+	startDateParam := c.Query("startDate")
+	endDateParam := c.Query("endDate")
+
+	var startDate, endDate string
+	if startDateParam != "" && endDateParam != "" {
+		startDate = startDateParam
+		endDate = endDateParam
+	} else {
+		now := time.Now()
+		endDate = now.Format("2006-01-02")
+		startDate = now.AddDate(0, 0, -14).Format("2006-01-02")
+	}
 
 	query := &domain.GoalStatsQuery{
 		GoalIDs:   goalIds,
-		StartDate: startDate.Format("2006-01-02"),
-		EndDate:   endDate.Format("2006-01-02"),
+		StartDate: startDate,
+		EndDate:   endDate,
 	}
 
 	stats, err := h.goalService.GetStats(c.Request.Context(), query)
