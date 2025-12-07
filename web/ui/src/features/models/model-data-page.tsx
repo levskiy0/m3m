@@ -31,6 +31,7 @@ import {
   FilterPopover,
   ActiveFilterBadges,
   RecordView,
+  RecordCreate,
   Pagination,
 } from './model-data';
 import type { ModelField } from '@/types';
@@ -130,12 +131,24 @@ export function ModelDataPage() {
   // Field errors for inline editing in view tabs
   const [viewFieldErrors, setViewFieldErrors] = useState<Record<string, Record<string, string>>>({});
 
+  // Field errors for create tabs
+  const [createFieldErrors, setCreateFieldErrors] = useState<Record<string, Record<string, string>>>({});
+
   // Mutations
   const { createMutation, updateMutation, deleteMutation, bulkDeleteMutation } = useModelMutations({
     projectId,
     modelId,
     onCreateSuccess: (tabId, closeAfterSave) => {
-      if (closeAfterSave) closeTab(tabId);
+      // Clear create field errors on success
+      setCreateFieldErrors(prev => {
+        const next = { ...prev };
+        delete next[tabId];
+        return next;
+      });
+      if (closeAfterSave) {
+        closeTab(tabId);
+        setActiveTabId('table');
+      }
     },
     onUpdateSuccess: (_tabId, closeAfterSave, dataId) => {
       // Clear field errors on success
@@ -160,9 +173,12 @@ export function ModelDataPage() {
       clearSelection();
     },
     onValidationError: (tabId, errors) => {
-      // For view tabs, store errors by data ID
       const tab = tabs.find(t => t.id === tabId);
-      if (tab?.data?._id) {
+      if (tab?.type === 'create') {
+        // For create tabs, store errors by tab ID
+        setCreateFieldErrors(prev => ({ ...prev, [tabId]: errors }));
+      } else if (tab?.data?._id) {
+        // For view tabs, store errors by data ID
         setViewFieldErrors(prev => ({ ...prev, [tab.data!._id]: errors }));
       }
       updateTabErrors(tabId, errors);
@@ -384,6 +400,30 @@ export function ModelDataPage() {
             onDelete={handleDelete}
             isSaving={updateMutation.isPending}
             fieldErrors={viewFieldErrors[activeTab.data._id]}
+            projectId={projectId}
+            models={allModels}
+          />
+        )}
+
+        {/* Create Tab Content */}
+        {activeTab?.type === 'create' && (
+          <RecordCreate
+            orderedFormFields={orderedFormFields}
+            formConfig={formConfig}
+            onSave={(formData, closeAfterSave) => {
+              const normalizedData = model?.fields
+                ? normalizeFormData(formData, model.fields)
+                : formData;
+
+              createMutation.mutate({
+                tabId: activeTab.id,
+                data: normalizedData,
+                closeAfterSave,
+              });
+            }}
+            onCancel={() => closeTab(activeTab.id)}
+            isSaving={createMutation.isPending}
+            fieldErrors={createFieldErrors[activeTab.id]}
             projectId={projectId}
             models={allModels}
           />
