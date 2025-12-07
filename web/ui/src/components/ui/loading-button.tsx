@@ -21,11 +21,11 @@ export function LoadingButton({
       className={cn('relative', className)}
       {...props}
     >
-      <span className={loading ? 'opacity-0' : undefined}>{children}</span>
+      <span className={cn('inline-flex items-center gap-2', loading && 'opacity-0')}>
+        {children}
+      </span>
       {loading && (
-        <span className="absolute inset-0 flex items-center justify-center">
-          <Spinner />
-        </span>
+        <Spinner className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2" />
       )}
     </Button>
   );
