@@ -34,8 +34,8 @@ export const queryKeys = {
   goals: {
     project: (projectId: string) => ['project-goals', projectId] as const,
     global: ['global-goals'] as const,
-    stats: (projectId: string, goalIds: string[]) =>
-      ['project-goal-stats', projectId, goalIds] as const,
+    stats: (projectId: string, goalIds: string[], startDate?: string, endDate?: string) =>
+      ['project-goal-stats', projectId, goalIds, startDate, endDate] as const,
   },
 
   // Environment

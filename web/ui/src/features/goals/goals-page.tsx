@@ -1,7 +1,18 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, Target, Trash2, Edit, MoreHorizontal, TrendingUp, TrendingDown } from 'lucide-react';
+import {
+  Plus,
+  Target,
+  Trash2,
+  Edit,
+  MoreHorizontal,
+  TrendingUp,
+  TrendingDown,
+  Download,
+  Calendar,
+  GripVertical,
+} from 'lucide-react';
 import { toast } from 'sonner';
 import {
   AreaChart,
@@ -12,6 +23,32 @@ import {
   ResponsiveContainer,
   CartesianGrid,
 } from 'recharts';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from '@dnd-kit/core';
+import type { DragEndEvent } from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  rectSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import {
+  format,
+  subDays,
+  subMonths,
+  subQuarters,
+  subYears,
+  startOfDay,
+  endOfDay,
+} from 'date-fns';
 
 import { goalsApi } from '@/api';
 import { GOAL_TYPES } from '@/lib/constants';
@@ -51,15 +88,59 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { Switch } from '@/components/ui/switch';
 import { Field, FieldGroup, FieldLabel, FieldDescription } from '@/components/ui/field';
 import { ColorPicker } from '@/components/shared/color-picker';
 import { ConfirmDialog } from '@/components/shared/confirm-dialog';
 import { EmptyState } from '@/components/shared/empty-state';
 import { PageHeader } from '@/components/shared/page-header';
-import { Sparkline } from '@/components/shared/sparkline';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Calendar as CalendarComponent } from '@/components/ui/calendar';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
+
+type DatePreset = 'week' | 'month' | 'quarter' | 'year' | 'custom';
+
+const DATE_PRESETS: { value: DatePreset; label: string }[] = [
+  { value: 'week', label: 'Week' },
+  { value: 'month', label: 'Month' },
+  { value: 'quarter', label: 'Quarter' },
+  { value: 'year', label: 'Year' },
+  { value: 'custom', label: 'Custom' },
+];
+
+const GRID_SPAN_OPTIONS = [
+  { value: 1, label: '1 col' },
+  { value: 2, label: '2 cols' },
+  { value: 3, label: '3 cols' },
+  { value: 4, label: '4 cols' },
+  { value: 5, label: '5 cols' },
+];
+
+function getDateRange(preset: DatePreset): { from: Date; to: Date } {
+  const now = new Date();
+  const to = endOfDay(now);
+
+  switch (preset) {
+    case 'week':
+      return { from: startOfDay(subDays(now, 7)), to };
+    case 'month':
+      return { from: startOfDay(subMonths(now, 1)), to };
+    case 'quarter':
+      return { from: startOfDay(subQuarters(now, 1)), to };
+    case 'year':
+      return { from: startOfDay(subYears(now, 1)), to };
+    default:
+      return { from: startOfDay(subDays(now, 7)), to };
+  }
+}
 
 export function GoalsPage() {
   const { projectId } = useParams<{ projectId: string }>();
@@ -68,10 +149,29 @@ export function GoalsPage() {
   const formDialog = useFormDialog<Goal>();
   const deleteDialog = useDeleteDialog<Goal>();
 
+  // Form state
   const [color, setColor] = useState<string | undefined>();
   const [type, setType] = useState<GoalType>('counter');
   const [description, setDescription] = useState('');
+  const [gridSpan, setGridSpan] = useState(1);
+  const [showTotal, setShowTotal] = useState(false);
   const { name, slug, setName, setSlug, reset: resetSlug } = useAutoSlug();
+
+  // Date range state
+  const [datePreset, setDatePreset] = useState<DatePreset>('week');
+  const [customDateRange, setCustomDateRange] = useState<{ from?: Date; to?: Date }>({});
+  const [calendarOpen, setCalendarOpen] = useState(false);
+
+  // Export dialog state
+  const [exportOpen, setExportOpen] = useState(false);
+  const [selectedGoalIds, setSelectedGoalIds] = useState<string[]>([]);
+
+  const dateRange = useMemo(() => {
+    if (datePreset === 'custom' && customDateRange.from && customDateRange.to) {
+      return customDateRange as { from: Date; to: Date };
+    }
+    return getDateRange(datePreset);
+  }, [datePreset, customDateRange]);
 
   const { data: goals = [], isLoading } = useQuery({
     queryKey: queryKeys.goals.project(projectId!),
@@ -79,9 +179,18 @@ export function GoalsPage() {
     enabled: !!projectId,
   });
 
+  // Sort goals by order
+  const sortedGoals = useMemo(() => {
+    return [...goals].sort((a, b) => (a.order || 0) - (b.order || 0));
+  }, [goals]);
+
   const { data: goalStats = [] } = useQuery({
-    queryKey: queryKeys.goals.stats(projectId!, goals.map(g => g.id)),
-    queryFn: () => goalsApi.getStats({ goalIds: goals.map(g => g.id) }),
+    queryKey: queryKeys.goals.stats(projectId!, goals.map(g => g.id), format(dateRange.from, 'yyyy-MM-dd'), format(dateRange.to, 'yyyy-MM-dd')),
+    queryFn: () => goalsApi.getStats({
+      goalIds: goals.map(g => g.id),
+      startDate: format(dateRange.from, 'yyyy-MM-dd'),
+      endDate: format(dateRange.to, 'yyyy-MM-dd'),
+    }),
     enabled: !!projectId && goals.length > 0,
     refetchInterval: 10000,
   });
@@ -125,11 +234,41 @@ export function GoalsPage() {
     },
   });
 
+  // DnD sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (over && active.id !== over.id) {
+      const oldIndex = sortedGoals.findIndex((g) => g.id === active.id);
+      const newIndex = sortedGoals.findIndex((g) => g.id === over.id);
+
+      const newOrder = arrayMove(sortedGoals, oldIndex, newIndex);
+
+      // Update order for each goal
+      newOrder.forEach((goal, index) => {
+        if (goal.order !== index) {
+          goalsApi.updateProject(projectId!, goal.id, { order: index }).then(() => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.goals.project(projectId!) });
+          });
+        }
+      });
+    }
+  };
+
   const resetForm = () => {
     resetSlug();
     setColor(undefined);
     setType('counter');
     setDescription('');
+    setGridSpan(1);
+    setShowTotal(false);
   };
 
   const handleEdit = (goal: Goal) => {
@@ -138,6 +277,8 @@ export function GoalsPage() {
     setColor(goal.color);
     setType(goal.type);
     setDescription(goal.description || '');
+    setGridSpan(goal.gridSpan || 1);
+    setShowTotal(goal.showTotal || false);
     formDialog.openEdit(goal);
   };
 
@@ -145,8 +286,44 @@ export function GoalsPage() {
     if (formDialog.mode === 'create') {
       createMutation.mutate({ name, slug, color, type, description });
     } else {
-      updateMutation.mutate({ name, color, description });
+      updateMutation.mutate({ name, color, description, gridSpan, showTotal });
     }
+  };
+
+  const handleExportCSV = () => {
+    const goalsToExport = selectedGoalIds.length > 0
+      ? goals.filter(g => selectedGoalIds.includes(g.id))
+      : goals;
+
+    if (goalsToExport.length === 0) {
+      toast.error('No goals to export');
+      return;
+    }
+
+    // Build CSV content
+    const rows: string[] = ['Date,Goal,Value'];
+
+    goalsToExport.forEach(goal => {
+      const stats = statsMap.get(goal.id);
+      if (stats?.dailyStats) {
+        stats.dailyStats.forEach(d => {
+          rows.push(`${d.date},"${goal.name}",${d.value}`);
+        });
+      }
+    });
+
+    const csvContent = rows.join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `goals_${format(dateRange.from, 'yyyy-MM-dd')}_${format(dateRange.to, 'yyyy-MM-dd')}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+
+    setExportOpen(false);
+    setSelectedGoalIds([]);
+    toast.success('Data exported');
   };
 
   const statsMap = new Map<string, GoalStats>();
@@ -156,7 +333,7 @@ export function GoalsPage() {
     return (
       <div className="space-y-4">
         <Skeleton className="h-8 w-48" />
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid gap-4 grid-cols-5">
           {[1, 2, 3, 4].map((i) => (
             <Skeleton key={i} className="h-48" />
           ))}
@@ -171,14 +348,66 @@ export function GoalsPage() {
         title="Goals"
         description="Track metrics and counters for this project"
         action={
-          <Button onClick={() => { resetForm(); formDialog.open(); }}>
-            <Plus className="mr-2 size-4" />
-            New Goal
-          </Button>
+          <div className="flex items-center gap-2">
+            {/* Date Range Selector */}
+            <div className="flex items-center gap-1 bg-muted rounded-lg p-1">
+              {DATE_PRESETS.filter(p => p.value !== 'custom').map((preset) => (
+                <Button
+                  key={preset.value}
+                  variant={datePreset === preset.value ? 'secondary' : 'ghost'}
+                  size="sm"
+                  onClick={() => setDatePreset(preset.value)}
+                  className="h-7 px-2 text-xs"
+                >
+                  {preset.label}
+                </Button>
+              ))}
+              <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant={datePreset === 'custom' ? 'secondary' : 'ghost'}
+                    size="sm"
+                    className="h-7 px-2 text-xs gap-1"
+                  >
+                    <Calendar className="size-3" />
+                    Custom
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="end">
+                  <CalendarComponent
+                    mode="range"
+                    selected={{
+                      from: customDateRange.from,
+                      to: customDateRange.to,
+                    }}
+                    onSelect={(range) => {
+                      setCustomDateRange({ from: range?.from, to: range?.to });
+                      if (range?.from && range?.to) {
+                        setDatePreset('custom');
+                        setCalendarOpen(false);
+                      }
+                    }}
+                    numberOfMonths={2}
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+
+            {/* Export Button */}
+            <Button variant="outline" size="sm" onClick={() => setExportOpen(true)}>
+              <Download className="mr-1.5 size-4" />
+              Export
+            </Button>
+
+            <Button onClick={() => { resetForm(); formDialog.open(); }}>
+              <Plus className="mr-2 size-4" />
+              New Goal
+            </Button>
+          </div>
         }
       />
 
-      {goals.length === 0 ? (
+      {sortedGoals.length === 0 ? (
         <EmptyState
           icon={<Target className="size-12" />}
           title="No goals yet"
@@ -191,19 +420,29 @@ export function GoalsPage() {
           }
         />
       ) : (
-        <div className="grid gap-4 md:grid-cols-2">
-          {goals.map((goal) => (
-            <GoalCard
-              key={goal.id}
-              goal={goal}
-              stats={statsMap.get(goal.id)}
-              onEdit={() => handleEdit(goal)}
-              onDelete={() => deleteDialog.open(goal)}
-            />
-          ))}
-        </div>
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleDragEnd}
+        >
+          <SortableContext items={sortedGoals.map(g => g.id)} strategy={rectSortingStrategy}>
+            <div className="grid gap-4 grid-cols-5">
+              {sortedGoals.map((goal) => (
+                <SortableGoalCard
+                  key={goal.id}
+                  goal={goal}
+                  stats={statsMap.get(goal.id)}
+                  dateRange={dateRange}
+                  onEdit={() => handleEdit(goal)}
+                  onDelete={() => deleteDialog.open(goal)}
+                />
+              ))}
+            </div>
+          </SortableContext>
+        </DndContext>
       )}
 
+      {/* Create/Edit Dialog */}
       <Dialog open={formDialog.isOpen} onOpenChange={(open) => !open && formDialog.close()}>
         <DialogContent>
           <DialogHeader>
@@ -264,6 +503,38 @@ export function GoalsPage() {
               <ColorPicker value={color} onChange={setColor} />
             </Field>
             <Field>
+              <FieldLabel>Grid Span</FieldLabel>
+              <Select value={String(gridSpan)} onValueChange={(v) => setGridSpan(Number(v))}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {GRID_SPAN_OPTIONS.map((opt) => (
+                    <SelectItem key={opt.value} value={String(opt.value)}>
+                      {opt.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FieldDescription>
+                Number of columns this card occupies (grid has 5 columns)
+              </FieldDescription>
+            </Field>
+            {(type === 'daily_counter' || formDialog.selectedItem?.type === 'daily_counter') && (
+              <Field>
+                <div className="flex items-center justify-between">
+                  <FieldLabel>Show All-Time Total</FieldLabel>
+                  <Switch
+                    checked={showTotal}
+                    onCheckedChange={setShowTotal}
+                  />
+                </div>
+                <FieldDescription>
+                  Display the cumulative total alongside daily values
+                </FieldDescription>
+              </Field>
+            )}
+            <Field>
               <FieldLabel>Description</FieldLabel>
               <Textarea
                 value={description}
@@ -288,6 +559,67 @@ export function GoalsPage() {
         </DialogContent>
       </Dialog>
 
+      {/* Export Dialog */}
+      <Dialog open={exportOpen} onOpenChange={setExportOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Export Goals Data</DialogTitle>
+            <DialogDescription>
+              Select goals to export. Data will be exported for the selected date range ({format(dateRange.from, 'MMM d')} - {format(dateRange.to, 'MMM d, yyyy')}).
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-4">
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="select-all"
+                checked={selectedGoalIds.length === goals.length}
+                onCheckedChange={(checked) => {
+                  if (checked) {
+                    setSelectedGoalIds(goals.map(g => g.id));
+                  } else {
+                    setSelectedGoalIds([]);
+                  }
+                }}
+              />
+              <Label htmlFor="select-all" className="font-medium">Select All</Label>
+            </div>
+            <div className="border-t pt-3 space-y-2">
+              {goals.map((goal) => (
+                <div key={goal.id} className="flex items-center space-x-2">
+                  <Checkbox
+                    id={goal.id}
+                    checked={selectedGoalIds.includes(goal.id)}
+                    onCheckedChange={(checked) => {
+                      if (checked) {
+                        setSelectedGoalIds([...selectedGoalIds, goal.id]);
+                      } else {
+                        setSelectedGoalIds(selectedGoalIds.filter(id => id !== goal.id));
+                      }
+                    }}
+                  />
+                  <Label htmlFor={goal.id} className="flex items-center gap-2">
+                    <span
+                      className="size-2.5 rounded-full"
+                      style={{ backgroundColor: goal.color || '#6b7280' }}
+                    />
+                    {goal.name}
+                  </Label>
+                </div>
+              ))}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setExportOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleExportCSV}>
+              <Download className="mr-1.5 size-4" />
+              Export CSV
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <ConfirmDialog
         open={deleteDialog.isOpen}
         onOpenChange={(open) => !open && deleteDialog.close()}
@@ -302,18 +634,36 @@ export function GoalsPage() {
   );
 }
 
-function GoalCard({
+function SortableGoalCard({
   goal,
   stats,
+  dateRange,
   onEdit,
   onDelete,
 }: {
   goal: Goal;
   stats?: GoalStats;
+  dateRange: { from: Date; to: Date };
   onEdit: () => void;
   onDelete: () => void;
 }) {
-  const chartData = stats?.dailyStats?.slice(-14).map((d) => ({
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: goal.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    gridColumn: `span ${goal.gridSpan || 1}`,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  const chartData = stats?.dailyStats?.map((d) => ({
     date: new Date(d.date).toLocaleDateString('en', { month: 'short', day: 'numeric' }),
     value: d.value,
   })) || [];
@@ -325,8 +675,10 @@ function GoalCard({
       )
     : null;
 
+  const isDailyCounter = goal.type === 'daily_counter';
+
   return (
-    <Card>
+    <Card ref={setNodeRef} style={style} className={cn("group", isDragging && 'z-50')}>
       <CardHeader className="pb-2">
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-3">
@@ -343,24 +695,33 @@ function GoalCard({
               </CardDescription>
             </div>
           </div>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="size-8">
-                <MoreHorizontal className="size-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={onEdit}>
-                <Edit className="mr-2 size-4" />
-                Edit
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem className="text-destructive" onClick={onDelete}>
-                <Trash2 className="mr-2 size-4" />
-                Delete
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <div className="flex items-center gap-1">
+            <button
+              className="cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-opacity p-1"
+              {...attributes}
+              {...listeners}
+            >
+              <GripVertical className="size-4" />
+            </button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="size-8">
+                  <MoreHorizontal className="size-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={onEdit}>
+                  <Edit className="mr-2 size-4" />
+                  Edit
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem className="text-destructive" onClick={onDelete}>
+                  <Trash2 className="mr-2 size-4" />
+                  Delete
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -410,7 +771,14 @@ function GoalCard({
         )}
 
         <div className="flex-1">
-          <p className="text-3xl font-bold">{formatNumber(stats?.value ?? 0)}</p>
+          <div className="flex items-baseline gap-2">
+            <p className="text-3xl font-bold">{formatNumber(stats?.value ?? 0)}</p>
+            {isDailyCounter && goal.showTotal && stats?.totalValue != null && (
+              <p className="text-lg text-muted-foreground">
+                / {formatNumber(stats.totalValue)} total
+              </p>
+            )}
+          </div>
           <div className="flex items-center gap-2 mt-1">
             {trend !== null && (
               <div className={cn(
@@ -421,6 +789,9 @@ function GoalCard({
                 {trend > 0 ? '+' : ''}{trend.toFixed(0)}%
               </div>
             )}
+            <span className="text-xs text-muted-foreground">
+              {format(dateRange.from, 'MMM d')} - {format(dateRange.to, 'MMM d')}
+            </span>
           </div>
         </div>
 

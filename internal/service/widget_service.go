@@ -32,10 +32,16 @@ func (s *WidgetService) Create(ctx context.Context, projectID primitive.ObjectID
 		return nil, err
 	}
 
+	gridSpan := req.GridSpan
+	if gridSpan < 1 || gridSpan > 5 {
+		gridSpan = 1
+	}
+
 	widget := &domain.Widget{
 		ProjectID: projectID,
 		GoalID:    goalID,
 		Variant:   req.Variant,
+		GridSpan:  gridSpan,
 	}
 
 	if err := s.widgetRepo.Create(ctx, widget); err != nil {
@@ -61,6 +67,12 @@ func (s *WidgetService) Update(ctx context.Context, id primitive.ObjectID, req *
 
 	if req.Variant != nil {
 		widget.Variant = *req.Variant
+	}
+	if req.GridSpan != nil {
+		gridSpan := *req.GridSpan
+		if gridSpan >= 1 && gridSpan <= 5 {
+			widget.GridSpan = gridSpan
+		}
 	}
 	if req.Order != nil {
 		widget.Order = *req.Order

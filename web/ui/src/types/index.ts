@@ -147,6 +147,9 @@ export interface Goal {
   description?: string;
   projectID?: string;
   projectAccess: string[];
+  gridSpan: number;
+  showTotal: boolean;
+  order: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -159,6 +162,7 @@ export interface Widget {
   projectId: string;
   goalId: string;
   variant: WidgetVariant;
+  gridSpan: number;
   order: number;
   createdAt: string;
   updatedAt: string;
@@ -169,10 +173,12 @@ export type WidgetVariant = 'mini' | 'detailed' | 'simple';
 export interface CreateWidgetRequest {
   goalId: string;
   variant: WidgetVariant;
+  gridSpan?: number;
 }
 
 export interface UpdateWidgetRequest {
   variant?: WidgetVariant;
+  gridSpan?: number;
   order?: number;
 }
 
@@ -194,11 +200,15 @@ export interface UpdateGoalRequest {
   color?: string;
   description?: string;
   projectAccess?: string[];
+  gridSpan?: number;
+  showTotal?: boolean;
+  order?: number;
 }
 
 export interface GoalStats {
   goalID: string;
   value: number;
+  totalValue?: number;
   dailyStats?: DailyGoalStat[];
 }
 

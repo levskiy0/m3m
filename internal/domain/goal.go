@@ -22,6 +22,9 @@ type Goal struct {
 	Description     string               `bson:"description" json:"description"`
 	ProjectRef      *primitive.ObjectID  `bson:"project_ref" json:"project_ref"`
 	AllowedProjects []primitive.ObjectID `bson:"allowed_projects" json:"allowed_projects"`
+	GridSpan        int                  `bson:"grid_span" json:"gridSpan"`
+	ShowTotal       bool                 `bson:"show_total" json:"showTotal"`
+	Order           int                  `bson:"order" json:"order"`
 	CreatedAt       time.Time            `bson:"created_at" json:"created_at"`
 	UpdatedAt       time.Time            `bson:"updated_at" json:"updated_at"`
 }
@@ -49,6 +52,9 @@ type UpdateGoalRequest struct {
 	Color           *string   `json:"color"`
 	Description     *string   `json:"description"`
 	AllowedProjects *[]string `json:"allowed_projects"`
+	GridSpan        *int      `json:"gridSpan"`
+	ShowTotal       *bool     `json:"showTotal"`
+	Order           *int      `json:"order"`
 }
 
 type GoalStatsQuery struct {

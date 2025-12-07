@@ -19,19 +19,22 @@ type Widget struct {
 	ProjectID primitive.ObjectID `bson:"project_id" json:"projectId"`
 	GoalID    primitive.ObjectID `bson:"goal_id" json:"goalId"`
 	Variant   WidgetVariant      `bson:"variant" json:"variant"`
+	GridSpan  int                `bson:"grid_span" json:"gridSpan"`
 	Order     int                `bson:"order" json:"order"`
 	CreatedAt time.Time          `bson:"created_at" json:"createdAt"`
 	UpdatedAt time.Time          `bson:"updated_at" json:"updatedAt"`
 }
 
 type CreateWidgetRequest struct {
-	GoalID  string        `json:"goalId" binding:"required"`
-	Variant WidgetVariant `json:"variant" binding:"required"`
+	GoalID   string        `json:"goalId" binding:"required"`
+	Variant  WidgetVariant `json:"variant" binding:"required"`
+	GridSpan int           `json:"gridSpan"`
 }
 
 type UpdateWidgetRequest struct {
-	Variant *WidgetVariant `json:"variant"`
-	Order   *int           `json:"order"`
+	Variant  *WidgetVariant `json:"variant"`
+	GridSpan *int           `json:"gridSpan"`
+	Order    *int           `json:"order"`
 }
 
 type ReorderWidgetsRequest struct {

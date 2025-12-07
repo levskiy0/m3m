@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useParams, Link, useLocation } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
@@ -29,6 +29,23 @@ import {
   Minus,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from '@dnd-kit/core';
+import type { DragEndEvent } from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  rectSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 import { projectsApi, pipelineApi, goalsApi, widgetsApi } from '@/api';
 import { config } from '@/lib/config';
@@ -36,7 +53,7 @@ import { formatBytes } from '@/lib/format';
 import { queryKeys } from '@/lib/query-keys';
 import { cn, copyToClipboard } from '@/lib/utils';
 import { useProjectRuntime } from '@/hooks';
-import type { LogEntry, GoalStats, WidgetVariant, CreateWidgetRequest } from '@/types';
+import type { LogEntry, GoalStats, WidgetVariant, CreateWidgetRequest, Widget, Goal } from '@/types';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -140,6 +157,36 @@ export function ProjectDashboard() {
   const [addWidgetOpen, setAddWidgetOpen] = useState(false);
   const [selectedGoalId, setSelectedGoalId] = useState<string>('');
   const [selectedVariant, setSelectedVariant] = useState<WidgetVariant>('mini');
+  const [selectedGridSpan, setSelectedGridSpan] = useState(1);
+
+  // Sort widgets by order
+  const sortedWidgets = useMemo(() => {
+    return [...widgets].sort((a, b) => (a.order || 0) - (b.order || 0));
+  }, [widgets]);
+
+  // DnD sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  const handleWidgetDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (over && active.id !== over.id) {
+      const oldIndex = sortedWidgets.findIndex((w) => w.id === active.id);
+      const newIndex = sortedWidgets.findIndex((w) => w.id === over.id);
+
+      const newOrder = arrayMove(sortedWidgets, oldIndex, newIndex);
+
+      // Update order for reordered widgets
+      widgetsApi.reorder(projectId!, { widgetIds: newOrder.map(w => w.id) }).then(() => {
+        queryClient.invalidateQueries({ queryKey: queryKeys.widgets.all(projectId!) });
+      });
+    }
+  };
 
   const logs: LogEntry[] = Array.isArray(runtime.logs) ? runtime.logs : [];
   const stats = runtime.monitor;
@@ -151,6 +198,7 @@ export function ProjectDashboard() {
       setAddWidgetOpen(false);
       setSelectedGoalId('');
       setSelectedVariant('mini');
+      setSelectedGridSpan(1);
       toast.success('Widget added');
     },
     onError: (err) => {
@@ -177,6 +225,7 @@ export function ProjectDashboard() {
     createWidgetMutation.mutate({
       goalId: selectedGoalId,
       variant: selectedVariant,
+      gridSpan: selectedGridSpan,
     });
   };
 
@@ -514,23 +563,31 @@ export function ProjectDashboard() {
                     Add Widget
                   </Button>
                 </div>
-                {widgets.length > 0 ? (
-                  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                    {widgets.map((widget) => {
-                      const goal = goals.find(g => g.id === widget.goalId);
-                      const stat = goal ? goalStatsMap.get(goal.id) : undefined;
-                      if (!goal) return null;
-                      return (
-                        <WidgetCard
-                          key={widget.id}
-                          widget={widget}
-                          goal={goal}
-                          stats={stat}
-                          onDelete={() => deleteWidgetMutation.mutate(widget.id)}
-                        />
-                      );
-                    })}
-                  </div>
+                {sortedWidgets.length > 0 ? (
+                  <DndContext
+                    sensors={sensors}
+                    collisionDetection={closestCenter}
+                    onDragEnd={handleWidgetDragEnd}
+                  >
+                    <SortableContext items={sortedWidgets.map(w => w.id)} strategy={rectSortingStrategy}>
+                      <div className="grid gap-4 grid-cols-5">
+                        {sortedWidgets.map((widget) => {
+                          const goal = goals.find(g => g.id === widget.goalId);
+                          const stat = goal ? goalStatsMap.get(goal.id) : undefined;
+                          if (!goal) return null;
+                          return (
+                            <SortableWidgetCard
+                              key={widget.id}
+                              widget={widget}
+                              goal={goal}
+                              stats={stat}
+                              onDelete={() => deleteWidgetMutation.mutate(widget.id)}
+                            />
+                          );
+                        })}
+                      </div>
+                    </SortableContext>
+                  </DndContext>
                 ) : (
                   <Card>
                     <CardContent className="flex flex-col items-center justify-center py-8">
@@ -645,6 +702,22 @@ export function ProjectDashboard() {
                 </Label>
               </RadioGroup>
             </div>
+
+            <div className="space-y-2">
+              <Label>Grid Span (columns)</Label>
+              <Select value={String(selectedGridSpan)} onValueChange={(v) => setSelectedGridSpan(Number(v))}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {[1, 2, 3, 4, 5].map((span) => (
+                    <SelectItem key={span} value={String(span)}>
+                      {span} {span === 1 ? 'column' : 'columns'}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
           <DialogFooter>
@@ -661,5 +734,44 @@ export function ProjectDashboard() {
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+function SortableWidgetCard({
+  widget,
+  goal,
+  stats,
+  onDelete,
+}: {
+  widget: Widget;
+  goal: Goal;
+  stats?: GoalStats;
+  onDelete: () => void;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: widget.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+
+  return (
+    <WidgetCard
+      ref={setNodeRef}
+      widget={widget}
+      goal={goal}
+      stats={stats}
+      onDelete={onDelete}
+      dragHandleProps={{ ...attributes, ...listeners }}
+      isDragging={isDragging}
+      style={style}
+    />
   );
 }

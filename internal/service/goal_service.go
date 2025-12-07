@@ -106,6 +106,15 @@ func (s *GoalService) Update(ctx context.Context, id primitive.ObjectID, req *do
 		}
 		goal.AllowedProjects = allowedProjects
 	}
+	if req.GridSpan != nil {
+		goal.GridSpan = *req.GridSpan
+	}
+	if req.ShowTotal != nil {
+		goal.ShowTotal = *req.ShowTotal
+	}
+	if req.Order != nil {
+		goal.Order = *req.Order
+	}
 
 	if err := s.goalRepo.Update(ctx, goal); err != nil {
 		return nil, err
