@@ -19,12 +19,20 @@ import {
   Sun,
   Moon,
   Monitor,
+  ChevronRight,
+  Table2,
 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
 
 import { useAuth } from '@/providers/auth-provider';
 import { useTheme } from '@/providers/theme-provider';
-import { projectsApi } from '@/api';
+import { projectsApi, modelsApi } from '@/api';
+import { queryKeys } from '@/lib/query-keys';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -44,6 +52,9 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarMenuSub,
+  SidebarMenuSubItem,
+  SidebarMenuSubButton,
   SidebarRail,
   useSidebar,
 } from '@/components/ui/sidebar';
@@ -86,6 +97,16 @@ export function AppSidebar() {
     return routeProjectId || localStorage.getItem(LAST_PROJECT_KEY);
   });
 
+  // Load models for current project
+  const { data: models = [] } = useQuery({
+    queryKey: queryKeys.models.all(selectedProjectId || ''),
+    queryFn: () => modelsApi.list(selectedProjectId!),
+    enabled: !!selectedProjectId,
+  });
+
+  // Track Data Storage collapsible state
+  const [dataStorageOpen, setDataStorageOpen] = useState(true);
+
   // Update selected project when route changes
   useEffect(() => {
     if (routeProjectId) {
@@ -106,18 +127,35 @@ export function AppSidebar() {
 
   const currentProject = projects?.find((p) => p.id === selectedProjectId);
 
-  // Navigation items for current project
-  const projectNavItems: NavItem[] = currentProject
+  // Navigation items grouped by category
+  const coreNavItems: NavItem[] = currentProject
     ? [
         { title: 'Overview', url: `/projects/${selectedProjectId}`, icon: Box },
         { title: 'Pipeline', url: `/projects/${selectedProjectId}/pipeline`, icon: Code },
-        { title: 'Storage', url: `/projects/${selectedProjectId}/storage`, icon: HardDrive },
-        { title: 'Models', url: `/projects/${selectedProjectId}/models`, icon: Database },
+      ]
+    : [];
+
+  const storageNavItems: NavItem[] = currentProject
+    ? [
+        { title: 'File Storage', url: `/projects/${selectedProjectId}/storage`, icon: HardDrive },
+      ]
+    : [];
+
+  const metricsNavItems: NavItem[] = currentProject
+    ? [
         { title: 'Goals', url: `/projects/${selectedProjectId}/goals`, icon: Target },
+      ]
+    : [];
+
+  const settingsNavItems: NavItem[] = currentProject
+    ? [
         { title: 'Environment', url: `/projects/${selectedProjectId}/environment`, icon: Variable },
         { title: 'Settings', url: `/projects/${selectedProjectId}/settings`, icon: Settings2 },
       ]
     : [];
+
+  // Check if Data Storage section is active
+  const isDataStorageActive = location.pathname.startsWith(`/projects/${selectedProjectId}/models`);
 
   const isAdmin = user?.permissions?.manageUsers || user?.isRoot;
 
@@ -212,12 +250,133 @@ export function AppSidebar() {
       </SidebarHeader>
 
       <SidebarContent>
-        {/* Current Project Navigation */}
-        {currentProject && projectNavItems.length > 0 && (
+        {/* Core Navigation */}
+        {currentProject && coreNavItems.length > 0 && (
           <SidebarGroup>
             <SidebarGroupLabel>Project</SidebarGroupLabel>
             <SidebarMenu>
-              {projectNavItems.map((item) => (
+              {coreNavItems.map((item) => (
+                <SidebarMenuItem key={item.title}>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={location.pathname === item.url}
+                    tooltip={item.title}
+                  >
+                    <Link to={item.url}>
+                      <item.icon />
+                      <span>{item.title}</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroup>
+        )}
+
+        {/* Storage Section */}
+        {currentProject && (
+          <SidebarGroup>
+            <SidebarGroupLabel>Storage</SidebarGroupLabel>
+            <SidebarMenu>
+              {/* Data Storage with collapsible models */}
+              <Collapsible
+                asChild
+                open={dataStorageOpen}
+                onOpenChange={setDataStorageOpen}
+                className="group/collapsible"
+              >
+                <SidebarMenuItem>
+                  <CollapsibleTrigger asChild>
+                    <SidebarMenuButton
+                      tooltip="Data Storage"
+                      isActive={isDataStorageActive}
+                    >
+                      <Database />
+                      <span>Data Storage</span>
+                      <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
+                    </SidebarMenuButton>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <SidebarMenuSub>
+                      <SidebarMenuSubItem>
+                        <SidebarMenuSubButton
+                          asChild
+                          isActive={location.pathname === `/projects/${selectedProjectId}/models`}
+                        >
+                          <Link to={`/projects/${selectedProjectId}/models`}>
+                            <span>Manage Storage</span>
+                          </Link>
+                        </SidebarMenuSubButton>
+                      </SidebarMenuSubItem>
+                      {models.map((model) => (
+                        <SidebarMenuSubItem key={model.id}>
+                          <SidebarMenuSubButton
+                            asChild
+                            isActive={
+                              location.pathname === `/projects/${selectedProjectId}/models/${model.id}/data` ||
+                              location.pathname === `/projects/${selectedProjectId}/models/${model.id}/schema`
+                            }
+                          >
+                            <Link to={`/projects/${selectedProjectId}/models/${model.id}/data`}>
+                              <Table2 className="size-3" />
+                              <span>{model.name}</span>
+                            </Link>
+                          </SidebarMenuSubButton>
+                        </SidebarMenuSubItem>
+                      ))}
+                    </SidebarMenuSub>
+                  </CollapsibleContent>
+                </SidebarMenuItem>
+              </Collapsible>
+
+              {/* File Storage */}
+              {storageNavItems.map((item) => (
+                <SidebarMenuItem key={item.title}>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={location.pathname === item.url}
+                    tooltip={item.title}
+                  >
+                    <Link to={item.url}>
+                      <item.icon />
+                      <span>{item.title}</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroup>
+        )}
+
+        {/* Metrics Section */}
+        {currentProject && metricsNavItems.length > 0 && (
+          <SidebarGroup>
+            <SidebarGroupLabel>Metrics</SidebarGroupLabel>
+            <SidebarMenu>
+              {metricsNavItems.map((item) => (
+                <SidebarMenuItem key={item.title}>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={location.pathname === item.url}
+                    tooltip={item.title}
+                  >
+                    <Link to={item.url}>
+                      <item.icon />
+                      <span>{item.title}</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroup>
+        )}
+
+        {/* Settings Section */}
+        {currentProject && settingsNavItems.length > 0 && (
+          <SidebarGroup>
+            <SidebarGroupLabel>Configuration</SidebarGroupLabel>
+            <SidebarMenu>
+              {settingsNavItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton
                     asChild
