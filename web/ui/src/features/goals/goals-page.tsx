@@ -12,6 +12,7 @@ import {
   Download,
   Calendar,
   GripVertical,
+  RotateCcw,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -148,6 +149,7 @@ export function GoalsPage() {
 
   const formDialog = useFormDialog<Goal>();
   const deleteDialog = useDeleteDialog<Goal>();
+  const resetDialog = useDeleteDialog<Goal>(); // reusing the same hook for reset confirmation
 
   // Form state
   const [color, setColor] = useState<string | undefined>();
@@ -231,6 +233,18 @@ export function GoalsPage() {
     },
     onError: (err) => {
       toast.error(err instanceof Error ? err.message : 'Failed to delete goal');
+    },
+  });
+
+  const resetMutation = useMutation({
+    mutationFn: () => goalsApi.resetProject(projectId!, resetDialog.itemToDelete!.id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.goals.stats(projectId!, goals.map(g => g.id), format(dateRange.from, 'yyyy-MM-dd'), format(dateRange.to, 'yyyy-MM-dd')) });
+      resetDialog.close();
+      toast.success('Goal statistics reset');
+    },
+    onError: (err) => {
+      toast.error(err instanceof Error ? err.message : 'Failed to reset goal');
     },
   });
 
@@ -435,6 +449,7 @@ export function GoalsPage() {
                   dateRange={dateRange}
                   onEdit={() => handleEdit(goal)}
                   onDelete={() => deleteDialog.open(goal)}
+                  onReset={() => resetDialog.open(goal)}
                 />
               ))}
             </div>
@@ -630,6 +645,17 @@ export function GoalsPage() {
         onConfirm={() => deleteMutation.mutate()}
         isLoading={deleteMutation.isPending}
       />
+
+      <ConfirmDialog
+        open={resetDialog.isOpen}
+        onOpenChange={(open) => !open && resetDialog.close()}
+        title="Reset Goal Statistics"
+        description={`Are you sure you want to reset all statistics for "${resetDialog.itemToDelete?.name}"? This will delete all recorded data and cannot be undone.`}
+        confirmLabel="Reset"
+        variant="destructive"
+        onConfirm={() => resetMutation.mutate()}
+        isLoading={resetMutation.isPending}
+      />
     </div>
   );
 }
@@ -640,12 +666,14 @@ function SortableGoalCard({
   dateRange,
   onEdit,
   onDelete,
+  onReset,
 }: {
   goal: Goal;
   stats?: GoalStats;
   dateRange: { from: Date; to: Date };
   onEdit: () => void;
   onDelete: () => void;
+  onReset: () => void;
 }) {
   const {
     attributes,
@@ -713,6 +741,10 @@ function SortableGoalCard({
                 <DropdownMenuItem onClick={onEdit}>
                   <Edit className="mr-2 size-4" />
                   Edit
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={onReset}>
+                  <RotateCcw className="mr-2 size-4" />
+                  Reset Stats
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem className="text-destructive" onClick={onDelete}>

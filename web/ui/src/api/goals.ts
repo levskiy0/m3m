@@ -64,4 +64,8 @@ export const goalsApi = {
   deleteProject: async (projectId: string, goalId: string): Promise<void> => {
     return api.delete(`/api/projects/${projectId}/goals/${goalId}`);
   },
+
+  resetProject: async (projectId: string, goalId: string): Promise<void> => {
+    return api.post(`/api/projects/${projectId}/goals/${goalId}/reset`, {});
+  },
 };
