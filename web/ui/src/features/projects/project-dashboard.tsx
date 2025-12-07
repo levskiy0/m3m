@@ -559,6 +559,7 @@ export function ProjectDashboard() {
         {activeTab === 'logs' && (
           <Card className="flex flex-col gap-0 rounded-t-none py-0 overflow-hidden">
             <LogsViewer
+              height={"calc(100vh - 205px)"}
               logs={logs}
               onDownload={runtime.downloadLogs}
             />
