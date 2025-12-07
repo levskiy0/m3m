@@ -80,7 +80,7 @@ export function DataTable({
       <Table
         className="table-fixed"
         style={{ width: tableWidth, minWidth: tableWidth }}
-        wrapperClassName="h-[calc(100vh-330px)] overflow-y-auto [&_thead]:sticky [&_thead]:top-0 [&_thead]:z-10 [&_thead]:bg-background"
+        wrapperClassName="h-[calc(100vh-315px)] overflow-y-auto [&_thead]:sticky [&_thead]:top-0 [&_thead]:z-10 [&_thead]:bg-background"
       >
         <TableHeader>
           <TableRow>
