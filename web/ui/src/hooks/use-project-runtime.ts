@@ -86,6 +86,7 @@ export function useProjectRuntime({
   // Actions
   const invalidateAll = () => {
     queryClient.invalidateQueries({ queryKey: queryKeys.projects.all });
+    queryClient.invalidateQueries({ queryKey: queryKeys.projects.detail(projectId) });
     queryClient.invalidateQueries({ queryKey: queryKeys.projects.status(projectId) });
     queryClient.invalidateQueries({ queryKey: queryKeys.logs.project(projectId) });
     queryClient.invalidateQueries({ queryKey: ['monitor', projectId] });

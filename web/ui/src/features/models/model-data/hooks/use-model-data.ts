@@ -25,6 +25,17 @@ export function useModelData({ projectId, modelId }: UseModelDataOptions) {
   const [activeFilters, setActiveFilters] = useState<ActiveFilter[]>([]);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
+  // Reset all table state when switching between models
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Required to reset state when navigating between models
+    setPage(1);
+    setSearchInput('');
+    setSearchQuery('');
+    setSortField(null);
+    setSortOrder('asc');
+    setActiveFilters([]);
+  }, [modelId]);
+
   // Debounce search input
   useEffect(() => {
     const timer = setTimeout(() => {
