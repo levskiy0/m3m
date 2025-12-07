@@ -42,7 +42,7 @@ export function RecordView({
           Delete
         </Button>
       </div>
-      <div className="flex-1 overflow-y-auto max-h-[calc(100vh-360px)]">
+      <div className="flex-1 overflow-y-auto max-h-[calc(100vh-315px)]">
         <div className="max-w-2xl space-y-4">
           {/* Fields table */}
           <div className="rounded-md border overflow-hidden">

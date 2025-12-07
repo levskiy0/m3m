@@ -29,7 +29,7 @@ export function RecordForm({
 }: RecordFormProps) {
   return (
     <>
-      <div className="overflow-y-auto max-h-[calc(100vh-360px)]">
+      <div className="overflow-y-auto max-h-[calc(100vh-315px)]">
         <div className="max-w-2xl space-y-4">
           {orderedFormFields.map((field) => (
             <div key={field.key} className="space-y-2">
