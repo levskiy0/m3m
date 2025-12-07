@@ -1,17 +1,16 @@
 /**
  * SortableSchemaField component
- * Draggable field row for schema editor
+ * Draggable field row for schema editor (table-based layout)
  */
 
-import { GripVertical, Trash2, Plus, X } from 'lucide-react';
+import { GripVertical, Trash2, Plus, X, Settings2 } from 'lucide-react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
 import type { ModelField, Model, FieldType } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Switch } from '@/components/ui/switch';
-import { Field, FieldLabel } from '@/components/ui/field';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Select,
   SelectContent,
@@ -33,7 +32,6 @@ import {
   CommandList,
   CommandSeparator,
 } from '@/components/ui/command';
-import { Badge } from '@/components/ui/badge';
 import { useState } from 'react';
 import { DefaultValueInput } from './default-value-input';
 import {
@@ -66,107 +64,92 @@ function SelectOptionsEditor({ options, onChange }: SelectOptionsEditorProps) {
     onChange(options.filter(o => o !== option));
   };
 
-  // Check if exact match exists (not just substring match)
   const trimmedInput = inputValue.trim();
   const hasExactMatch = trimmedInput && options.includes(trimmedInput);
   const canAddNew = trimmedInput && !hasExactMatch;
 
   return (
-    <Field>
-      <FieldLabel>Options</FieldLabel>
-      <Popover>
-        <PopoverTrigger asChild>
-          <Button variant="outline" className="w-full justify-start h-auto min-h-10">
-            {options.length > 0 ? (
-              <div className="flex flex-wrap gap-1">
-                {options.slice(0, 2).map((option) => (
-                  <Badge key={option} variant="secondary" className="rounded-sm px-1 font-normal">
-                    {option}
-                  </Badge>
-                ))}
-                {options.length > 2 && (
-                  <Badge variant="secondary" className="rounded-sm px-1 font-normal">
-                    +{options.length - 2}
-                  </Badge>
-                )}
-              </div>
-            ) : (
-              <span className="text-muted-foreground">Add options...</span>
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button variant="outline" size="sm" className="h-8 justify-start gap-1.5">
+          <Settings2 className="size-3.5" />
+          {options.length > 0 ? (
+            <span className="text-xs">{options.length} options</span>
+          ) : (
+            <span className="text-xs text-muted-foreground">Add options</span>
+          )}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-64 p-0" align="start">
+        <Command>
+          <CommandInput
+            placeholder="Add option..."
+            value={inputValue}
+            onValueChange={setInputValue}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && inputValue) {
+                e.preventDefault();
+                addOption(inputValue);
+              }
+            }}
+          />
+          <CommandList>
+            <CommandEmpty>
+              {inputValue ? (
+                <Button
+                  variant="ghost"
+                  className="w-full justify-start"
+                  onClick={() => addOption(inputValue)}
+                >
+                  <Plus className="mr-2 size-4" />
+                  Add "{inputValue}"
+                </Button>
+              ) : (
+                'Type to add option'
+              )}
+            </CommandEmpty>
+            {canAddNew && options.length > 0 && (
+              <CommandGroup>
+                <CommandItem
+                  onSelect={() => addOption(inputValue)}
+                  className="text-primary"
+                >
+                  <Plus className="mr-2 size-4" />
+                  Add "{trimmedInput}"
+                </CommandItem>
+              </CommandGroup>
             )}
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent className="w-64 p-0" align="start">
-          <Command>
-            <CommandInput
-              placeholder="Add option..."
-              value={inputValue}
-              onValueChange={setInputValue}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && inputValue) {
-                  e.preventDefault();
-                  addOption(inputValue);
-                }
-              }}
-            />
-            <CommandList>
-              <CommandEmpty>
-                {inputValue ? (
-                  <Button
-                    variant="ghost"
-                    className="w-full justify-start"
-                    onClick={() => addOption(inputValue)}
+            {options.length > 0 && (
+              <CommandGroup>
+                {options.map((option) => (
+                  <CommandItem
+                    key={option}
+                    className="justify-between"
+                    onSelect={() => removeOption(option)}
                   >
-                    <Plus className="mr-2 size-4" />
-                    Add "{inputValue}"
-                  </Button>
-                ) : (
-                  'Type to add option'
-                )}
-              </CommandEmpty>
-              {/* Show "Add" button when there are filtered results but no exact match */}
-              {canAddNew && options.length > 0 && (
+                    <span>{option}</span>
+                    <X className="size-4 text-muted-foreground" />
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            )}
+            {options.length > 0 && (
+              <>
+                <CommandSeparator />
                 <CommandGroup>
                   <CommandItem
-                    onSelect={() => addOption(inputValue)}
-                    className="text-primary"
+                    onSelect={() => onChange([])}
+                    className="justify-center text-center text-muted-foreground"
                   >
-                    <Plus className="mr-2 size-4" />
-                    Add "{trimmedInput}"
+                    Clear all
                   </CommandItem>
                 </CommandGroup>
-              )}
-              {options.length > 0 && (
-                <CommandGroup>
-                  {options.map((option) => (
-                    <CommandItem
-                      key={option}
-                      className="justify-between"
-                      onSelect={() => removeOption(option)}
-                    >
-                      <span>{option}</span>
-                      <X className="size-4 text-muted-foreground" />
-                    </CommandItem>
-                  ))}
-                </CommandGroup>
-              )}
-              {options.length > 0 && (
-                <>
-                  <CommandSeparator />
-                  <CommandGroup>
-                    <CommandItem
-                      onSelect={() => onChange([])}
-                      className="justify-center text-center text-muted-foreground"
-                    >
-                      Clear all
-                    </CommandItem>
-                  </CommandGroup>
-                </>
-              )}
-            </CommandList>
-          </Command>
-        </PopoverContent>
-      </Popover>
-    </Field>
+              </>
+            )}
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
   );
 }
 
@@ -199,6 +182,7 @@ export function SortableSchemaField({
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
+    opacity: isDragging ? 0.5 : 1,
   };
 
   // Filter out current model from ref options
@@ -219,107 +203,93 @@ export function SortableSchemaField({
   };
 
   return (
-    <div
+    <tr
       ref={setNodeRef}
       style={style}
-      className={`flex items-start gap-4 p-4 border rounded-lg bg-background ${
-        isDragging ? 'opacity-50 shadow-lg z-50' : ''
-      }`}
+      className={`border-t ${isDragging ? 'z-50' : ''}`}
     >
-      <div
-        {...attributes}
-        {...listeners}
-        className="cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground transition-colors"
-      >
-        <GripVertical className="size-5" />
-      </div>
-
-      <div className="flex-1 grid gap-4 md:grid-cols-4">
-        <Field>
-          <FieldLabel>Key</FieldLabel>
-          <Input
-            value={field.key}
-            onChange={handleKeyChange}
-            placeholder="field_name"
-            className={keyError ? 'border-destructive focus-visible:ring-destructive' : ''}
-          />
-        </Field>
-
-        <Field>
-          <FieldLabel>Type</FieldLabel>
-          <Select value={field.type} onValueChange={handleTypeChange}>
-            <SelectTrigger>
-              <SelectValue />
+      <td className="p-3 w-10">
+        <div
+          {...attributes}
+          {...listeners}
+          className="cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <GripVertical className="size-4" />
+        </div>
+      </td>
+      <td className="p-3">
+        <Input
+          value={field.key}
+          onChange={handleKeyChange}
+          placeholder="field_name"
+          className={`h-8 font-mono text-sm ${keyError ? 'border-destructive focus-visible:ring-destructive' : ''}`}
+        />
+      </td>
+      <td className="p-3">
+        <Select value={field.type} onValueChange={handleTypeChange}>
+          <SelectTrigger className="h-8">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {fieldTypes.map((type) => (
+              <SelectItem key={type.value} value={type.value}>
+                {type.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </td>
+      <td className="p-3">
+        {showRefModel ? (
+          <Select
+            value={field.ref_model || ''}
+            onValueChange={(v) => onUpdate({ ref_model: v })}
+          >
+            <SelectTrigger className="h-8">
+              <SelectValue placeholder="Select model" />
             </SelectTrigger>
             <SelectContent>
-              {fieldTypes.map((type) => (
-                <SelectItem key={type.value} value={type.value}>
-                  {type.label}
+              {availableModels.map((m) => (
+                <SelectItem key={m.id} value={m.slug}>
+                  {m.name}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
-        </Field>
-
-        {showRefModel ? (
-          <Field>
-            <FieldLabel>Reference Model</FieldLabel>
-            <Select
-              value={field.ref_model || ''}
-              onValueChange={(v) => onUpdate({ ref_model: v })}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select model" />
-              </SelectTrigger>
-              <SelectContent>
-                {availableModels.map((m) => (
-                  <SelectItem key={m.id} value={m.slug}>
-                    {m.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </Field>
         ) : showOptions ? (
           <SelectOptionsEditor
             options={field.options || []}
             onChange={(options) => onUpdate({ options })}
           />
         ) : showDefaultValue ? (
-          <Field>
-            <FieldLabel>Default Value</FieldLabel>
-            <DefaultValueInput
-              type={field.type}
-              value={field.default_value}
-              onChange={(value) => onUpdate({ default_value: value })}
-            />
-          </Field>
+          <DefaultValueInput
+            type={field.type}
+            value={field.default_value}
+            onChange={(value) => onUpdate({ default_value: value })}
+            className="h-8"
+          />
         ) : (
-          <Field>
-            <FieldLabel className="text-muted-foreground">-</FieldLabel>
-            <div className="h-10" />
-          </Field>
+          <span className="text-muted-foreground text-sm">—</span>
         )}
-
-        <Field>
-          <FieldLabel>Required</FieldLabel>
-          <div className="flex items-center h-10">
-            <Switch
-              checked={field.required}
-              onCheckedChange={(checked) => onUpdate({ required: checked })}
-            />
-          </div>
-        </Field>
-      </div>
-
-      <Button
-        variant="ghost"
-        size="icon"
-        className="mt-6"
-        onClick={onRemove}
-      >
-        <Trash2 className="size-4 text-destructive" />
-      </Button>
-    </div>
+      </td>
+      <td className="p-3 text-center">
+        <div className="flex items-center justify-center">
+          <Checkbox
+            checked={field.required}
+            onCheckedChange={(checked) => onUpdate({ required: !!checked })}
+          />
+        </div>
+      </td>
+      <td className="p-3 w-10">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8 text-muted-foreground hover:text-destructive"
+          onClick={onRemove}
+        >
+          <Trash2 className="size-4" />
+        </Button>
+      </td>
+    </tr>
   );
 }

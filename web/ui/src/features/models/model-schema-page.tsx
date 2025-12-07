@@ -6,7 +6,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, Save, Table, Database, FileText } from 'lucide-react';
+import { Plus, Save, Table, Database, FileText, Key, Type, Settings2, Asterisk } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   DndContext,
@@ -191,7 +191,7 @@ export function ModelSchemaPage() {
               <div>
                 <CardTitle>Fields</CardTitle>
                 <CardDescription>
-                  Define the fields for your model schema
+                  Define the fields for your model schema. Drag rows to reorder.
                 </CardDescription>
               </div>
               <Button variant="outline" size="sm" onClick={addField}>
@@ -211,24 +211,58 @@ export function ModelSchemaPage() {
                 collisionDetection={closestCenter}
                 onDragEnd={handleDragEnd}
               >
-                <SortableContext
-                  items={fieldIds}
-                  strategy={verticalListSortingStrategy}
-                >
-                  <div className="space-y-4">
-                    {fields.map((field, index) => (
-                      <SortableSchemaField
-                        key={fieldIds[index] || index}
-                        id={fieldIds[index] || String(index)}
-                        field={field}
-                        onUpdate={(updates) => updateField(index, updates)}
-                        onRemove={() => removeField(index)}
-                        models={allModels}
-                        currentModelId={modelId}
-                      />
-                    ))}
-                  </div>
-                </SortableContext>
+                <div className="border rounded-lg overflow-hidden">
+                  <table className="w-full text-sm">
+                    <thead className="bg-muted/50">
+                      <tr>
+                        <th className="w-10 p-3"></th>
+                        <th className="text-left font-medium p-3">
+                          <div className="flex items-center gap-1.5">
+                            <Key className="size-4" />
+                            <span>Key</span>
+                          </div>
+                        </th>
+                        <th className="text-left font-medium p-3 w-36">
+                          <div className="flex items-center gap-1.5">
+                            <Type className="size-4" />
+                            <span>Type</span>
+                          </div>
+                        </th>
+                        <th className="text-left font-medium p-3 w-44">
+                          <div className="flex items-center gap-1.5">
+                            <Settings2 className="size-4" />
+                            <span>Config</span>
+                          </div>
+                        </th>
+                        <th className="text-center font-medium p-3 w-24">
+                          <div className="flex items-center justify-center gap-1.5">
+                            <Asterisk className="size-4" />
+                            <span>Req</span>
+                          </div>
+                        </th>
+                        <th className="w-10 p-3"></th>
+                      </tr>
+                    </thead>
+                    <SortableContext
+                      items={fieldIds}
+                      strategy={verticalListSortingStrategy}
+                    >
+                      <tbody>
+                        {fields.map((field, index) => (
+                          <SortableSchemaField
+                            key={fieldIds[index] || index}
+                            id={fieldIds[index] || String(index)}
+                            field={field}
+                            onUpdate={(updates) => updateField(index, updates)}
+                            onRemove={() => removeField(index)}
+                            models={allModels}
+                            currentModelId={modelId}
+                          />
+                        ))}
+                      </tbody>
+                    </SortableContext>
+                  </table>
+                </div>
               </DndContext>
             )}
           </CardContent>

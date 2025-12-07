@@ -25,9 +25,10 @@ interface DefaultValueInputProps {
   type: FieldType;
   value: unknown;
   onChange: (value: unknown) => void;
+  className?: string;
 }
 
-export function DefaultValueInput({ type, value, onChange }: DefaultValueInputProps) {
+export function DefaultValueInput({ type, value, onChange, className }: DefaultValueInputProps) {
   const options = getDefaultValueOptions(type);
 
   // Use select for types with predefined options
@@ -39,7 +40,7 @@ export function DefaultValueInput({ type, value, onChange }: DefaultValueInputPr
         value={selectValue}
         onValueChange={(v) => onChange(parseDefaultValue(type, v))}
       >
-        <SelectTrigger>
+        <SelectTrigger className={className}>
           <SelectValue placeholder="No default" />
         </SelectTrigger>
         <SelectContent>
@@ -68,6 +69,7 @@ export function DefaultValueInput({ type, value, onChange }: DefaultValueInputPr
           onChange(parseDefaultValue(type, v));
         }}
         placeholder="No default"
+        className={className}
       />
     );
   }
@@ -78,6 +80,7 @@ export function DefaultValueInput({ type, value, onChange }: DefaultValueInputPr
       value={(value as string) || ''}
       onChange={(e) => onChange(e.target.value || undefined)}
       placeholder="No default"
+      className={className}
     />
   );
 }
