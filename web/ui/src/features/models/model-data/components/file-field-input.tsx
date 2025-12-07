@@ -126,11 +126,6 @@ export function FileFieldInput({
               className="h-[400px]"
             />
           </div>
-          {selectedItem && (
-            <div className="text-sm text-muted-foreground">
-              Selected: <span className="font-medium text-foreground">{selectedItem.name}</span>
-            </div>
-          )}
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogOpen(false)}>
               Cancel
