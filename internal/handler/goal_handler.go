@@ -268,9 +268,17 @@ func (h *GoalHandler) GetGoalStats(c *gin.Context) {
 		return
 	}
 
+	// Get total value for this goal
+	totalValues, err := h.goalService.GetTotalValues(c.Request.Context(), []string{goalID})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
 	response := GoalStatsResponse{
 		GoalID:     goalID,
 		Value:      0,
+		TotalValue: totalValues[goalID],
 		DailyStats: []DailyStatItem{},
 	}
 
