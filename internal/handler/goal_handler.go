@@ -180,6 +180,13 @@ func (h *GoalHandler) GetStats(c *gin.Context) {
 		return
 	}
 
+	// Get total values for all goals (sum across all time)
+	totalValues, err := h.goalService.GetTotalValues(c.Request.Context(), goalIds)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
 	// Aggregate stats by goal ID
 	goalStatsMap := make(map[string]*GoalStatsResponse)
 	today := time.Now().Format("2006-01-02")
@@ -205,9 +212,10 @@ func (h *GoalHandler) GetStats(c *gin.Context) {
 		}
 	}
 
-	// Convert map to slice and sort dailyStats by date
+	// Set total values and convert map to slice
 	result := make([]GoalStatsResponse, 0, len(goalStatsMap))
-	for _, gs := range goalStatsMap {
+	for goalID, gs := range goalStatsMap {
+		gs.TotalValue = totalValues[goalID]
 		sort.Slice(gs.DailyStats, func(i, j int) bool {
 			return gs.DailyStats[i].Date < gs.DailyStats[j].Date
 		})
@@ -227,6 +235,7 @@ func (h *GoalHandler) GetStats(c *gin.Context) {
 			result = append(result, GoalStatsResponse{
 				GoalID:     goalID,
 				Value:      0,
+				TotalValue: totalValues[goalID],
 				DailyStats: []DailyStatItem{},
 			})
 		}
