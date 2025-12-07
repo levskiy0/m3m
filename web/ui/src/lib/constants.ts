@@ -45,6 +45,7 @@ export const FIELD_TYPES: { value: FieldType; label: string }[] = [
 ];
 
 // Field views per field type (what widgets can be used for each type)
+// IMPORTANT: Keep in sync with backend validViews in model_schema_validation.go
 export const FIELD_VIEWS: Record<FieldType, { value: string; label: string }[]> = {
   string: [
     { value: 'input', label: 'Input' },
@@ -52,6 +53,8 @@ export const FIELD_VIEWS: Record<FieldType, { value: string; label: string }[]> 
   ],
   text: [
     { value: 'textarea', label: 'Textarea' },
+    { value: 'tiptap', label: 'Rich Text Editor' },
+    { value: 'markdown', label: 'Markdown' },
   ],
   number: [
     { value: 'input', label: 'Input' },
@@ -75,9 +78,11 @@ export const FIELD_VIEWS: Record<FieldType, { value: string; label: string }[]> 
   ],
   file: [
     { value: 'file', label: 'File Upload' },
+    { value: 'image', label: 'Image Picker' },
   ],
   ref: [
     { value: 'select', label: 'Select' },
+    { value: 'combobox', label: 'Combobox' },
   ],
   document: [
     { value: 'json', label: 'JSON Editor' },
