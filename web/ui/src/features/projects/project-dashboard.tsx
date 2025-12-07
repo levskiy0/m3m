@@ -181,8 +181,8 @@ export function ProjectDashboard() {
   };
 
   const copyApiKey = async () => {
-    if (project?.apiKey) {
-      const success = await copyToClipboard(project.apiKey);
+    if (project?.api_key) {
+      const success = await copyToClipboard(project.api_key);
       if (success) {
         setCopied(true);
         toast.success('API key copied');
@@ -243,7 +243,7 @@ export function ProjectDashboard() {
         </div>
 
         {/* Service Control Panel */}
-        <div className="flex items-center gap-2 bg-muted/50 rounded-lg p-2">
+        <div className="flex items-center gap-2 bg-muted/50 rounded-xl p-2">
           {isRunning ? (
             <>
               <Button
@@ -273,7 +273,7 @@ export function ProjectDashboard() {
                 <Button
                   size="sm"
                   disabled={runtime.isPending || (releases.length === 0 && branches.length === 0)}
-                  className="gap-2 bg-green-600 hover:bg-green-700"
+                  className="gap-2 bg-green-600 hover:bg-green-700 text-white"
                 >
                   <Play className="size-4" />
                   Start Service
@@ -481,7 +481,7 @@ export function ProjectDashboard() {
                     <div className="flex items-center gap-2">
                       <Key className="size-4 text-muted-foreground shrink-0" />
                       <code className="text-sm truncate flex-1 font-mono">
-                        {project.apiKey?.slice(0, 12)}...
+                        {project.api_key?.slice(0, 12)}...
                       </code>
                       <Button
                         variant="ghost"

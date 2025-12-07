@@ -185,15 +185,13 @@ export function ProfilePage() {
                 onChange={(e) => handleNameChange(e.target.value)}
               />
             </Field>
-            {nameChanged && (
-              <LoadingButton
-                onClick={() => updateNameMutation.mutate()}
-                loading={updateNameMutation.isPending}
-              >
-                <Save className="mr-2 size-4" />
-                Save Changes
-              </LoadingButton>
-            )}
+            <LoadingButton
+              className="w-fit"
+              onClick={() => updateNameMutation.mutate()}
+              loading={updateNameMutation.isPending}
+            >
+              Save Changes
+            </LoadingButton>
           </FieldGroup>
         </CardContent>
       </Card>

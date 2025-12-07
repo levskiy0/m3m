@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Copy, RefreshCw, Trash2, UserPlus, X } from 'lucide-react';
+import { Copy, RefreshCw, Trash2, UserPlus, X, Eye, EyeOff, Check, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { projectsApi, usersApi } from '@/api';
@@ -50,9 +50,12 @@ export function ProjectSettings() {
   const [hasChanges, setHasChanges] = useState(false);
 
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
   const [regenerateDialogOpen, setRegenerateDialogOpen] = useState(false);
   const [addMemberDialogOpen, setAddMemberDialogOpen] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState('');
+  const [showApiKey, setShowApiKey] = useState(false);
+  const [apiKeyCopied, setApiKeyCopied] = useState(false);
 
   const { data: project, isLoading: projectLoading } = useQuery({
     queryKey: ['project', projectId],
@@ -153,13 +156,24 @@ export function ProjectSettings() {
   };
 
   const copyApiKey = async () => {
-    if (project?.apiKey) {
-      const success = await copyToClipboard(project.apiKey);
+    if (project?.api_key) {
+      const success = await copyToClipboard(project.api_key);
       if (success) {
+        setApiKeyCopied(true);
         toast.success('API key copied to clipboard');
+        setTimeout(() => setApiKeyCopied(false), 2000);
       }
     }
   };
+
+  const handleDeleteDialogOpen = (open: boolean) => {
+    setDeleteDialogOpen(open);
+    if (!open) {
+      setDeleteConfirmText('');
+    }
+  };
+
+  const canDelete = project && deleteConfirmText === project.name;
 
   if (projectLoading) {
     return (
@@ -175,9 +189,9 @@ export function ProjectSettings() {
     return <div>Project not found</div>;
   }
 
-  const isOwner = project.ownerID === user?.id || user?.isRoot;
+  const isOwner = project.owner_id === user?.id || user?.isRoot;
   const availableUsers = users.filter(
-    (u) => u.id !== project.ownerID && !project.members.includes(u.id)
+    (u) => u.id !== project.owner_id && !project.members.includes(u.id)
   );
   const memberUsers = users.filter((u) => project.members.includes(u.id));
 
@@ -233,11 +247,9 @@ export function ProjectSettings() {
                 }}
               />
             </Field>
-            {hasChanges && (
-              <LoadingButton onClick={handleSave} loading={updateMutation.isPending}>
-                Save Changes
-              </LoadingButton>
-            )}
+            <LoadingButton className="w-fit" onClick={handleSave} loading={updateMutation.isPending}>
+              Save Changes
+            </LoadingButton>
           </FieldGroup>
         </CardContent>
       </Card>
@@ -309,21 +321,48 @@ export function ProjectSettings() {
         <CardContent>
           <div className="flex items-center gap-2">
             <code className="flex-1 bg-muted px-3 py-2 rounded-md text-sm font-mono truncate">
-              {project.apiKey}
+              {project.api_key
+                ? showApiKey
+                  ? project.api_key
+                  : '•'.repeat(32)
+                : <span className="text-muted-foreground italic">Not generated</span>}
             </code>
-            <Button variant="outline" size="icon" onClick={copyApiKey}>
-              <Copy className="size-4" />
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => setShowApiKey(!showApiKey)}
+              disabled={!project.api_key}
+            >
+              {showApiKey ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+            </Button>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={copyApiKey}
+              disabled={!project.api_key}
+            >
+              {apiKeyCopied ? (
+                <Check className="size-4 text-green-500" />
+              ) : (
+                <Copy className="size-4" />
+              )}
             </Button>
             {isOwner && (
               <Button
                 variant="outline"
                 size="icon"
                 onClick={() => setRegenerateDialogOpen(true)}
+                title={project.api_key ? 'Regenerate API Key' : 'Generate API Key'}
               >
                 <RefreshCw className="size-4" />
               </Button>
             )}
           </div>
+          {!project.api_key && (
+            <p className="text-sm text-amber-600 mt-2">
+              API key is not generated. Click regenerate to create one.
+            </p>
+          )}
         </CardContent>
       </Card>
 
@@ -357,16 +396,46 @@ export function ProjectSettings() {
       )}
 
       {/* Dialogs */}
-      <ConfirmDialog
-        open={deleteDialogOpen}
-        onOpenChange={setDeleteDialogOpen}
-        title="Delete Project"
-        description={`Are you sure you want to delete "${project.name}"? This action cannot be undone.`}
-        confirmLabel="Delete"
-        variant="destructive"
-        onConfirm={() => deleteMutation.mutate()}
-        isLoading={deleteMutation.isPending}
-      />
+      <Dialog open={deleteDialogOpen} onOpenChange={handleDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-destructive">
+              <AlertTriangle className="size-5" />
+              Delete Project
+            </DialogTitle>
+            <DialogDescription>
+              This action <strong>cannot</strong> be undone. This will permanently delete the
+              <strong> {project.name}</strong> project, all its pipelines, models, data, and files.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <Field>
+              <FieldLabel>
+                Please type <strong>{project.name}</strong> to confirm
+              </FieldLabel>
+              <Input
+                value={deleteConfirmText}
+                onChange={(e) => setDeleteConfirmText(e.target.value)}
+                placeholder={project.name}
+                className="font-mono"
+              />
+            </Field>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => handleDeleteDialogOpen(false)}>
+              Cancel
+            </Button>
+            <LoadingButton
+              variant="destructive"
+              onClick={() => deleteMutation.mutate()}
+              disabled={!canDelete}
+              loading={deleteMutation.isPending}
+            >
+              I understand, delete this project
+            </LoadingButton>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <ConfirmDialog
         open={regenerateDialogOpen}

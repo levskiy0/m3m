@@ -45,13 +45,14 @@ export interface Project {
   slug: string;
   color?: string;
   status: ProjectStatus;
-  apiKey: string;
-  ownerID: string;
+  api_key: string;
+  owner_id: string;
   members: string[];
-  activeRelease?: string;
+  auto_start?: boolean;
+  active_release?: string;
   runningSource?: string; // "release:<version>" or "debug:<branch>"
-  createdAt: string;
-  updatedAt: string;
+  created_at: string;
+  updated_at: string;
 }
 
 export type ProjectStatus = 'running' | 'stopped';
