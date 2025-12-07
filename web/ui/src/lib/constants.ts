@@ -82,7 +82,6 @@ export const FIELD_VIEWS: Record<FieldType, { value: string; label: string }[]> 
   ],
   ref: [
     { value: 'select', label: 'Select' },
-    { value: 'combobox', label: 'Combobox' },
   ],
   document: [
     { value: 'json', label: 'JSON Editor' },

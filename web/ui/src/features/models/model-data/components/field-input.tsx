@@ -1,8 +1,12 @@
+import { useState } from 'react';
+import { Check, ChevronsUpDown } from 'lucide-react';
 import type { ModelField, FieldView, Model } from '@/types';
+import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Button } from '@/components/ui/button';
 import { DatePicker, DateTimePicker } from '@/components/ui/datetime-picker';
 import {
   Select,
@@ -11,10 +15,77 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from '@/components/ui/command';
 import { MultiSelect } from '@/components/ui/multi-select';
 import { getDefaultView } from '../utils';
 import { RefFieldInput } from './ref-field-input';
 import { FileFieldInput } from './file-field-input';
+
+interface SelectComboboxProps {
+  value: string;
+  onChange: (value: unknown) => void;
+  options: string[];
+}
+
+function SelectCombobox({ value, onChange, options }: SelectComboboxProps) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          role="combobox"
+          aria-expanded={open}
+          className="w-full justify-between font-normal"
+        >
+          {value || 'Select...'}
+          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
+        <Command>
+          <CommandInput placeholder="Search..." />
+          <CommandList>
+            <CommandEmpty>No option found</CommandEmpty>
+            <CommandGroup>
+              {options.map((option) => (
+                <CommandItem
+                  key={option}
+                  value={option}
+                  onSelect={() => {
+                    onChange(option === value ? '' : option);
+                    setOpen(false);
+                  }}
+                >
+                  <Check
+                    className={cn(
+                      'mr-2 h-4 w-4',
+                      value === option ? 'opacity-100' : 'opacity-0'
+                    )}
+                  />
+                  {option}
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+}
 
 interface FieldInputProps {
   field: ModelField;
@@ -139,6 +210,15 @@ export function FieldInput({ field, value, onChange, view, projectId, models }: 
         />
       );
     case 'select':
+      if (widget === 'combobox') {
+        return (
+          <SelectCombobox
+            value={(value as string) || ''}
+            onChange={onChange}
+            options={field.options || []}
+          />
+        );
+      }
       return (
         <Select
           value={(value as string) || ''}
