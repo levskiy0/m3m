@@ -3,6 +3,13 @@ import { formatFieldLabel } from '@/lib/format';
 import type { ModelField, ModelData } from '@/types';
 import { Button } from '@/components/ui/button';
 import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import {
   Table,
   TableBody,
   TableCell,
@@ -25,26 +32,33 @@ export function RecordView({
   onDelete,
 }: RecordViewProps) {
   return (
-    <>
-      {/* Actions */}
-      <div className="flex items-center gap-2 mb-4">
-        <Button variant="outline" size="sm" onClick={() => onEdit(data)}>
-          <Edit className="mr-2 size-4" />
-          Edit
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => onDelete(data)}
-          className="text-destructive hover:text-destructive"
-        >
-          <Trash2 className="mr-2 size-4" />
-          Delete
-        </Button>
-      </div>
-      <div className="flex-1 overflow-y-auto max-h-[calc(100vh-315px)]">
-        <div className="max-w-2xl space-y-4">
-          {/* Fields table */}
+    <Card className="rounded-t-none !mt-0 h-full max-w-4xl">
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle>View Record</CardTitle>
+            <CardDescription>
+              Record details and field values
+            </CardDescription>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" onClick={() => onEdit(data)}>
+              <Edit className="mr-2 size-4" />
+              Edit
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => onDelete(data)}
+              className="text-destructive hover:text-destructive"
+            >
+              <Trash2 className="mr-2 size-4" />
+              Delete
+            </Button>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent className="flex-1 overflow-y-auto max-h-[calc(100vh-360px)]">
+        <div>
           <div className="rounded-md border overflow-hidden">
             <Table>
               <TableBody>
@@ -82,7 +96,7 @@ export function RecordView({
             </Table>
           </div>
         </div>
-      </div>
-    </>
+      </CardContent>
+    </Card>
   );
 }

@@ -270,7 +270,7 @@ export function ModelDataPage() {
       />
 
       {/* Tabs Bar */}
-      <EditorTabs className="px-0 mb-[-1px] relative z-10">
+      <EditorTabs className="px-0 mb-0 relative z-10">
         {tabs.map((tab) => (
           <EditorTab
             key={tab.id}
@@ -283,73 +283,71 @@ export function ModelDataPage() {
               <Plus className="size-4" />
             }
             onClose={tab.id !== 'table' ? () => closeTab(tab.id) : undefined}
-            className="bg-background"
+            className={tab.type === 'table' ? "bg-background" : ""}
           >
             {tab.title}
           </EditorTab>
         ))}
       </EditorTabs>
 
-      <div className="border-b mb-4 relative top-[1px]"></div>
-
       {/* Tab Content */}
-      <div className="flex-1 min-h-0 min-w-0 flex flex-col overflow-hidden">
+      <div className="min-h-0 min-w-0 flex flex-col overflow-hidden">
         {/* Table Tab */}
         {activeTabId === 'table' && (
-          <>
-            {data.length === 0 ? (
-              <div className="flex-1 flex items-center justify-center border rounded-md bg-background">
-                {searchQuery || activeFilters.length > 0 ? (
-                  <EmptyState
-                    title="No results found"
-                    description={searchQuery ? `No records match "${searchQuery}"` : "No records match the current filters"}
+            <>
+              {data.length === 0 ? (
+                  <div className="flex-1 flex items-center justify-center border rounded-xl rounded-t-none bg-background">
+                    {searchQuery || activeFilters.length > 0 ? (
+                        <EmptyState
+                            title="No results found"
+                            description={searchQuery ? `No records match "${searchQuery}"` : "No records match the current filters"}
+                        />
+                    ) : (
+                        <EmptyState
+                            title="No records"
+                            description="Create your first record to get started"
+                            action={
+                              <Button onClick={handleCreate}>
+                                <Plus className="mr-2 size-4"/>
+                                Create Record
+                              </Button>
+                            }
+                        />
+                    )}
+                  </div>
+              ) : (
+                  <DataTable
+                      data={data}
+                      visibleColumns={visibleColumns}
+                      visibleSystemColumns={visibleSystemColumns}
+                      tableConfig={tableConfig}
+                      sortField={sortField}
+                      sortOrder={sortOrder}
+                      selectedIds={selectedIds}
+                      allSelected={allSelected}
+                      getColumnWidth={getColumnWidth}
+                      onSort={handleSort}
+                      onSelectRow={handleSelectRow}
+                      onSelectAll={handleSelectAll}
+                      onView={handleView}
+                      onEdit={handleEdit}
+                      onDelete={handleDelete}
+                      onResizeStart={handleResizeStart}
                   />
-                ) : (
-                  <EmptyState
-                    title="No records"
-                    description="Create your first record to get started"
-                    action={
-                      <Button onClick={handleCreate}>
-                        <Plus className="mr-2 size-4" />
-                        Create Record
-                      </Button>
-                    }
-                  />
-                )}
-              </div>
-            ) : (
-              <DataTable
-                data={data}
-                visibleColumns={visibleColumns}
-                visibleSystemColumns={visibleSystemColumns}
-                tableConfig={tableConfig}
-                sortField={sortField}
-                sortOrder={sortOrder}
-                selectedIds={selectedIds}
-                allSelected={allSelected}
-                getColumnWidth={getColumnWidth}
-                onSort={handleSort}
-                onSelectRow={handleSelectRow}
-                onSelectAll={handleSelectAll}
-                onView={handleView}
-                onEdit={handleEdit}
-                onDelete={handleDelete}
-                onResizeStart={handleResizeStart}
-              />
-            )}
+              )}
 
-            {/* Pagination */}
-            <Pagination
-              page={page}
-              totalPages={totalPages}
-              total={total}
-              limit={limit}
-              selectedCount={selectedIds.size}
-              onPageChange={setPage}
-              onLimitChange={setLimit}
-              onBulkDelete={someSelected ? () => setBulkDeleteOpen(true) : undefined}
-            />
-          </>
+              {/* Pagination */}
+              <Pagination
+                  page={page}
+                  totalPages={totalPages}
+                  total={total}
+                  limit={limit}
+                  selectedCount={selectedIds.size}
+                  onPageChange={setPage}
+                  onLimitChange={setLimit}
+                  onBulkDelete={someSelected ? () => setBulkDeleteOpen(true) : undefined}
+              />
+            </>
         )}
 
         {/* View Tab Content */}

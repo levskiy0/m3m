@@ -165,7 +165,7 @@ export function FieldInput({ field, value, onChange, view, projectId, models }: 
     case 'bool':
       if (widget === 'checkbox') {
         return (
-          <div className="flex items-center h-10">
+          <div className="flex items-center">
             <Checkbox
               checked={!!value}
               onCheckedChange={onChange}
@@ -174,7 +174,7 @@ export function FieldInput({ field, value, onChange, view, projectId, models }: 
         );
       }
       return (
-        <div className="flex items-center h-10">
+        <div className="flex items-center">
           <Switch
             checked={!!value}
             onCheckedChange={onChange}
