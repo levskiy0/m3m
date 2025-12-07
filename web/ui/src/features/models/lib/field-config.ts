@@ -109,6 +109,14 @@ export const FIELD_TYPE_CONFIGS: Record<FieldType, FieldTypeConfig> = {
     isSearchable: true,
     defaultView: 'select',
   },
+  multiselect: {
+    value: 'multiselect',
+    label: 'Multi Select',
+    hasDefaultValue: false,
+    hasRefModel: false,
+    isSearchable: false,
+    defaultView: 'multiselect',
+  },
 };
 
 /**
@@ -150,10 +158,10 @@ export function isSearchableType(type: FieldType): boolean {
 }
 
 /**
- * Check if field type supports options (select type)
+ * Check if field type supports options (select/multiselect type)
  */
 export function hasOptionsSupport(type: FieldType): boolean {
-  return type === 'select';
+  return type === 'select' || type === 'multiselect';
 }
 
 /**
@@ -194,8 +202,8 @@ export function cleanFieldOnTypeChange(
     updates.default_value = undefined;
   }
 
-  // Clear options when switching away from select type
-  if (newType !== 'select') {
+  // Clear options when switching away from select/multiselect type
+  if (newType !== 'select' && newType !== 'multiselect') {
     updates.options = undefined;
   }
 
