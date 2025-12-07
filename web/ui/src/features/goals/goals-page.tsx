@@ -237,7 +237,7 @@ export function GoalsPage() {
   });
 
   const resetMutation = useMutation({
-    mutationFn: () => goalsApi.resetProject(projectId!, resetDialog.itemToDelete!.id),
+    mutationFn: (goalId: string) => goalsApi.resetProject(projectId!, goalId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.goals.stats(projectId!, goals.map(g => g.id), format(dateRange.from, 'yyyy-MM-dd'), format(dateRange.to, 'yyyy-MM-dd')) });
       resetDialog.close();
@@ -653,7 +653,7 @@ export function GoalsPage() {
         description={`Are you sure you want to reset all statistics for "${resetDialog.itemToDelete?.name}"? This will delete all recorded data and cannot be undone.`}
         confirmLabel="Reset"
         variant="destructive"
-        onConfirm={() => resetMutation.mutate()}
+        onConfirm={() => resetDialog.itemToDelete && resetMutation.mutate(resetDialog.itemToDelete.id)}
         isLoading={resetMutation.isPending}
       />
     </div>
