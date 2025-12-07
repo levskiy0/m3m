@@ -389,7 +389,7 @@ export function FileBrowser({
   const acceptInput = accept === 'images' ? 'image/*' : undefined;
 
   return (
-    <div className={cn('flex flex-col', className)}>
+    <div className={cn('flex flex-col h-full', className)}>
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b gap-4">
         <div className="flex items-center gap-1 text-sm text-muted-foreground min-w-0 overflow-hidden">
@@ -469,7 +469,7 @@ export function FileBrowser({
       {/* Content */}
       <div
         className={cn(
-          'flex-1 overflow-auto relative bg-background',
+          'flex-1 min-h-0 overflow-auto relative bg-background',
           isDragging && 'bg-primary/5'
         )}
         onDragEnter={handleDragEnter}
