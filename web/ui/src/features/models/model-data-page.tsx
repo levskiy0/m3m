@@ -10,6 +10,7 @@ import {
   Edit,
   Table2,
   RefreshCw,
+  X,
 } from 'lucide-react';
 
 import type { ModelData } from '@/types';
@@ -241,8 +242,18 @@ export function ModelDataPage() {
               placeholder={`Search in ${tableConfig.searchable?.join(', ')}...`}
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
-              className="pl-9"
+              className={`pl-9 ${searchInput ? 'pr-8' : ''}`}
             />
+            {searchInput && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
+                onClick={() => setSearchInput('')}
+              >
+                <X className="size-4" />
+              </Button>
+            )}
           </div>
         )}
       </div>

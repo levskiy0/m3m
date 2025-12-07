@@ -57,53 +57,56 @@ export function FileFieldInput({
 
   return (
     <div className="space-y-2">
-      {value ? (
-        <div className="flex items-center gap-2 border rounded-md p-2">
+      <div className="relative flex items-center">
+        <div className="relative flex-1">
           {isImage ? (
-            <Image className="h-4 w-4 text-muted-foreground shrink-0" />
+            <Image className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
           ) : (
-            <File className="h-4 w-4 text-muted-foreground shrink-0" />
+            <File className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
           )}
-          <span className="flex-1 truncate text-sm">{filename}</span>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8"
-            onClick={() => window.open(value, '_blank')}
-            title="Open file"
-          >
-            <ExternalLink className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8"
-            onClick={handleClear}
-            title="Clear"
-          >
-            <X className="h-4 w-4" />
-          </Button>
-        </div>
-      ) : (
-        <div className="flex gap-2">
           <Input
             type="text"
+            value={filename || ''}
             placeholder={isImage ? 'Select image...' : 'Select file...'}
-            value=""
             readOnly
             onClick={handleOpenDialog}
-            className="cursor-pointer"
+            className="pl-9 pr-20 cursor-pointer truncate"
           />
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={handleOpenDialog}
-            title="Browse files"
-          >
-            <FolderOpen className="h-4 w-4" />
-          </Button>
+          <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-0.5">
+            {value && (
+              <>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7"
+                  onClick={(e) => { e.stopPropagation(); window.open(value, '_blank'); }}
+                  title="Open file"
+                >
+                  <ExternalLink className="h-3.5 w-3.5" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7"
+                  onClick={(e) => { e.stopPropagation(); handleClear(); }}
+                  title="Clear"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </Button>
+              </>
+            )}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7"
+              onClick={handleOpenDialog}
+              title="Browse files"
+            >
+              <FolderOpen className="h-3.5 w-3.5" />
+            </Button>
+          </div>
         </div>
-      )}
+      </div>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col">
