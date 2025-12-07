@@ -9,15 +9,12 @@ import {
   HardDrive,
   Database,
   Target,
-  Key,
   ExternalLink,
   Clock,
   Activity,
   AlertTriangle,
   Zap,
   MemoryStick,
-  Copy,
-  Check,
   ChevronRight,
   ChevronDown,
   Bug,
@@ -27,6 +24,7 @@ import {
   LayoutGrid,
   BarChart3,
   Minus,
+  Edit,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -51,9 +49,9 @@ import { projectsApi, pipelineApi, goalsApi, widgetsApi } from '@/api';
 import { config } from '@/lib/config';
 import { formatBytes } from '@/lib/format';
 import { queryKeys } from '@/lib/query-keys';
-import { cn, copyToClipboard } from '@/lib/utils';
+import { cn } from '@/lib/utils';
 import { useProjectRuntime } from '@/hooks';
-import type { LogEntry, GoalStats, WidgetVariant, CreateWidgetRequest, Widget, Goal } from '@/types';
+import type { LogEntry, GoalStats, WidgetVariant, WidgetType, CreateWidgetRequest, UpdateWidgetRequest, Widget, Goal, RuntimeStats } from '@/types';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -96,11 +94,21 @@ import { Label } from '@/components/ui/label';
 
 type OverviewTab = 'instance' | 'logs';
 
+const WIDGET_TYPES: { value: WidgetType; label: string; description: string }[] = [
+  { value: 'goal', label: 'Goal', description: 'Display goal metrics' },
+  { value: 'memory', label: 'Memory', description: 'Current memory usage' },
+  { value: 'requests', label: 'Requests', description: 'Total request count' },
+  { value: 'cpu', label: 'CPU', description: 'CPU utilization' },
+  { value: 'storage', label: 'Storage', description: 'Storage usage' },
+  { value: 'database', label: 'Database', description: 'Database size' },
+  { value: 'uptime', label: 'Uptime', description: 'Service uptime' },
+  { value: 'jobs', label: 'Jobs', description: 'Scheduled jobs count' },
+];
+
 export function ProjectDashboard() {
   const { projectId } = useParams<{ projectId: string }>();
   const location = useLocation();
   const queryClient = useQueryClient();
-  const [copied, setCopied] = useState(false);
 
   const initialTab = (location.state as { tab?: string } | null)?.tab as OverviewTab || 'instance';
   const [activeTab, setActiveTab] = useState<OverviewTab>(initialTab);
@@ -112,6 +120,7 @@ export function ProjectDashboard() {
   });
 
   const isRunning = project?.status === 'running';
+  const publicUrl = project ? `${config.apiURL}/r/${project.slug}` : '';
 
   // Runtime hook - handles start/stop/restart, logs, monitor
   const runtime = useProjectRuntime({
@@ -154,7 +163,9 @@ export function ProjectDashboard() {
   });
 
   // Widget Dialog state
-  const [addWidgetOpen, setAddWidgetOpen] = useState(false);
+  const [widgetDialogOpen, setWidgetDialogOpen] = useState(false);
+  const [editingWidget, setEditingWidget] = useState<Widget | null>(null);
+  const [selectedWidgetType, setSelectedWidgetType] = useState<WidgetType>('goal');
   const [selectedGoalId, setSelectedGoalId] = useState<string>('');
   const [selectedVariant, setSelectedVariant] = useState<WidgetVariant>('mini');
   const [selectedGridSpan, setSelectedGridSpan] = useState(1);
@@ -195,14 +206,24 @@ export function ProjectDashboard() {
     mutationFn: (data: CreateWidgetRequest) => widgetsApi.create(projectId!, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.widgets.all(projectId!) });
-      setAddWidgetOpen(false);
-      setSelectedGoalId('');
-      setSelectedVariant('mini');
-      setSelectedGridSpan(1);
+      closeWidgetDialog();
       toast.success('Widget added');
     },
     onError: (err) => {
       toast.error(err instanceof Error ? err.message : 'Failed to add widget');
+    },
+  });
+
+  const updateWidgetMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: UpdateWidgetRequest }) =>
+      widgetsApi.update(projectId!, id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.widgets.all(projectId!) });
+      closeWidgetDialog();
+      toast.success('Widget updated');
+    },
+    onError: (err) => {
+      toast.error(err instanceof Error ? err.message : 'Failed to update widget');
     },
   });
 
@@ -217,26 +238,55 @@ export function ProjectDashboard() {
     },
   });
 
-  const handleAddWidget = () => {
-    if (!selectedGoalId) {
-      toast.error('Please select a goal');
-      return;
-    }
-    createWidgetMutation.mutate({
-      goalId: selectedGoalId,
-      variant: selectedVariant,
-      gridSpan: selectedGridSpan,
-    });
+  const openAddWidget = () => {
+    setEditingWidget(null);
+    setSelectedWidgetType('goal');
+    setSelectedGoalId('');
+    setSelectedVariant('mini');
+    setSelectedGridSpan(1);
+    setWidgetDialogOpen(true);
   };
 
-  const copyApiKey = async () => {
-    if (project?.api_key) {
-      const success = await copyToClipboard(project.api_key);
-      if (success) {
-        setCopied(true);
-        toast.success('API key copied');
-        setTimeout(() => setCopied(false), 2000);
+  const openEditWidget = (widget: Widget) => {
+    setEditingWidget(widget);
+    setSelectedWidgetType(widget.type || 'goal');
+    setSelectedGoalId(widget.goalId || '');
+    setSelectedVariant(widget.variant);
+    setSelectedGridSpan(widget.gridSpan || 1);
+    setWidgetDialogOpen(true);
+  };
+
+  const closeWidgetDialog = () => {
+    setWidgetDialogOpen(false);
+    setEditingWidget(null);
+    setSelectedWidgetType('goal');
+    setSelectedGoalId('');
+    setSelectedVariant('mini');
+    setSelectedGridSpan(1);
+  };
+
+  const handleSaveWidget = () => {
+    if (editingWidget) {
+      // Update existing widget
+      updateWidgetMutation.mutate({
+        id: editingWidget.id,
+        data: {
+          variant: selectedVariant,
+          gridSpan: selectedGridSpan,
+        },
+      });
+    } else {
+      // Create new widget
+      if (selectedWidgetType === 'goal' && !selectedGoalId) {
+        toast.error('Please select a goal');
+        return;
       }
+      createWidgetMutation.mutate({
+        type: selectedWidgetType,
+        goalId: selectedWidgetType === 'goal' ? selectedGoalId : undefined,
+        variant: selectedVariant,
+        gridSpan: selectedGridSpan,
+      });
     }
   };
 
@@ -252,8 +302,6 @@ export function ProjectDashboard() {
   if (!project) {
     return <div>Project not found</div>;
   }
-
-  const publicUrl = `${config.apiURL}/r/${project.slug}`;
 
   const goalStatsMap = new Map<string, GoalStats>();
   goalStats.forEach((s) => goalStatsMap.set(s.goalID, s));
@@ -272,7 +320,15 @@ export function ProjectDashboard() {
           <div>
             <h1 className="text-2xl font-bold tracking-tight">{project.name}</h1>
             <div className="flex items-center gap-2 mt-0.5">
-              <code className="text-muted-foreground text-sm">{project.slug}</code>
+              <a
+                href={publicUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-muted-foreground text-sm hover:text-primary hover:underline flex items-center gap-1"
+              >
+                <code>{project.slug}</code>
+                <ExternalLink className="size-3" />
+              </a>
               <StatusBadge status={project.status} />
               {isRunning && project.runningSource && (
                 project.runningSource.startsWith('debug:') ? (
@@ -503,52 +559,6 @@ export function ProjectDashboard() {
                 />
               </div>
 
-              {/* Project Info Cards */}
-              <div className="grid gap-4 md:grid-cols-2">
-                <Card>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium">Public URL</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <a
-                      href={publicUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-2 text-primary hover:underline"
-                    >
-                      <span className="font-mono text-sm truncate">/r/{project.slug}</span>
-                      <ExternalLink className="size-4 shrink-0" />
-                    </a>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium">API Key</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex items-center gap-2">
-                      <Key className="size-4 text-muted-foreground shrink-0" />
-                      <code className="text-sm truncate flex-1 font-mono">
-                        {project.api_key?.slice(0, 12)}...
-                      </code>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="size-8 shrink-0"
-                        onClick={copyApiKey}
-                      >
-                        {copied ? (
-                          <Check className="size-4 text-green-500" />
-                        ) : (
-                          <Copy className="size-4" />
-                        )}
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-
               {/* Widgets Section */}
               <div>
                 <div className="flex items-center justify-between mb-4">
@@ -556,8 +566,7 @@ export function ProjectDashboard() {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => setAddWidgetOpen(true)}
-                    disabled={goals.length === 0}
+                    onClick={openAddWidget}
                   >
                     <Plus className="mr-1.5 size-4" />
                     Add Widget
@@ -572,15 +581,23 @@ export function ProjectDashboard() {
                     <SortableContext items={sortedWidgets.map(w => w.id)} strategy={rectSortingStrategy}>
                       <div className="grid gap-4 grid-cols-5">
                         {sortedWidgets.map((widget) => {
-                          const goal = goals.find(g => g.id === widget.goalId);
+                          const goal = widget.type === 'goal' && widget.goalId
+                            ? goals.find(g => g.id === widget.goalId)
+                            : undefined;
                           const stat = goal ? goalStatsMap.get(goal.id) : undefined;
-                          if (!goal) return null;
+
+                          // For goal widgets, skip if goal not found
+                          if (widget.type === 'goal' && !goal) return null;
+
                           return (
                             <SortableWidgetCard
                               key={widget.id}
                               widget={widget}
                               goal={goal}
                               stats={stat}
+                              runtimeStats={stats}
+                              isRunning={isRunning}
+                              onEdit={() => openEditWidget(widget)}
                               onDelete={() => deleteWidgetMutation.mutate(widget.id)}
                             />
                           );
@@ -593,17 +610,8 @@ export function ProjectDashboard() {
                     <CardContent className="flex flex-col items-center justify-center py-8">
                       <LayoutGrid className="size-10 text-muted-foreground mb-3" />
                       <p className="text-muted-foreground text-center text-sm">
-                        {goals.length === 0
-                          ? 'Create goals first to add widgets.'
-                          : 'No widgets added. Add widgets to display goal metrics.'}
+                        No widgets added. Add widgets to display metrics.
                       </p>
-                      {goals.length === 0 && (
-                        <Button variant="outline" size="sm" className="mt-3" asChild>
-                          <Link to={`/projects/${projectId}/goals`}>
-                            Create Goals
-                          </Link>
-                        </Button>
-                      )}
                     </CardContent>
                   </Card>
                 )}
@@ -624,41 +632,68 @@ export function ProjectDashboard() {
         )}
       </div>
 
-      {/* Add Widget Dialog */}
-      <Dialog open={addWidgetOpen} onOpenChange={setAddWidgetOpen}>
+      {/* Widget Dialog (Add/Edit) */}
+      <Dialog open={widgetDialogOpen} onOpenChange={(open) => !open && closeWidgetDialog()}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Add Widget</DialogTitle>
+            <DialogTitle>{editingWidget ? 'Edit Widget' : 'Add Widget'}</DialogTitle>
             <DialogDescription>
-              Select a goal and display variant to add a widget to your dashboard.
+              {editingWidget
+                ? 'Update the widget settings.'
+                : 'Choose a widget type and display settings.'}
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label>Goal</Label>
-              <Select value={selectedGoalId} onValueChange={setSelectedGoalId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select a goal" />
-                </SelectTrigger>
-                <SelectContent>
-                  {goals.map((goal) => (
-                    <SelectItem key={goal.id} value={goal.id}>
-                      <div className="flex items-center gap-2">
-                        <span
-                          className="size-2.5 rounded-full"
-                          style={{ backgroundColor: goal.color || '#6b7280' }}
-                        />
-                        {goal.name}
-                        <Badge variant="secondary" className="ml-auto text-xs">
-                          {goal.type === 'daily_counter' ? 'Daily' : 'Counter'}
-                        </Badge>
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            {/* Widget Type Selection (only for new widgets) */}
+            {!editingWidget && (
+              <div className="space-y-2">
+                <Label>Widget Type</Label>
+                <Select value={selectedWidgetType} onValueChange={(v) => setSelectedWidgetType(v as WidgetType)}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {WIDGET_TYPES.map((type) => (
+                      <SelectItem key={type.value} value={type.value}>
+                        <div className="flex flex-col">
+                          <span>{type.label}</span>
+                          <span className="text-xs text-muted-foreground">{type.description}</span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {/* Goal Selection (only for goal type) */}
+            {selectedWidgetType === 'goal' && !editingWidget && (
+              <div className="space-y-2">
+                <Label>Goal</Label>
+                <Select value={selectedGoalId} onValueChange={setSelectedGoalId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a goal" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {goals.map((goal) => (
+                      <SelectItem key={goal.id} value={goal.id}>
+                        <div className="flex items-center gap-2">
+                          <span
+                            className="size-2.5 rounded-full"
+                            style={{ backgroundColor: goal.color || '#6b7280' }}
+                          />
+                          {goal.name}
+                          <Badge variant="secondary" className="ml-auto text-xs">
+                            {goal.type === 'daily_counter' ? 'Daily' : 'Counter'}
+                          </Badge>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
 
             <div className="space-y-2">
               <Label>Display Variant</Label>
@@ -721,14 +756,18 @@ export function ProjectDashboard() {
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setAddWidgetOpen(false)}>
+            <Button variant="outline" onClick={closeWidgetDialog}>
               Cancel
             </Button>
             <Button
-              onClick={handleAddWidget}
-              disabled={!selectedGoalId || createWidgetMutation.isPending}
+              onClick={handleSaveWidget}
+              disabled={
+                (selectedWidgetType === 'goal' && !editingWidget && !selectedGoalId) ||
+                createWidgetMutation.isPending ||
+                updateWidgetMutation.isPending
+              }
             >
-              Add Widget
+              {editingWidget ? 'Save' : 'Add Widget'}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -741,11 +780,17 @@ function SortableWidgetCard({
   widget,
   goal,
   stats,
+  runtimeStats,
+  isRunning,
+  onEdit,
   onDelete,
 }: {
   widget: Widget;
-  goal: Goal;
+  goal?: Goal;
   stats?: GoalStats;
+  runtimeStats?: RuntimeStats;
+  isRunning?: boolean;
+  onEdit: () => void;
   onDelete: () => void;
 }) {
   const {
@@ -768,6 +813,9 @@ function SortableWidgetCard({
       widget={widget}
       goal={goal}
       stats={stats}
+      runtimeStats={runtimeStats}
+      isRunning={isRunning}
+      onEdit={onEdit}
       onDelete={onDelete}
       dragHandleProps={{ ...attributes, ...listeners }}
       isDragging={isDragging}

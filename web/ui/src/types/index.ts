@@ -157,10 +157,23 @@ export interface Goal {
 export type GoalType = 'counter' | 'daily_counter';
 
 // Widget types
+export type WidgetType =
+  | 'goal'
+  | 'memory'
+  | 'requests'
+  | 'cpu'
+  | 'storage'
+  | 'database'
+  | 'uptime'
+  | 'jobs';
+
+export type WidgetVariant = 'mini' | 'detailed' | 'simple';
+
 export interface Widget {
   id: string;
   projectId: string;
-  goalId: string;
+  type: WidgetType;
+  goalId?: string; // Only for goal widgets
   variant: WidgetVariant;
   gridSpan: number;
   order: number;
@@ -168,10 +181,9 @@ export interface Widget {
   updatedAt: string;
 }
 
-export type WidgetVariant = 'mini' | 'detailed' | 'simple';
-
 export interface CreateWidgetRequest {
-  goalId: string;
+  type: WidgetType;
+  goalId?: string; // Required only for goal widgets
   variant: WidgetVariant;
   gridSpan?: number;
 }

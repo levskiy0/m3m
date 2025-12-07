@@ -2,12 +2,15 @@ package service
 
 import (
 	"context"
+	"errors"
 
 	"go.mongodb.org/mongo-driver/bson/primitive"
 
 	"m3m/internal/domain"
 	"m3m/internal/repository"
 )
+
+var ErrGoalIDRequired = errors.New("goal ID is required for goal widgets")
 
 type WidgetService struct {
 	widgetRepo *repository.WidgetRepository
@@ -22,26 +25,38 @@ func NewWidgetService(widgetRepo *repository.WidgetRepository, goalRepo *reposit
 }
 
 func (s *WidgetService) Create(ctx context.Context, projectID primitive.ObjectID, req *domain.CreateWidgetRequest) (*domain.Widget, error) {
-	goalID, err := primitive.ObjectIDFromHex(req.GoalID)
-	if err != nil {
-		return nil, err
-	}
-
-	// Verify goal exists
-	if _, err := s.goalRepo.FindByID(ctx, goalID); err != nil {
-		return nil, err
-	}
-
 	gridSpan := req.GridSpan
 	if gridSpan < 1 || gridSpan > 5 {
 		gridSpan = 1
 	}
 
+	// Default type to goal for backward compatibility
+	widgetType := req.Type
+	if widgetType == "" {
+		widgetType = domain.WidgetTypeGoal
+	}
+
 	widget := &domain.Widget{
 		ProjectID: projectID,
-		GoalID:    goalID,
+		Type:      widgetType,
 		Variant:   req.Variant,
 		GridSpan:  gridSpan,
+	}
+
+	// Only parse and verify goal for goal-type widgets
+	if widgetType == domain.WidgetTypeGoal {
+		if req.GoalID == "" {
+			return nil, ErrGoalIDRequired
+		}
+		goalID, err := primitive.ObjectIDFromHex(req.GoalID)
+		if err != nil {
+			return nil, err
+		}
+		// Verify goal exists
+		if _, err := s.goalRepo.FindByID(ctx, goalID); err != nil {
+			return nil, err
+		}
+		widget.GoalID = &goalID
 	}
 
 	if err := s.widgetRepo.Create(ctx, widget); err != nil {
