@@ -368,7 +368,7 @@ export function GoalsPage() {
               {DATE_PRESETS.filter(p => p.value !== 'custom').map((preset) => (
                 <Button
                   key={preset.value}
-                  variant={datePreset === preset.value ? 'secondary' : 'ghost'}
+                  variant={datePreset === preset.value ? 'default' : 'ghost'}
                   size="sm"
                   onClick={() => setDatePreset(preset.value)}
                   className="h-7 px-2 text-xs"
@@ -379,12 +379,14 @@ export function GoalsPage() {
               <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
                 <PopoverTrigger asChild>
                   <Button
-                    variant={datePreset === 'custom' ? 'secondary' : 'ghost'}
+                    variant={datePreset === 'custom' ? 'default' : 'ghost'}
                     size="sm"
                     className="h-7 px-2 text-xs gap-1"
                   >
                     <Calendar className="size-3" />
-                    Custom
+                    {datePreset === 'custom' && customDateRange.from && customDateRange.to
+                      ? `${format(customDateRange.from, 'MMM d')} - ${format(customDateRange.to, 'MMM d')}`
+                      : 'Custom'}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="end">
