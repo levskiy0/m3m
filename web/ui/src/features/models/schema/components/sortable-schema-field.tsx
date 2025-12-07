@@ -66,6 +66,11 @@ function SelectOptionsEditor({ options, onChange }: SelectOptionsEditorProps) {
     onChange(options.filter(o => o !== option));
   };
 
+  // Check if exact match exists (not just substring match)
+  const trimmedInput = inputValue.trim();
+  const hasExactMatch = trimmedInput && options.includes(trimmedInput);
+  const canAddNew = trimmedInput && !hasExactMatch;
+
   return (
     <Field>
       <FieldLabel>Options</FieldLabel>
@@ -118,6 +123,18 @@ function SelectOptionsEditor({ options, onChange }: SelectOptionsEditorProps) {
                   'Type to add option'
                 )}
               </CommandEmpty>
+              {/* Show "Add" button when there are filtered results but no exact match */}
+              {canAddNew && options.length > 0 && (
+                <CommandGroup>
+                  <CommandItem
+                    onSelect={() => addOption(inputValue)}
+                    className="text-primary"
+                  >
+                    <Plus className="mr-2 size-4" />
+                    Add "{trimmedInput}"
+                  </CommandItem>
+                </CommandGroup>
+              )}
               {options.length > 0 && (
                 <CommandGroup>
                   {options.map((option) => (
