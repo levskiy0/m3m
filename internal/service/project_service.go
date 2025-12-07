@@ -50,18 +50,28 @@ func (s *ProjectService) Create(ctx context.Context, req *domain.CreateProjectRe
 		return nil, err
 	}
 
-	// Create default widg
+	// Create default widgets for the project
+	s.createDefaultWidgets(ctx, project.ID)
+
 	return project, nil
 }
 
-func (s *ProjectService) GetByID(ctx context.Context, id primitive.ObjectID) (*domain.Project, error) {
-	return s.projectRepo.FindByID(ctx, id)
-ive.ObjectID) {
+func (s *ProjectService) createDefaultWidgets(ctx context.Context, projectID primitive.ObjectID) {
 	defaultWidgets := []domain.Widget{
 		{ProjectID: projectID, Type: domain.WidgetTypeUptime, Variant: domain.WidgetVariantMini, GridSpan: 1, Order: 0},
 		{ProjectID: projectID, Type: domain.WidgetTypeRequests, Variant: domain.WidgetVariantMini, GridSpan: 1, Order: 1},
 		{ProjectID: projectID, Type: domain.WidgetTypeStorage, Variant: domain.WidgetVariantMini, GridSpan: 1, Order: 2},
-		{ProjectID: projectID, Type: domain.Widg
+		{ProjectID: projectID, Type: domain.WidgetTypeDatabase, Variant: domain.WidgetVariantMini, GridSpan: 1, Order: 3},
+	}
+
+	for _, widget := range defaultWidgets {
+		w := widget // Create a copy to avoid pointer issues
+		s.widgetRepo.Create(ctx, &w)
+	}
+}
+
+func (s *ProjectService) GetByID(ctx context.Context, id primitive.ObjectID) (*domain.Project, error) {
+	return s.projectRepo.FindByID(ctx, id)
 }
 
 func (s *ProjectService) GetBySlug(ctx context.Context, slug string) (*domain.Project, error) {
