@@ -21,6 +21,7 @@ import { DatePicker, DateTimePicker } from '@/components/ui/datetime-picker';
 import { FILTER_OPERATORS } from '../constants';
 import type { ActiveFilter } from '../types';
 import { RefFilterInput } from './ref-filter-input';
+import { SelectFilterInput } from './select-filter-input';
 
 interface FilterPopoverProps {
   activeFilters: ActiveFilter[];
@@ -44,7 +45,11 @@ export function FilterPopover({
   const handleAddFilter = () => {
     const firstField = filterableFields[0];
     if (!firstField) return;
-    onFiltersChange([...activeFilters, { field: firstField.key, operator: 'eq', value: '' }]);
+    // Use 'in' operator and empty array for select/multiselect, 'eq' for others
+    const isSelectType = firstField.type === 'select' || firstField.type === 'multiselect';
+    const defaultOperator = isSelectType ? 'in' : 'eq';
+    const defaultValue = isSelectType ? [] : '';
+    onFiltersChange([...activeFilters, { field: firstField.key, operator: defaultOperator, value: defaultValue }]);
   };
 
   const handleRemoveFilter = (index: number) => {
@@ -67,6 +72,12 @@ export function FilterPopover({
   const formatFilterValue = (filter: ActiveFilter, field?: ModelField): string => {
     if (field?.type === 'bool') {
       return filter.value ? 'Yes' : 'No';
+    }
+    // Handle array values for select/multiselect
+    if (Array.isArray(filter.value)) {
+      if (filter.value.length === 0) return '(none)';
+      if (filter.value.length === 1) return filter.value[0];
+      return `${filter.value.length} items`;
     }
     const val = String(filter.value);
     return val.length > 15 ? val.slice(0, 15) + '…' : val;
@@ -123,7 +134,11 @@ export function FilterPopover({
                   <Select
                     value={f.field}
                     onValueChange={(v) => {
-                      handleUpdateFilter(index, { field: v, operator: 'eq', value: '' });
+                      const newField = modelFields.find(fld => fld.key === v);
+                      const isSelectType = newField?.type === 'select' || newField?.type === 'multiselect';
+                      const defaultOperator = isSelectType ? 'in' : 'eq';
+                      const defaultValue = isSelectType ? [] : '';
+                      handleUpdateFilter(index, { field: v, operator: defaultOperator, value: defaultValue });
                     }}
                   >
                     <SelectTrigger className="h-8 w-[120px] text-xs">
@@ -155,7 +170,14 @@ export function FilterPopover({
                       ))}
                     </SelectContent>
                   </Select>
-                  {field?.type === 'bool' ? (
+                  {(field?.type === 'select' || field?.type === 'multiselect') && field.options ? (
+                    <SelectFilterInput
+                      value={Array.isArray(f.value) ? f.value : []}
+                      onChange={(v) => handleUpdateFilter(index, { value: v })}
+                      options={field.options}
+                      onCommit={onPageReset}
+                    />
+                  ) : field?.type === 'bool' ? (
                     <Select
                       value={String(f.value)}
                       onValueChange={(v) => {
@@ -280,9 +302,11 @@ export function ActiveFilterBadges({
           ?.find(op => op.value === f.operator)?.label || f.operator;
         const displayValue = field?.type === 'bool'
           ? (f.value ? 'Yes' : 'No')
-          : String(f.value).length > 20
-            ? String(f.value).slice(0, 20) + '…'
-            : String(f.value);
+          : Array.isArray(f.value)
+            ? (f.value.length === 0 ? '(none)' : f.value.length === 1 ? f.value[0] : `${f.value.length} items`)
+            : String(f.value).length > 20
+              ? String(f.value).slice(0, 20) + '…'
+              : String(f.value);
         return (
           <Badge key={i} variant="secondary" className="gap-1 rounded-sm px-1.5 font-normal">
             <span className="text-muted-foreground">{formatFieldLabel(f.field)}</span>

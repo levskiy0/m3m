@@ -76,13 +76,12 @@ export const FILTER_OPERATORS: Record<string, { value: FilterCondition['operator
     { value: 'ne', label: '!=' },
   ],
   select: [
-    { value: 'eq', label: '=' },
-    { value: 'ne', label: '!=' },
+    { value: 'in', label: 'In' },
+    { value: 'nin', label: 'Not in' },
   ],
   multiselect: [
-    { value: 'in', label: 'Contains' },
-    { value: 'eq', label: '=' },
-    { value: 'ne', label: '!=' },
+    { value: 'in', label: 'Contains any' },
+    { value: 'nin', label: 'Not contains' },
   ],
 };
 

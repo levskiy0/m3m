@@ -469,7 +469,7 @@ export function FileBrowser({
       {/* Content */}
       <div
         className={cn(
-          'flex-1 overflow-auto relative dark:bg-zinc-950',
+          'flex-1 overflow-auto relative bg-background',
           isDragging && 'bg-primary/5'
         )}
         onDragEnter={handleDragEnter}

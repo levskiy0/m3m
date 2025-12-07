@@ -206,7 +206,7 @@ export function SortableSchemaField({
     <tr
       ref={setNodeRef}
       style={style}
-      className={`border-t ${isDragging ? 'z-50' : ''}`}
+      className={`border-t bg-background ${isDragging ? 'z-50' : ''}`}
     >
       <td className="p-3 w-10">
         <div

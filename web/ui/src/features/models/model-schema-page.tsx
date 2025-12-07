@@ -218,7 +218,6 @@ export function ModelSchemaPage() {
                         <th className="w-10 p-3"></th>
                         <th className="text-left font-medium p-3">
                           <div className="flex items-center gap-1.5">
-                            <Key className="size-4" />
                             <span>Key</span>
                           </div>
                         </th>
@@ -237,7 +236,6 @@ export function ModelSchemaPage() {
                         <th className="text-center font-medium p-3 w-24">
                           <div className="flex items-center justify-center gap-1.5">
                             <Asterisk className="size-4" />
-                            <span>Req</span>
                           </div>
                         </th>
                         <th className="w-10 p-3"></th>

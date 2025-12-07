@@ -77,7 +77,7 @@ function SortableRow({
     <tr
       ref={setNodeRef}
       style={style}
-      className={`border-t ${item.isSystem ? 'bg-muted/30' : ''} ${isDragging ? 'z-50' : ''}`}
+      className={`border-t bg-background ${item.isSystem ? 'bg-muted/30' : ''} ${isDragging ? 'z-50' : ''}`}
     >
       <td className="p-3 w-10">
         <div

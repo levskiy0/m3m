@@ -298,7 +298,7 @@ export function ModelDataPage() {
         {activeTabId === 'table' && (
           <>
             {data.length === 0 ? (
-              <div className="flex-1 flex items-center justify-center border rounded-md dark:bg-zinc-950">
+              <div className="flex-1 flex items-center justify-center border rounded-md bg-background">
                 {searchQuery || activeFilters.length > 0 ? (
                   <EmptyState
                     title="No results found"
