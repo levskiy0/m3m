@@ -7,7 +7,6 @@ import {
   Search,
   Loader2,
   Eye,
-  Edit,
   Table2,
   RefreshCw,
   X,
@@ -31,7 +30,6 @@ import {
   DataTable,
   FilterPopover,
   ActiveFilterBadges,
-  RecordForm,
   RecordView,
   Pagination,
 } from './model-data';
@@ -129,6 +127,9 @@ export function ModelDataPage() {
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
 
+  // Field errors for inline editing in view tabs
+  const [viewFieldErrors, setViewFieldErrors] = useState<Record<string, Record<string, string>>>({});
+
   // Mutations
   const { createMutation, updateMutation, deleteMutation, bulkDeleteMutation } = useModelMutations({
     projectId,
@@ -136,8 +137,18 @@ export function ModelDataPage() {
     onCreateSuccess: (tabId, closeAfterSave) => {
       if (closeAfterSave) closeTab(tabId);
     },
-    onUpdateSuccess: (tabId, closeAfterSave) => {
-      if (closeAfterSave) closeTab(tabId);
+    onUpdateSuccess: (_tabId, closeAfterSave, dataId) => {
+      // Clear field errors on success
+      if (dataId) {
+        setViewFieldErrors(prev => {
+          const next = { ...prev };
+          delete next[dataId];
+          return next;
+        });
+      }
+      if (closeAfterSave && dataId) {
+        closeTabsForRecord(dataId);
+      }
     },
     onDeleteSuccess: (dataId) => {
       setDeleteOpen(false);
@@ -148,16 +159,19 @@ export function ModelDataPage() {
       setBulkDeleteOpen(false);
       clearSelection();
     },
-    onValidationError: updateTabErrors,
+    onValidationError: (tabId, errors) => {
+      // For view tabs, store errors by data ID
+      const tab = tabs.find(t => t.id === tabId);
+      if (tab?.data?._id) {
+        setViewFieldErrors(prev => ({ ...prev, [tab.data!._id]: errors }));
+      }
+      updateTabErrors(tabId, errors);
+    },
   });
 
   // Handlers
   const handleCreate = useCallback(() => {
     openTab('create');
-  }, [openTab]);
-
-  const handleEdit = useCallback((data: ModelData) => {
-    openTab('edit', data);
   }, [openTab]);
 
   const handleView = useCallback((data: ModelData) => {
@@ -279,7 +293,6 @@ export function ModelDataPage() {
             icon={
               tab.type === 'table' ? <Table2 className="size-4" /> :
               tab.type === 'view' ? <Eye className="size-4" /> :
-              tab.type === 'edit' ? <Edit className="size-4" /> :
               <Plus className="size-4" />
             }
             onClose={tab.id !== 'table' ? () => closeTab(tab.id) : undefined}
@@ -330,7 +343,7 @@ export function ModelDataPage() {
                       onSelectRow={handleSelectRow}
                       onSelectAll={handleSelectAll}
                       onView={handleView}
-                      onEdit={handleEdit}
+                      onEdit={handleView}
                       onDelete={handleDelete}
                       onResizeStart={handleResizeStart}
                   />
@@ -355,36 +368,22 @@ export function ModelDataPage() {
           <RecordView
             data={activeTab.data}
             orderedFormFields={orderedFormFields}
-            onEdit={handleEdit}
-            onDelete={handleDelete}
-          />
-        )}
-
-        {/* Edit/Create Tab Content */}
-        {(activeTab?.type === 'edit' || activeTab?.type === 'create') && (
-          <RecordForm
-            tab={activeTab}
-            orderedFormFields={orderedFormFields}
             formConfig={formConfig}
-            onFormDataChange={updateTabFormData}
-            onSave={(closeAfterSave) => {
+            onSave={(formData, closeAfterSave) => {
               const normalizedData = model?.fields
-                ? normalizeFormData(activeTab.formData || {}, model.fields)
-                : activeTab.formData || {};
+                ? normalizeFormData(formData, model.fields)
+                : formData;
 
-              if (activeTab.type === 'create') {
-                createMutation.mutate({ tabId: activeTab.id, data: normalizedData, closeAfterSave });
-              } else if (activeTab.data) {
-                updateMutation.mutate({
-                  tabId: activeTab.id,
-                  dataId: activeTab.data._id,
-                  data: normalizedData,
-                  closeAfterSave,
-                });
-              }
+              updateMutation.mutate({
+                tabId: activeTab.id,
+                dataId: activeTab.data!._id,
+                data: normalizedData,
+                closeAfterSave,
+              });
             }}
-            onCancel={() => closeTab(activeTab.id)}
-            isSaving={createMutation.isPending || updateMutation.isPending}
+            onDelete={handleDelete}
+            isSaving={updateMutation.isPending}
+            fieldErrors={viewFieldErrors[activeTab.data._id]}
             projectId={projectId}
             models={allModels}
           />
