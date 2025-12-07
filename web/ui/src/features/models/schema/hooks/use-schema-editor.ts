@@ -14,6 +14,7 @@ import {
   updateConfigOnFieldRename as updateTableConfigOnRename,
   updateConfigOnFieldRemove as updateTableConfigOnRemove,
   updateConfigOnFieldAdd as updateTableConfigOnAdd,
+  isSearchableFieldType,
 } from '../../lib/table-config';
 import {
   createDefaultFormConfig,
@@ -100,6 +101,7 @@ export function useSchemaEditor({
   // Update field
   const updateField = useCallback((index: number, updates: Partial<ModelField>) => {
     const oldKey = fieldKeysRef.current[index];
+    const oldField = fields[index];
     const newFields = [...fields];
     newFields[index] = { ...newFields[index], ...updates };
     setFields(newFields);
@@ -110,6 +112,17 @@ export function useSchemaEditor({
 
       setTableConfig(prev => updateTableConfigOnRename(prev, oldKey, updates.key!));
       setFormConfig(prev => updateFormConfigOnRename(prev, oldKey, updates.key!));
+    }
+
+    // If type changed to non-searchable, remove from searchable
+    if (updates.type && updates.type !== oldField.type) {
+      const fieldKey = updates.key || oldKey;
+      if (!isSearchableFieldType(updates.type)) {
+        setTableConfig(prev => ({
+          ...prev,
+          searchable: prev.searchable.filter(k => k !== fieldKey),
+        }));
+      }
     }
 
     setHasChanges(true);
