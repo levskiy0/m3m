@@ -14,6 +14,7 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { LoadingButton } from '@/components/ui/loading-button';
 import { Field, FieldGroup, FieldLabel, FieldDescription, FieldError } from '@/components/ui/field';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
@@ -185,13 +186,13 @@ export function ProfilePage() {
               />
             </Field>
             {nameChanged && (
-              <Button
+              <LoadingButton
                 onClick={() => updateNameMutation.mutate()}
-                disabled={updateNameMutation.isPending}
+                loading={updateNameMutation.isPending}
               >
                 <Save className="mr-2 size-4" />
-                {updateNameMutation.isPending ? 'Saving...' : 'Save Changes'}
-              </Button>
+                Save Changes
+              </LoadingButton>
             )}
           </FieldGroup>
         </CardContent>

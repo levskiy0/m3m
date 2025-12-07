@@ -21,6 +21,7 @@ import type { CreateBranchRequest, CreateReleaseRequest, LogEntry } from '@/type
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { LogsViewer } from '@/components/shared/logs-viewer';
+import { LoadingButton } from '@/components/ui/loading-button';
 import {
   Dialog,
   DialogContent,
@@ -487,11 +488,11 @@ export function PipelinePage() {
                       </Button>
                     )
                   )}
-                  <Button onClick={() => saveMutation.mutate()} disabled={!hasChanges || saveMutation.isPending}>
+                  <LoadingButton onClick={() => saveMutation.mutate()} disabled={!hasChanges} loading={saveMutation.isPending}>
                     <Save className="mr-2 size-4" />
-                    {saveMutation.isPending ? 'Saving...' : 'Save'}
+                    Save
                     <Kbd className="ml-2">^S</Kbd>
-                  </Button>
+                  </LoadingButton>
                 </div>
               </div>
               {/* Code Editor */}
@@ -669,12 +670,13 @@ export function PipelinePage() {
             <Button variant="outline" onClick={() => setCreateBranchOpen(false)}>
               Cancel
             </Button>
-            <Button
+            <LoadingButton
               onClick={handleCreateBranch}
-              disabled={!newBranchName || !newBranchSourceName || createBranchMutation.isPending}
+              disabled={!newBranchName || !newBranchSourceName}
+              loading={createBranchMutation.isPending}
             >
-              {createBranchMutation.isPending ? 'Creating...' : 'Create'}
-            </Button>
+              Create
+            </LoadingButton>
           </DialogFooter>
         </DialogContent>
       </Dialog>

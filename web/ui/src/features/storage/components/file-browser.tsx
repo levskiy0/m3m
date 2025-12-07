@@ -35,6 +35,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { LoadingButton } from '@/components/ui/loading-button';
 import {
   ContextMenu,
   ContextMenuContent,
@@ -444,14 +445,14 @@ export function FileBrowser({
           )}
           {showUpload && (
             <>
-              <Button
+              <LoadingButton
                 variant="outline"
                 onClick={() => fileInputRef.current?.click()}
-                disabled={uploadMutation.isPending}
+                loading={uploadMutation.isPending}
               >
                 <Upload className="mr-2 size-4" />
-                {uploadMutation.isPending ? 'Uploading...' : 'Upload'}
-              </Button>
+                Upload
+              </LoadingButton>
               <input
                 ref={fileInputRef}
                 type="file"
@@ -805,13 +806,13 @@ export function FileBrowser({
             <Button variant="outline" onClick={() => setMoveDialogOpen(false)}>
               Cancel
             </Button>
-            <Button
+            <LoadingButton
               onClick={() => moveMutation.mutate(moveTargetPath)}
-              disabled={moveMutation.isPending}
+              loading={moveMutation.isPending}
             >
               <Move className="mr-2 size-4" />
-              {moveMutation.isPending ? 'Moving...' : 'Move'}
-            </Button>
+              Move
+            </LoadingButton>
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -13,6 +13,7 @@ import { useFormDialog, useDeleteDialog } from '@/hooks';
 import type { Environment, CreateEnvRequest, UpdateEnvRequest, EnvType } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { LoadingButton } from '@/components/ui/loading-button';
 import {
   Dialog,
   DialogContent,
@@ -346,14 +347,13 @@ export function EnvironmentPage() {
             <Button variant="outline" onClick={() => formDialog.close()}>
               Cancel
             </Button>
-            <Button
+            <LoadingButton
               onClick={handleSubmit}
-              disabled={!key || createMutation.isPending || updateMutation.isPending}
+              disabled={!key}
+              loading={createMutation.isPending || updateMutation.isPending}
             >
-              {createMutation.isPending || updateMutation.isPending
-                ? 'Saving...'
-                : formDialog.mode === 'create' ? 'Create' : 'Save'}
-            </Button>
+              {formDialog.mode === 'create' ? 'Create' : 'Save'}
+            </LoadingButton>
           </DialogFooter>
         </DialogContent>
       </Dialog>

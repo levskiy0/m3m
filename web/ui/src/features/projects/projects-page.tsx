@@ -30,6 +30,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
+import { LoadingButton } from '@/components/ui/loading-button';
 import {
   Dialog,
   DialogContent,
@@ -270,9 +271,9 @@ export function ProjectsPage() {
               >
                 Cancel
               </Button>
-              <Button type="submit" disabled={createMutation.isPending}>
-                {createMutation.isPending ? 'Creating...' : 'Create'}
-              </Button>
+              <LoadingButton type="submit" loading={createMutation.isPending}>
+                Create
+              </LoadingButton>
             </DialogFooter>
           </form>
         </DialogContent>

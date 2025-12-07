@@ -9,6 +9,7 @@ import { queryKeys } from '@/lib/query-keys';
 import { useAutoSlug, useDeleteDialog } from '@/hooks';
 import type { CreateModelRequest, ModelField } from '@/types';
 import { Button } from '@/components/ui/button';
+import { LoadingButton } from '@/components/ui/loading-button';
 import {
   Card,
   CardContent,
@@ -219,12 +220,13 @@ export function ModelsPage() {
             <Button variant="outline" onClick={() => setCreateOpen(false)}>
               Cancel
             </Button>
-            <Button
+            <LoadingButton
               onClick={handleCreate}
-              disabled={!name || !slug || createMutation.isPending}
+              disabled={!name || !slug}
+              loading={createMutation.isPending}
             >
-              {createMutation.isPending ? 'Creating...' : 'Create'}
-            </Button>
+              Create
+            </LoadingButton>
           </DialogFooter>
         </DialogContent>
       </Dialog>

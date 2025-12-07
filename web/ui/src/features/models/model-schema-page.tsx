@@ -24,6 +24,7 @@ import {
 
 import { modelsApi } from '@/api';
 import { Button } from '@/components/ui/button';
+import { LoadingButton } from '@/components/ui/loading-button';
 import {
   Card,
   CardContent,
@@ -146,13 +147,14 @@ export function ModelSchemaPage() {
               View Data
             </Link>
           </Button>
-          <Button
+          <LoadingButton
             onClick={() => updateMutation.mutate()}
-            disabled={!hasChanges || updateMutation.isPending || hasValidationErrors}
+            disabled={!hasChanges || hasValidationErrors}
+            loading={updateMutation.isPending}
           >
-            <Save className="mr-2 size-4" />
-            {updateMutation.isPending ? 'Saving...' : 'Save'}
-          </Button>
+            <Save className="size-4" />
+            Save
+          </LoadingButton>
         </div>
       </div>
 

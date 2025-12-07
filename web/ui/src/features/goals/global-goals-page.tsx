@@ -15,6 +15,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
+import { LoadingButton } from '@/components/ui/loading-button';
 import {
   Dialog,
   DialogContent,
@@ -370,12 +371,13 @@ export function GlobalGoalsPage() {
             <Button variant="outline" onClick={() => setCreateOpen(false)}>
               Cancel
             </Button>
-            <Button
+            <LoadingButton
               onClick={handleCreate}
-              disabled={!name || !slug || createMutation.isPending}
+              disabled={!name || !slug}
+              loading={createMutation.isPending}
             >
-              {createMutation.isPending ? 'Creating...' : 'Create'}
-            </Button>
+              Create
+            </LoadingButton>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -450,12 +452,12 @@ export function GlobalGoalsPage() {
             <Button variant="outline" onClick={() => setEditOpen(false)}>
               Cancel
             </Button>
-            <Button
+            <LoadingButton
               onClick={handleUpdate}
-              disabled={updateMutation.isPending}
+              loading={updateMutation.isPending}
             >
-              {updateMutation.isPending ? 'Saving...' : 'Save'}
-            </Button>
+              Save
+            </LoadingButton>
           </DialogFooter>
         </DialogContent>
       </Dialog>

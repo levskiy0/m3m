@@ -19,6 +19,7 @@ import { useFormDialog, useDeleteDialog } from '@/hooks';
 import type { User, CreateUserRequest, UpdateUserRequest } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { LoadingButton } from '@/components/ui/loading-button';
 import {
   Dialog,
   DialogContent,
@@ -399,18 +400,17 @@ export function UsersPage() {
             <Button variant="outline" onClick={() => formDialog.close()}>
               Cancel
             </Button>
-            <Button
+            <LoadingButton
               onClick={formDialog.mode === 'create' ? handleCreate : handleUpdate}
               disabled={
                 formDialog.mode === 'create'
-                  ? !name || !email || !password || createMutation.isPending
-                  : updateMutation.isPending
+                  ? !name || !email || !password
+                  : false
               }
+              loading={createMutation.isPending || updateMutation.isPending}
             >
-              {createMutation.isPending || updateMutation.isPending
-                ? 'Saving...'
-                : formDialog.mode === 'create' ? 'Create' : 'Save'}
-            </Button>
+              {formDialog.mode === 'create' ? 'Create' : 'Save'}
+            </LoadingButton>
           </DialogFooter>
         </DialogContent>
       </Dialog>

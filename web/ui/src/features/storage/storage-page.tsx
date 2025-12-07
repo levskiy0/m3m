@@ -11,6 +11,7 @@ import type { StorageItem } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { LoadingButton } from '@/components/ui/loading-button';
 import { CodeEditor } from '@/components/shared/code-editor';
 import { ConfirmDialog } from '@/components/shared/confirm-dialog';
 import { FileBrowser } from './components';
@@ -205,18 +206,18 @@ export function StoragePage() {
                     </span>
                   )}
                 </div>
-                <Button
+                <LoadingButton
                   size="sm"
                   onClick={() => handleSaveTab(activeTab)}
                   disabled={
-                    savingTabId === activeTab.id ||
                     (activeTab.content === activeTab.originalContent && !activeTab.isNew) ||
                     (activeTab.isNew && !activeTab.name)
                   }
+                  loading={savingTabId === activeTab.id}
                 >
                   <Save className="mr-2 size-4" />
-                  {savingTabId === activeTab.id ? 'Saving...' : 'Save'}
-                </Button>
+                  Save
+                </LoadingButton>
               </div>
               <div className="flex-1 min-h-0">
                 <CodeEditor

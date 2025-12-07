@@ -15,6 +15,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
+import { LoadingButton } from '@/components/ui/loading-button';
 import {
   Dialog,
   DialogContent,
@@ -233,9 +234,9 @@ export function ProjectSettings() {
               />
             </Field>
             {hasChanges && (
-              <Button onClick={handleSave} disabled={updateMutation.isPending}>
-                {updateMutation.isPending ? 'Saving...' : 'Save Changes'}
-              </Button>
+              <LoadingButton onClick={handleSave} loading={updateMutation.isPending}>
+                Save Changes
+              </LoadingButton>
             )}
           </FieldGroup>
         </CardContent>
@@ -407,12 +408,13 @@ export function ProjectSettings() {
             >
               Cancel
             </Button>
-            <Button
+            <LoadingButton
               onClick={() => addMemberMutation.mutate(selectedUserId)}
-              disabled={!selectedUserId || addMemberMutation.isPending}
+              disabled={!selectedUserId}
+              loading={addMemberMutation.isPending}
             >
-              {addMemberMutation.isPending ? 'Adding...' : 'Add'}
-            </Button>
+              Add
+            </LoadingButton>
           </DialogFooter>
         </DialogContent>
       </Dialog>

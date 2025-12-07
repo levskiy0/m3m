@@ -1,6 +1,7 @@
 import { formatFieldLabel } from '@/lib/format';
 import type { ModelField, FormConfig, Model } from '@/types';
 import { Button } from '@/components/ui/button';
+import { LoadingButton } from '@/components/ui/loading-button';
 import { FieldInput } from './field-input';
 import type { Tab } from '../types';
 
@@ -56,13 +57,13 @@ export function RecordForm({
       <div className="flex items-center gap-2 mt-4">
         <Button variant="outline" onClick={onCancel}>Cancel</Button>
         {tab.type === 'edit' && (
-          <Button variant="outline" onClick={() => onSave(false)} disabled={isSaving}>
-            {isSaving ? 'Saving...' : 'Save'}
-          </Button>
+          <LoadingButton variant="outline" onClick={() => onSave(false)} loading={isSaving}>
+            Save
+          </LoadingButton>
         )}
-        <Button onClick={() => onSave(true)} disabled={isSaving}>
-          {isSaving ? 'Saving...' : tab.type === 'edit' ? 'Save & Close' : 'Create'}
-        </Button>
+        <LoadingButton onClick={() => onSave(true)} loading={isSaving}>
+          {tab.type === 'edit' ? 'Save & Close' : 'Create'}
+        </LoadingButton>
       </div>
     </>
   );
