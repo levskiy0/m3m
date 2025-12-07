@@ -77,11 +77,11 @@ export const FILTER_OPERATORS: Record<string, { value: FilterCondition['operator
   ],
   select: [
     { value: 'in', label: 'In' },
-    { value: 'nin', label: 'Not in' },
+    { value: 'notIn', label: 'Not in' },
   ],
   multiselect: [
     { value: 'in', label: 'Contains any' },
-    { value: 'nin', label: 'Not contains' },
+    { value: 'notIn', label: 'Not contains' },
   ],
 };
 
