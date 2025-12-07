@@ -430,6 +430,33 @@ func (m *Manager) GetStats(projectID primitive.ObjectID) (*RuntimeStats, error) 
 	return stats, nil
 }
 
+// GetBasicStats returns storage and database sizes for a project (even when not running)
+func (m *Manager) GetBasicStats(projectID primitive.ObjectID) *RuntimeStats {
+	stats := &RuntimeStats{
+		ProjectID:      projectID.Hex(),
+		Status:         "stopped",
+		RoutesByMethod: make(map[string]int),
+	}
+
+	// Get storage size
+	if m.storageService != nil {
+		if size, err := m.storageService.GetStorageSize(projectID.Hex()); err == nil {
+			stats.StorageBytes = size
+		}
+	}
+
+	// Get database size
+	if m.modelService != nil {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if size, err := m.modelService.GetProjectDataSize(ctx, projectID); err == nil {
+			stats.DatabaseBytes = size
+		}
+	}
+
+	return stats
+}
+
 // formatDuration formats duration as human-readable string
 func formatDuration(d time.Duration) string {
 	days := int(d.Hours()) / 24

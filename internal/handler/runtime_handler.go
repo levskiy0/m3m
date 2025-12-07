@@ -289,7 +289,9 @@ func (h *RuntimeHandler) Monitor(c *gin.Context) {
 
 	stats, err := h.runtimeManager.GetStats(projectID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		// Project not running - still return storage and database sizes
+		basicStats := h.runtimeManager.GetBasicStats(projectID)
+		c.JSON(http.StatusOK, basicStats)
 		return
 	}
 
