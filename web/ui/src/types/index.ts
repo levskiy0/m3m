@@ -268,7 +268,8 @@ export type FieldType =
   | 'ref'
   | 'date'
   | 'datetime'
-  | 'select';
+  | 'select'
+  | 'multiselect';
 
 export interface TableConfig {
   columns: string[];
@@ -286,6 +287,7 @@ export interface FormConfig {
 export type FieldView =
   | 'input'
   | 'select'
+  | 'multiselect'
   | 'textarea'
   | 'tiptap'
   | 'markdown'

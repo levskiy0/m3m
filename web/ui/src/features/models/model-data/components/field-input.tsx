@@ -11,6 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { MultiSelect } from '@/components/ui/multi-select';
 import { getDefaultView } from '../utils';
 import { RefFieldInput } from './ref-field-input';
 import { FileFieldInput } from './file-field-input';
@@ -154,6 +155,15 @@ export function FieldInput({ field, value, onChange, view, projectId, models }: 
             ))}
           </SelectContent>
         </Select>
+      );
+    case 'multiselect':
+      return (
+        <MultiSelect
+          options={field.options || []}
+          value={Array.isArray(value) ? (value as string[]) : []}
+          onChange={onChange}
+          placeholder="Select..."
+        />
       );
     default:
       return (

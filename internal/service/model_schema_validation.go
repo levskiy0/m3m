@@ -139,17 +139,18 @@ func (v *ModelSchemaValidator) validateFields(fields []domain.ModelField) []Vali
 	seenKeys := make(map[string]bool)
 
 	validTypes := map[domain.FieldType]bool{
-		domain.FieldTypeString:   true,
-		domain.FieldTypeText:     true,
-		domain.FieldTypeNumber:   true,
-		domain.FieldTypeFloat:    true,
-		domain.FieldTypeBool:     true,
-		domain.FieldTypeDocument: true,
-		domain.FieldTypeFile:     true,
-		domain.FieldTypeRef:      true,
-		domain.FieldTypeDate:     true,
-		domain.FieldTypeDateTime: true,
-		domain.FieldTypeSelect:   true,
+		domain.FieldTypeString:      true,
+		domain.FieldTypeText:        true,
+		domain.FieldTypeNumber:      true,
+		domain.FieldTypeFloat:       true,
+		domain.FieldTypeBool:        true,
+		domain.FieldTypeDocument:    true,
+		domain.FieldTypeFile:        true,
+		domain.FieldTypeRef:         true,
+		domain.FieldTypeDate:        true,
+		domain.FieldTypeDateTime:    true,
+		domain.FieldTypeSelect:      true,
+		domain.FieldTypeMultiSelect: true,
 	}
 
 	for i, field := range fields {
@@ -251,6 +252,13 @@ func (v *ModelSchemaValidator) validateDefaultValue(field domain.ModelField) err
 	case domain.FieldTypeSelect:
 		if _, ok := value.(string); !ok {
 			return fmt.Errorf("default value must be a string")
+		}
+	case domain.FieldTypeMultiSelect:
+		switch value.(type) {
+		case []interface{}, []string:
+			// OK
+		default:
+			return fmt.Errorf("default value must be an array of strings")
 		}
 	case domain.FieldTypeDate, domain.FieldTypeDateTime:
 		if str, ok := value.(string); ok {
@@ -377,17 +385,18 @@ func (v *ModelSchemaValidator) validateFormConfig(config *domain.FormConfig, fie
 
 	// Validate field views
 	validViews := map[string]map[string]bool{
-		"string":   {"input": true, "select": true},
-		"text":     {"textarea": true, "tiptap": true, "markdown": true},
-		"number":   {"input": true, "slider": true},
-		"float":    {"input": true, "slider": true},
-		"bool":     {"checkbox": true, "switch": true},
-		"date":     {"datepicker": true, "input": true},
-		"datetime": {"datetimepicker": true, "input": true},
-		"file":     {"file": true, "image": true},
-		"ref":      {"select": true, "combobox": true},
-		"document": {"json": true},
-		"select":   {"select": true, "combobox": true},
+		"string":      {"input": true, "select": true},
+		"text":        {"textarea": true, "tiptap": true, "markdown": true},
+		"number":      {"input": true, "slider": true},
+		"float":       {"input": true, "slider": true},
+		"bool":        {"checkbox": true, "switch": true},
+		"date":        {"datepicker": true, "input": true},
+		"datetime":    {"datetimepicker": true, "input": true},
+		"file":        {"file": true, "image": true},
+		"ref":         {"select": true, "combobox": true},
+		"document":    {"json": true},
+		"select":      {"select": true, "combobox": true},
+		"multiselect": {"multiselect": true, "combobox": true},
 	}
 
 	// Build field type map

@@ -175,6 +175,10 @@ func (v *DataValidator) validateFieldType(field domain.ModelField, value interfa
 		return v.validateDate(value)
 	case domain.FieldTypeDateTime:
 		return v.validateDateTime(value)
+	case domain.FieldTypeSelect:
+		return v.validateSelect(field, value)
+	case domain.FieldTypeMultiSelect:
+		return v.validateMultiSelect(field, value)
 	default:
 		return fmt.Errorf("unknown field type: %s", field.Type)
 	}
@@ -314,6 +318,68 @@ func (v *DataValidator) validateDateTime(value interface{}) error {
 		return nil
 	default:
 		return errors.New("expected datetime string (ISO 8601)")
+	}
+}
+
+func (v *DataValidator) validateSelect(field domain.ModelField, value interface{}) error {
+	str, ok := value.(string)
+	if !ok {
+		return errors.New("expected string value")
+	}
+	// Check if value is in allowed options
+	if len(field.Options) > 0 {
+		for _, opt := range field.Options {
+			if opt == str {
+				return nil
+			}
+		}
+		return fmt.Errorf("value '%s' is not in allowed options", str)
+	}
+	return nil
+}
+
+func (v *DataValidator) validateMultiSelect(field domain.ModelField, value interface{}) error {
+	// Multiselect expects an array of strings
+	switch val := value.(type) {
+	case []interface{}:
+		for i, item := range val {
+			str, ok := item.(string)
+			if !ok {
+				return fmt.Errorf("item at index %d is not a string", i)
+			}
+			// Check if value is in allowed options
+			if len(field.Options) > 0 {
+				found := false
+				for _, opt := range field.Options {
+					if opt == str {
+						found = true
+						break
+					}
+				}
+				if !found {
+					return fmt.Errorf("value '%s' is not in allowed options", str)
+				}
+			}
+		}
+		return nil
+	case []string:
+		for _, str := range val {
+			if len(field.Options) > 0 {
+				found := false
+				for _, opt := range field.Options {
+					if opt == str {
+						found = true
+						break
+					}
+				}
+				if !found {
+					return fmt.Errorf("value '%s' is not in allowed options", str)
+				}
+			}
+		}
+		return nil
+	default:
+		return errors.New("expected array of strings")
 	}
 }
 

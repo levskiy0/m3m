@@ -9,17 +9,18 @@ import (
 type FieldType string
 
 const (
-	FieldTypeString   FieldType = "string"
-	FieldTypeText     FieldType = "text"
-	FieldTypeNumber   FieldType = "number"
-	FieldTypeFloat    FieldType = "float"
-	FieldTypeBool     FieldType = "bool"
-	FieldTypeDocument FieldType = "document"
-	FieldTypeFile     FieldType = "file"
-	FieldTypeRef      FieldType = "ref"
-	FieldTypeDate     FieldType = "date"
-	FieldTypeDateTime FieldType = "datetime"
-	FieldTypeSelect   FieldType = "select"
+	FieldTypeString      FieldType = "string"
+	FieldTypeText        FieldType = "text"
+	FieldTypeNumber      FieldType = "number"
+	FieldTypeFloat       FieldType = "float"
+	FieldTypeBool        FieldType = "bool"
+	FieldTypeDocument    FieldType = "document"
+	FieldTypeFile        FieldType = "file"
+	FieldTypeRef         FieldType = "ref"
+	FieldTypeDate        FieldType = "date"
+	FieldTypeDateTime    FieldType = "datetime"
+	FieldTypeSelect      FieldType = "select"
+	FieldTypeMultiSelect FieldType = "multiselect"
 )
 
 type Model struct {

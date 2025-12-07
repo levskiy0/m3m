@@ -15,6 +15,7 @@ export function getDefaultView(type: FieldType): FieldView {
     case 'file': return 'file';
     case 'ref': return 'select';
     case 'select': return 'select';
+    case 'multiselect': return 'multiselect';
     default: return 'input';
   }
 }
@@ -25,6 +26,9 @@ export function formatCellValue(value: unknown, type: FieldType): string {
   if (type === 'document') return JSON.stringify(value).slice(0, 1024) + '...';
   if (type === 'date' || type === 'datetime') {
     return formatDateTime(value as string);
+  }
+  if (type === 'multiselect' && Array.isArray(value)) {
+    return value.length > 0 ? (value as string[]).join(', ') : '-';
   }
   const str = String(value);
   return str.length > 1024 ? str.slice(0, 1024) + '...' : str;
