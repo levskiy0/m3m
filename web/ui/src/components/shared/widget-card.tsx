@@ -328,6 +328,15 @@ const MonitoringWidgetCard = forwardRef<HTMLDivElement, {
   style?: React.CSSProperties;
 }>(({ widget, runtimeStats, isRunning, config, Icon, onEdit, onDelete, dragHandleProps, style }, ref) => {
   const getValue = (): string => {
+    // Storage and Database don't require runtime to be running
+    if (widget.type === 'storage') {
+      return runtimeStats?.storage_bytes != null ? formatBytes(runtimeStats.storage_bytes) : '--';
+    }
+    if (widget.type === 'database') {
+      return runtimeStats?.database_bytes != null ? formatBytes(runtimeStats.database_bytes) : '--';
+    }
+
+    // Other metrics require running service
     if (!isRunning || !runtimeStats) return '--';
 
     switch (widget.type) {
@@ -337,10 +346,6 @@ const MonitoringWidgetCard = forwardRef<HTMLDivElement, {
         return runtimeStats.total_requests?.toLocaleString() ?? '--';
       case 'cpu':
         return runtimeStats.cpu_percent != null ? `${runtimeStats.cpu_percent.toFixed(1)}%` : '--';
-      case 'storage':
-        return runtimeStats.storage_bytes != null ? formatBytes(runtimeStats.storage_bytes) : '--';
-      case 'database':
-        return runtimeStats.database_bytes != null ? formatBytes(runtimeStats.database_bytes) : '--';
       case 'uptime':
         return runtimeStats.uptime_formatted ?? '--';
       case 'jobs':
