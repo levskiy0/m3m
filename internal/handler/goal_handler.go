@@ -18,6 +18,7 @@ import (
 type GoalStatsResponse struct {
 	GoalID     string          `json:"goalID"`
 	Value      int64           `json:"value"`
+	TotalValue int64           `json:"totalValue,omitempty"`
 	DailyStats []DailyStatItem `json:"dailyStats,omitempty"`
 }
 
