@@ -247,7 +247,7 @@ export interface ModelField {
   required: boolean;
   default_value?: unknown;
   ref_model?: string;
-  options?: FieldOptions;
+  options?: string[];
 }
 
 export interface FieldOptions {
@@ -267,7 +267,8 @@ export type FieldType =
   | 'file'
   | 'ref'
   | 'date'
-  | 'datetime';
+  | 'datetime'
+  | 'select';
 
 export interface TableConfig {
   columns: string[];

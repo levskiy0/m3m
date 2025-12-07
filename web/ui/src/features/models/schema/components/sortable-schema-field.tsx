@@ -3,7 +3,7 @@
  * Draggable field row for schema editor
  */
 
-import { GripVertical, Trash2 } from 'lucide-react';
+import { GripVertical, Trash2, Plus, X } from 'lucide-react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
@@ -19,15 +19,139 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+  CommandSeparator,
+} from '@/components/ui/command';
+import { Badge } from '@/components/ui/badge';
+import { useState } from 'react';
 import { DefaultValueInput } from './default-value-input';
 import {
   getFieldTypeOptions,
   hasDefaultValueSupport,
   hasRefModelSupport,
+  hasOptionsSupport,
   isValidFieldKey,
   sanitizeFieldKey,
   cleanFieldOnTypeChange,
 } from '../../lib';
+
+interface SelectOptionsEditorProps {
+  options: string[];
+  onChange: (options: string[]) => void;
+}
+
+function SelectOptionsEditor({ options, onChange }: SelectOptionsEditorProps) {
+  const [inputValue, setInputValue] = useState('');
+
+  const addOption = (value: string) => {
+    const trimmed = value.trim();
+    if (trimmed && !options.includes(trimmed)) {
+      onChange([...options, trimmed]);
+    }
+    setInputValue('');
+  };
+
+  const removeOption = (option: string) => {
+    onChange(options.filter(o => o !== option));
+  };
+
+  return (
+    <Field>
+      <FieldLabel>Options</FieldLabel>
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button variant="outline" className="w-full justify-start h-auto min-h-10">
+            {options.length > 0 ? (
+              <div className="flex flex-wrap gap-1">
+                {options.slice(0, 2).map((option) => (
+                  <Badge key={option} variant="secondary" className="rounded-sm px-1 font-normal">
+                    {option}
+                  </Badge>
+                ))}
+                {options.length > 2 && (
+                  <Badge variant="secondary" className="rounded-sm px-1 font-normal">
+                    +{options.length - 2}
+                  </Badge>
+                )}
+              </div>
+            ) : (
+              <span className="text-muted-foreground">Add options...</span>
+            )}
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-64 p-0" align="start">
+          <Command>
+            <CommandInput
+              placeholder="Add option..."
+              value={inputValue}
+              onValueChange={setInputValue}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && inputValue) {
+                  e.preventDefault();
+                  addOption(inputValue);
+                }
+              }}
+            />
+            <CommandList>
+              <CommandEmpty>
+                {inputValue ? (
+                  <Button
+                    variant="ghost"
+                    className="w-full justify-start"
+                    onClick={() => addOption(inputValue)}
+                  >
+                    <Plus className="mr-2 size-4" />
+                    Add "{inputValue}"
+                  </Button>
+                ) : (
+                  'Type to add option'
+                )}
+              </CommandEmpty>
+              {options.length > 0 && (
+                <CommandGroup>
+                  {options.map((option) => (
+                    <CommandItem
+                      key={option}
+                      className="justify-between"
+                      onSelect={() => removeOption(option)}
+                    >
+                      <span>{option}</span>
+                      <X className="size-4 text-muted-foreground" />
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+              )}
+              {options.length > 0 && (
+                <>
+                  <CommandSeparator />
+                  <CommandGroup>
+                    <CommandItem
+                      onSelect={() => onChange([])}
+                      className="justify-center text-center text-muted-foreground"
+                    >
+                      Clear all
+                    </CommandItem>
+                  </CommandGroup>
+                </>
+              )}
+            </CommandList>
+          </Command>
+        </PopoverContent>
+      </Popover>
+    </Field>
+  );
+}
 
 interface SortableSchemaFieldProps {
   id: string;
@@ -66,6 +190,7 @@ export function SortableSchemaField({
   const keyError = field.key && !isValidFieldKey(field.key);
   const showRefModel = hasRefModelSupport(field.type);
   const showDefaultValue = hasDefaultValueSupport(field.type);
+  const showOptions = hasOptionsSupport(field.type);
 
   const handleKeyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     onUpdate({ key: sanitizeFieldKey(e.target.value) });
@@ -138,6 +263,11 @@ export function SortableSchemaField({
               </SelectContent>
             </Select>
           </Field>
+        ) : showOptions ? (
+          <SelectOptionsEditor
+            options={field.options || []}
+            onChange={(options) => onUpdate({ options })}
+          />
         ) : showDefaultValue ? (
           <Field>
             <FieldLabel>Default Value</FieldLabel>

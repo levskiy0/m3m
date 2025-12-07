@@ -101,6 +101,14 @@ export const FIELD_TYPE_CONFIGS: Record<FieldType, FieldTypeConfig> = {
     isSearchable: false,
     defaultView: 'datetimepicker',
   },
+  select: {
+    value: 'select',
+    label: 'Select',
+    hasDefaultValue: true,
+    hasRefModel: false,
+    isSearchable: true,
+    defaultView: 'select',
+  },
 };
 
 /**
@@ -142,6 +150,13 @@ export function isSearchableType(type: FieldType): boolean {
 }
 
 /**
+ * Check if field type supports options (select type)
+ */
+export function hasOptionsSupport(type: FieldType): boolean {
+  return type === 'select';
+}
+
+/**
  * Get default view for field type
  */
 export function getDefaultView(type: FieldType): FieldView {
@@ -177,6 +192,11 @@ export function cleanFieldOnTypeChange(
   // Clear default_value for types that don't support it
   if (!hasDefaultValueSupport(newType)) {
     updates.default_value = undefined;
+  }
+
+  // Clear options when switching away from select type
+  if (newType !== 'select') {
+    updates.options = undefined;
   }
 
   return updates;

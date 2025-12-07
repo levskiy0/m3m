@@ -19,6 +19,7 @@ const (
 	FieldTypeRef      FieldType = "ref"
 	FieldTypeDate     FieldType = "date"
 	FieldTypeDateTime FieldType = "datetime"
+	FieldTypeSelect   FieldType = "select"
 )
 
 type Model struct {
@@ -39,6 +40,7 @@ type ModelField struct {
 	Required     bool        `bson:"required" json:"required"`
 	DefaultValue interface{} `bson:"default_value" json:"default_value"`
 	RefModel     string      `bson:"ref_model,omitempty" json:"ref_model,omitempty"`
+	Options      []string    `bson:"options,omitempty" json:"options,omitempty"`
 }
 
 type TableConfig struct {

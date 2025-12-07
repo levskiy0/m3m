@@ -4,6 +4,13 @@ import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Checkbox } from '@/components/ui/checkbox';
 import { DatePicker, DateTimePicker } from '@/components/ui/datetime-picker';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { getDefaultView } from '../utils';
 import { RefFieldInput } from './ref-field-input';
 import { FileFieldInput } from './file-field-input';
@@ -129,6 +136,24 @@ export function FieldInput({ field, value, onChange, view, projectId, models }: 
           value={(value as string) || undefined}
           onChange={(v) => onChange(v || '')}
         />
+      );
+    case 'select':
+      return (
+        <Select
+          value={(value as string) || ''}
+          onValueChange={onChange}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Select..." />
+          </SelectTrigger>
+          <SelectContent>
+            {(field.options || []).map((option) => (
+              <SelectItem key={option} value={option}>
+                {option}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       );
     default:
       return (

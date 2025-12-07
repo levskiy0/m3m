@@ -41,6 +41,7 @@ export const FIELD_TYPES: { value: FieldType; label: string }[] = [
   { value: 'ref', label: 'Reference' },
   { value: 'date', label: 'Date' },
   { value: 'datetime', label: 'DateTime' },
+  { value: 'select', label: 'Select' },
 ];
 
 // Field views per field type (what widgets can be used for each type)
@@ -80,6 +81,10 @@ export const FIELD_VIEWS: Record<FieldType, { value: string; label: string }[]> 
   ],
   document: [
     { value: 'json', label: 'JSON Editor' },
+  ],
+  select: [
+    { value: 'select', label: 'Select' },
+    { value: 'combobox', label: 'Combobox' },
   ],
 };
 

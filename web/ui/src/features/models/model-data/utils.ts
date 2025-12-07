@@ -14,6 +14,7 @@ export function getDefaultView(type: FieldType): FieldView {
     case 'datetime': return 'datetimepicker';
     case 'file': return 'file';
     case 'ref': return 'select';
+    case 'select': return 'select';
     default: return 'input';
   }
 }
