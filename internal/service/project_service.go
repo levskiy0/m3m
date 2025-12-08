@@ -118,8 +118,6 @@ func (s *ProjectService) Delete(ctx context.Context, id primitive.ObjectID) erro
 		return err
 	}
 
-	// Delete from database first to ensure atomicity
-	// If DB deletion fails, we don't want orphaned storage
 	if err := s.projectRepo.Delete(ctx, id); err != nil {
 		return err
 	}
