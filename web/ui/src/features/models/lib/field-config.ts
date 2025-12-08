@@ -187,7 +187,7 @@ export function createEmptyField(index: number): ModelField {
  * Removes properties that don't apply to new type
  */
 export function cleanFieldOnTypeChange(
-  field: ModelField,
+  _field: ModelField,
   newType: FieldType
 ): Partial<ModelField> {
   const updates: Partial<ModelField> = { type: newType };
