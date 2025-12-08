@@ -31,6 +31,11 @@ export interface StartOptions {
   branch?: string;  // Branch name to run (debug mode)
 }
 
+export interface DashboardState {
+  status: RuntimeStatus;
+  monitor: RuntimeStats;
+}
+
 export const runtimeApi = {
   start: async (projectId: string, options?: StartOptions): Promise<{ runningSource?: string }> => {
     return api.post(`/api/projects/${projectId}/start`, options);
@@ -70,5 +75,10 @@ export const runtimeApi = {
 
   getSystemInfo: async (): Promise<SystemInfo> => {
     return api.get<SystemInfo>('/api/system/info');
+  },
+
+  // Get initial dashboard state (status + monitor)
+  state: async (projectId: string): Promise<DashboardState> => {
+    return api.get<DashboardState>(`/api/projects/${projectId}/state`);
   },
 };

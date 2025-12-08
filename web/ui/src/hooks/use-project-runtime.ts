@@ -1,22 +1,27 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useCallback, useRef } from 'react';
 import { toast } from 'sonner';
 
 import { runtimeApi } from '@/api';
 import type { StartOptions } from '@/api/runtime';
 import { queryKeys } from '@/lib/query-keys';
 import { downloadBlob } from '@/lib/utils';
+import { useWebSocket } from './use-websocket';
+import type { RuntimeStats } from '@/types';
 
 interface UseProjectRuntimeOptions {
   projectId: string;
   projectSlug?: string;
   enabled?: boolean;
+  /** @deprecated Use WebSocket instead. Only used as fallback. */
   refetchLogsInterval?: number | false;
+  /** @deprecated Use WebSocket instead. Only used as fallback. */
   refetchStatusInterval?: number | false;
 }
 
 /**
  * Hook for managing project runtime operations (start, stop, restart, logs, status).
- * Consolidates all runtime-related logic in one place.
+ * Uses WebSocket for real-time updates instead of polling.
  */
 export function useProjectRuntime({
   projectId,
@@ -26,26 +31,66 @@ export function useProjectRuntime({
   refetchStatusInterval = false,
 }: UseProjectRuntimeOptions) {
   const queryClient = useQueryClient();
+  const lastLogFetchRef = useRef<number>(0);
 
-  // Queries
+  // Handle WebSocket events
+  const handleMonitorUpdate = useCallback((data: RuntimeStats) => {
+    queryClient.setQueryData(['monitor', projectId], data);
+  }, [queryClient, projectId]);
+
+  const handleLogUpdate = useCallback(() => {
+    // Throttle log fetches - only fetch if last fetch was > 3 seconds ago
+    const now = Date.now();
+    if (now - lastLogFetchRef.current > 3000) {
+      lastLogFetchRef.current = now;
+      queryClient.invalidateQueries({ queryKey: queryKeys.logs.project(projectId) });
+    }
+  }, [queryClient, projectId]);
+
+  const handleRunningChange = useCallback((running: boolean) => {
+    // Update status in cache
+    queryClient.setQueryData(queryKeys.projects.status(projectId), (old: unknown) => ({
+      ...(old as object),
+      status: running ? 'running' : 'stopped',
+    }));
+    // Also refresh full data
+    queryClient.invalidateQueries({ queryKey: queryKeys.projects.status(projectId) });
+    queryClient.invalidateQueries({ queryKey: ['monitor', projectId] });
+  }, [queryClient, projectId]);
+
+  // Subscribe to WebSocket events
+  useWebSocket({
+    projectId,
+    enabled,
+    onMonitor: handleMonitorUpdate,
+    onLog: handleLogUpdate,
+    onRunning: handleRunningChange,
+  });
+
+  // Queries - fetch initial data, then rely on WebSocket for updates
   const statusQuery = useQuery({
     queryKey: queryKeys.projects.status(projectId),
     queryFn: () => runtimeApi.status(projectId),
     enabled,
+    // Fallback polling only if WebSocket is not available
     refetchInterval: refetchStatusInterval,
+    staleTime: 30000, // Consider data fresh for 30 seconds (WS will update it)
   });
 
   const monitorQuery = useQuery({
     queryKey: ['monitor', projectId],
     queryFn: () => runtimeApi.monitor(projectId),
     enabled,
+    // Fallback polling only if WebSocket is not available
     refetchInterval: refetchStatusInterval,
+    staleTime: 30000,
   });
 
   const logsQuery = useQuery({
     queryKey: queryKeys.logs.project(projectId),
     queryFn: () => runtimeApi.logs(projectId),
     enabled,
+    // Fallback polling only if WebSocket is not available
     refetchInterval: refetchLogsInterval,
   });
 

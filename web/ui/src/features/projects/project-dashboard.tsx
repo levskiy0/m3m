@@ -115,12 +115,11 @@ export function ProjectDashboard() {
   const publicUrl = project ? `${config.apiURL}/r/${project.slug}` : '';
 
   // Runtime hook - handles start/stop/restart, logs, monitor
+  // Now uses WebSocket for real-time updates instead of polling
   const runtime = useProjectRuntime({
     projectId: projectId!,
     projectSlug: project?.slug,
     enabled: !!projectId,
-    refetchLogsInterval: 3000,
-    refetchStatusInterval: isRunning ? 5000 : false,
   });
 
   const { data: releases = [] } = useQuery({
@@ -145,7 +144,8 @@ export function ProjectDashboard() {
     queryKey: queryKeys.goals.stats(projectId!, goals.map(g => g.id)),
     queryFn: () => goalsApi.getStats({ goalIds: goals.map(g => g.id) }),
     enabled: !!projectId && goals.length > 0,
-    refetchInterval: 10000,
+    // Goals are updated via WebSocket every 30 seconds
+    staleTime: 30000,
   });
 
   const { data: widgets = [] } = useQuery({

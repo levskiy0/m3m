@@ -19,6 +19,7 @@ import (
 	"m3m/internal/runtime"
 	"m3m/internal/runtime/modules"
 	"m3m/internal/service"
+	"m3m/internal/websocket"
 )
 
 type RuntimeHandler struct {
@@ -27,6 +28,7 @@ type RuntimeHandler struct {
 	pipelineService *service.PipelineService
 	storageService  *service.StorageService
 	pluginLoader    *plugin.Loader
+	broadcaster     *websocket.Broadcaster
 }
 
 func NewRuntimeHandler(
@@ -35,6 +37,7 @@ func NewRuntimeHandler(
 	pipelineService *service.PipelineService,
 	storageService *service.StorageService,
 	pluginLoader *plugin.Loader,
+	broadcaster *websocket.Broadcaster,
 ) *RuntimeHandler {
 	return &RuntimeHandler{
 		runtimeManager:  runtimeManager,
@@ -42,6 +45,7 @@ func NewRuntimeHandler(
 		pipelineService: pipelineService,
 		storageService:  storageService,
 		pluginLoader:    pluginLoader,
+		broadcaster:     broadcaster,
 	}
 }
 
@@ -57,6 +61,7 @@ func (h *RuntimeHandler) Register(r *gin.RouterGroup, authMiddleware *middleware
 		runtime.GET("/monitor", h.Monitor)
 		runtime.GET("/logs", h.Logs)
 		runtime.GET("/logs/download", h.DownloadLogs)
+		runtime.GET("/state", h.State) // Initial dashboard state
 	}
 
 	// Runtime types for Monaco
@@ -164,6 +169,13 @@ func (h *RuntimeHandler) Start(c *gin.Context) {
 	h.projectService.UpdateStatus(c.Request.Context(), projectID, domain.ProjectStatusRunning)
 	h.projectService.SetRunningSource(c.Request.Context(), projectID, runningSource)
 
+	// Broadcast running event and initial monitor data
+	if h.broadcaster != nil {
+		h.broadcaster.BroadcastRunning(projectID.Hex(), true)
+		// Also broadcast initial monitor data immediately
+		h.broadcaster.BroadcastMonitorNow(projectID)
+	}
+
 	c.JSON(http.StatusOK, gin.H{"message": "project started", "runningSource": runningSource})
 }
 
@@ -181,6 +193,11 @@ func (h *RuntimeHandler) Stop(c *gin.Context) {
 	// Update project status and clear running source
 	h.projectService.UpdateStatus(c.Request.Context(), projectID, domain.ProjectStatusStopped)
 	h.projectService.SetRunningSource(c.Request.Context(), projectID, "")
+
+	// Broadcast running event
+	if h.broadcaster != nil {
+		h.broadcaster.BroadcastRunning(projectID.Hex(), false)
+	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "project stopped"})
 }
@@ -252,6 +269,13 @@ func (h *RuntimeHandler) Restart(c *gin.Context) {
 	// Update running source if it changed
 	if runningSource != project.RunningSource {
 		h.projectService.SetRunningSource(c.Request.Context(), projectID, runningSource)
+	}
+
+	// Broadcast running event and initial monitor data
+	if h.broadcaster != nil {
+		h.broadcaster.BroadcastRunning(projectID.Hex(), true)
+		// Also broadcast initial monitor data immediately
+		h.broadcaster.BroadcastMonitorNow(projectID)
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "project restarted", "runningSource": runningSource})
@@ -516,4 +540,50 @@ func (h *RuntimeHandler) HandleRoute(c *gin.Context) {
 	}
 
 	c.JSON(resp.Status, resp.Body)
+}
+
+// DashboardState represents the initial state for the dashboard
+type DashboardState struct {
+	Status  interface{} `json:"status"`
+	Monitor interface{} `json:"monitor"`
+}
+
+// State returns the initial dashboard state (status + monitor data)
+func (h *RuntimeHandler) State(c *gin.Context) {
+	projectID, ok := h.checkAccess(c)
+	if !ok {
+		return
+	}
+
+	// Get status
+	isRunning := h.runtimeManager.IsRunning(projectID)
+	status := "stopped"
+	if isRunning {
+		status = "running"
+	}
+
+	var startedAt *string
+	if rt, ok := h.runtimeManager.GetRuntime(projectID); ok {
+		t := rt.StartedAt.Format("2006-01-02 15:04:05")
+		startedAt = &t
+	}
+
+	statusData := gin.H{
+		"status":     status,
+		"started_at": startedAt,
+	}
+
+	// Get monitor stats
+	var monitorData interface{}
+	stats, err := h.runtimeManager.GetStats(projectID)
+	if err != nil {
+		monitorData = h.runtimeManager.GetBasicStats(projectID)
+	} else {
+		monitorData = stats
+	}
+
+	c.JSON(http.StatusOK, DashboardState{
+		Status:  statusData,
+		Monitor: monitorData,
+	})
 }

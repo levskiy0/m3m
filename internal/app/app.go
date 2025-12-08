@@ -19,6 +19,7 @@ import (
 	"m3m/internal/repository"
 	"m3m/internal/runtime"
 	"m3m/internal/service"
+	"m3m/internal/websocket"
 	"m3m/web"
 )
 
@@ -70,6 +71,7 @@ func RegisterRoutes(
 	envHandler *handler.EnvironmentHandler,
 	runtimeHandler *handler.RuntimeHandler,
 	widgetHandler *handler.WidgetHandler,
+	wsHandler *handler.WebSocketHandler,
 ) {
 	// Health check
 	r.GET("/health", func(c *gin.Context) {
@@ -92,6 +94,7 @@ func RegisterRoutes(
 	envHandler.Register(api, authMiddleware)
 	runtimeHandler.Register(api, authMiddleware)
 	widgetHandler.Register(api, authMiddleware)
+	wsHandler.Register(api, authMiddleware)
 
 	// Public routes (at root level, not under /api)
 	runtimeHandler.RegisterPublicRoutes(r)
@@ -252,6 +255,39 @@ func AutoStartRuntimes(
 	})
 }
 
+// StartWebSocket starts the WebSocket hub and broadcaster
+func StartWebSocket(
+	lc fx.Lifecycle,
+	logger *slog.Logger,
+	hub *websocket.Hub,
+	broadcaster *websocket.Broadcaster,
+	runtimeManager *runtime.Manager,
+) {
+	lc.Append(fx.Hook{
+		OnStart: func(ctx context.Context) error {
+			// Start hub in goroutine
+			go hub.Run()
+
+			// Set runtime manager for broadcaster
+			broadcaster.SetRuntimeManager(runtimeManager)
+
+			// Set log broadcaster on runtime manager
+			runtimeManager.SetLogBroadcaster(broadcaster)
+
+			// Start broadcaster
+			broadcaster.Start(ctx)
+
+			logger.Info("WebSocket hub and broadcaster started")
+			return nil
+		},
+		OnStop: func(ctx context.Context) error {
+			broadcaster.Stop()
+			logger.Info("WebSocket broadcaster stopped")
+			return nil
+		},
+	})
+}
+
 func New(configPath string) *fx.App {
 	return fx.New(
 		fx.Provide(
@@ -288,6 +324,10 @@ func New(configPath string) *fx.App {
 			runtime.NewManager,
 			plugin.NewLoader,
 
+			// WebSocket
+			websocket.NewHub,
+			websocket.NewBroadcaster,
+
 			// Middleware
 			middleware.NewAuthMiddleware,
 
@@ -302,7 +342,8 @@ func New(configPath string) *fx.App {
 			handler.NewEnvironmentHandler,
 			handler.NewRuntimeHandler,
 			handler.NewWidgetHandler,
+			handler.NewWebSocketHandler,
 		),
-		fx.Invoke(RegisterRoutes, StartServer, AutoStartRuntimes),
+		fx.Invoke(RegisterRoutes, StartServer, AutoStartRuntimes, StartWebSocket),
 	)
 }

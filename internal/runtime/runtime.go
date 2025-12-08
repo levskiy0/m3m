@@ -33,6 +33,11 @@ type ProjectRuntime struct {
 	lastJobCount  int64
 }
 
+// LogBroadcaster interface for broadcasting log updates
+type LogBroadcaster interface {
+	BroadcastLogUpdate(projectID string)
+}
+
 // Manager manages all project runtimes
 type Manager struct {
 	runtimes       map[string]*ProjectRuntime
@@ -44,6 +49,7 @@ type Manager struct {
 	goalService    *service.GoalService
 	modelService   *service.ModelService
 	storageService *service.StorageService
+	logBroadcaster LogBroadcaster
 }
 
 func NewManager(
@@ -65,6 +71,11 @@ func NewManager(
 		modelService:   modelService,
 		storageService: storageService,
 	}
+}
+
+// SetLogBroadcaster sets the log broadcaster for notifying about new logs
+func (m *Manager) SetLogBroadcaster(broadcaster LogBroadcaster) {
+	m.logBroadcaster = broadcaster
 }
 
 // Start starts a project with the given code
@@ -95,6 +106,14 @@ func (m *Manager) Start(ctx context.Context, projectID primitive.ObjectID, code 
 
 	// Initialize modules
 	loggerModule := modules.NewLoggerModule(logFile)
+
+	// Set log callback for broadcasting
+	if m.logBroadcaster != nil {
+		loggerModule.SetOnLog(func() {
+			m.logBroadcaster.BroadcastLogUpdate(projectIDStr)
+		})
+	}
+
 	routerModule := modules.NewRouterModule()
 	routerModule.SetVM(vm)
 	schedulerModule := modules.NewScheduleModule(m.logger)

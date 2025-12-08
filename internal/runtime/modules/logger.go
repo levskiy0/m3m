@@ -12,9 +12,13 @@ import (
 	"m3m/pkg/schema"
 )
 
+// LogCallback is called when new log is written
+type LogCallback func()
+
 type LoggerModule struct {
-	file *os.File
-	mu   sync.Mutex
+	file      *os.File
+	mu        sync.Mutex
+	onLogFunc LogCallback
 }
 
 func NewLoggerModule(logPath string) *LoggerModule {
@@ -52,6 +56,13 @@ func (l *LoggerModule) Register(vm interface{}) {
 	})
 }
 
+// SetOnLog sets a callback that is called when new logs are written
+func (l *LoggerModule) SetOnLog(callback LogCallback) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.onLogFunc = callback
+}
+
 func (l *LoggerModule) log(level string, args ...interface{}) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
@@ -62,6 +73,11 @@ func (l *LoggerModule) log(level string, args ...interface{}) {
 
 	l.file.WriteString(logLine)
 	l.file.Sync() // Flush buffer to disk immediately
+
+	// Notify about new log
+	if l.onLogFunc != nil {
+		go l.onLogFunc()
+	}
 }
 
 // formatArgs formats arguments for logging, converting structs/maps/slices to JSON
