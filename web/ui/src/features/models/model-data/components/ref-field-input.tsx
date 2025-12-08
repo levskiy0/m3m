@@ -41,7 +41,7 @@ export function RefFieldInput({
   const [selectedRecord, setSelectedRecord] = useState<ModelData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [searchValue, setSearchValue] = useState('');
-  const debounceRef = useRef<NodeJS.Timeout | null>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const initialLoadDone = useRef(false);
 
   // Find the referenced model

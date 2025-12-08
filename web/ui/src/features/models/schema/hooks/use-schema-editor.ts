@@ -124,7 +124,7 @@ export function useSchemaEditor({
       if (!isSearchableFieldType(updates.type)) {
         setTableConfig(prev => ({
           ...prev,
-          searchable: prev.searchable.filter(k => k !== fieldKey),
+          searchable: (prev.searchable || []).filter(k => k !== fieldKey),
         }));
       }
     }

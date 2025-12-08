@@ -19,4 +19,18 @@ export * from './field-validation';
 export * from './table-config';
 
 // Form config operations
-export * from './form-config';
+export {
+  createDefaultFormConfig,
+  mergeFormConfig,
+  toggleHiddenField,
+  setFieldView,
+  reorderFormFields,
+  getOrderedFormFields,
+  getDefaultFieldView,
+  getAvailableFieldViews,
+  getFieldView,
+  isFieldHidden,
+  updateConfigOnFieldRename as updateFormConfigOnFieldRename,
+  updateConfigOnFieldRemove as updateFormConfigOnFieldRemove,
+  updateConfigOnFieldAdd as updateFormConfigOnFieldAdd,
+} from './form-config';

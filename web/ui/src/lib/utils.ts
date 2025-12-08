@@ -5,10 +5,11 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
-export function slugify(text: string): string {
+export function slugify(text: string, separator: string = '-'): string {
   return text
     .toLowerCase()
-    .replace(/[^a-z0-9-]/g, '');
+    .replace(/\s+/g, separator)
+    .replace(new RegExp(`[^a-z0-9${separator}]`, 'g'), '');
 }
 
 export function getFileExtension(filename: string): string {
