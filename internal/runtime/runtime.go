@@ -143,10 +143,8 @@ func (m *Manager) Start(ctx context.Context, projectID primitive.ObjectID, code 
 		metricsCancel: metricsCancel,
 	}
 
-	// Start metrics collection goroutine
 	go runtime.collectMetrics(metricsCtx)
 
-	// Execute code and lifecycle
 	go func() {
 		defer func() {
 			if r := recover(); r != nil {
@@ -154,7 +152,6 @@ func (m *Manager) Start(ctx context.Context, projectID primitive.ObjectID, code 
 			}
 		}()
 
-		// 1. Execute code (registers lifecycle callbacks)
 		_, err := vm.RunString(code)
 		if err != nil {
 			loggerModule.Error(fmt.Sprintf("Runtime error: %v", err))
@@ -162,29 +159,24 @@ func (m *Manager) Start(ctx context.Context, projectID primitive.ObjectID, code 
 			return
 		}
 
-		// 2. Execute boot callbacks
 		loggerModule.Info("Executing boot phase...")
 		if err := serviceModule.ExecuteBoot(); err != nil {
 			loggerModule.Error(fmt.Sprintf("Boot error: %v", err))
 			m.logger.Error("Boot error", "project", projectIDStr, "error", err)
 		}
 
-		// 3. Execute start callbacks
 		loggerModule.Info("Executing start phase...")
 		if err := serviceModule.ExecuteStart(); err != nil {
 			loggerModule.Error(fmt.Sprintf("Start error: %v", err))
 			m.logger.Error("Start error", "project", projectIDStr, "error", err)
 		}
 
-		// 4. Start scheduler after start phase
 		schedulerModule.Start()
 
 		loggerModule.Info("Service is running")
 
-		// 5. Wait for context cancellation
 		<-runtimeCtx.Done()
 
-		// 6. Execute shutdown callbacks
 		loggerModule.Info("Executing shutdown phase...")
 		if err := serviceModule.ExecuteShutdown(); err != nil {
 			loggerModule.Error(fmt.Sprintf("Shutdown error: %v", err))
