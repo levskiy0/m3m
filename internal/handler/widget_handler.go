@@ -110,8 +110,12 @@ func (h *WidgetHandler) Update(c *gin.Context) {
 		return
 	}
 
-	widget, err := h.widgetService.Update(c.Request.Context(), widgetID, &req)
+	widget, err := h.widgetService.Update(c.Request.Context(), projectID, widgetID, &req)
 	if err != nil {
+		if err == service.ErrWidgetNotInProject {
+			c.JSON(http.StatusForbidden, gin.H{"error": "widget does not belong to this project"})
+			return
+		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -138,7 +142,11 @@ func (h *WidgetHandler) Delete(c *gin.Context) {
 		return
 	}
 
-	if err := h.widgetService.Delete(c.Request.Context(), widgetID); err != nil {
+	if err := h.widgetService.Delete(c.Request.Context(), projectID, widgetID); err != nil {
+		if err == service.ErrWidgetNotInProject {
+			c.JSON(http.StatusForbidden, gin.H{"error": "widget does not belong to this project"})
+			return
+		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}

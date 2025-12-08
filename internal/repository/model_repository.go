@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"regexp"
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
@@ -318,9 +319,11 @@ func (r *ModelRepository) buildAdvancedFilter(query *domain.AdvancedDataQuery, m
 	// Add search filter if provided
 	if query.Search != "" && len(query.SearchIn) > 0 {
 		searchConditions := make([]bson.M, 0, len(query.SearchIn))
+		// Escape regex special characters to prevent ReDoS
+		escapedSearch := regexp.QuoteMeta(query.Search)
 		for _, field := range query.SearchIn {
 			searchConditions = append(searchConditions, bson.M{
-				field: bson.M{"$regex": query.Search, "$options": "i"},
+				field: bson.M{"$regex": escapedSearch, "$options": "i"},
 			})
 		}
 		conditions = append(conditions, bson.M{"$or": searchConditions})
@@ -353,17 +356,20 @@ func (r *ModelRepository) buildFilterCondition(cond domain.FilterCondition, fiel
 		return bson.M{field: bson.M{"$lte": value}}
 	case domain.FilterOpContains:
 		if str, ok := value.(string); ok {
-			return bson.M{field: bson.M{"$regex": str, "$options": "i"}}
+			// Escape regex special characters to prevent ReDoS
+			return bson.M{field: bson.M{"$regex": regexp.QuoteMeta(str), "$options": "i"}}
 		}
 		return nil
 	case domain.FilterOpStartsWith:
 		if str, ok := value.(string); ok {
-			return bson.M{field: bson.M{"$regex": "^" + str, "$options": "i"}}
+			// Escape regex special characters to prevent ReDoS
+			return bson.M{field: bson.M{"$regex": "^" + regexp.QuoteMeta(str), "$options": "i"}}
 		}
 		return nil
 	case domain.FilterOpEndsWith:
 		if str, ok := value.(string); ok {
-			return bson.M{field: bson.M{"$regex": str + "$", "$options": "i"}}
+			// Escape regex special characters to prevent ReDoS
+			return bson.M{field: bson.M{"$regex": regexp.QuoteMeta(str) + "$", "$options": "i"}}
 		}
 		return nil
 	case domain.FilterOpIn:

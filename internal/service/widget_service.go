@@ -10,7 +10,10 @@ import (
 	"m3m/internal/repository"
 )
 
-var ErrGoalIDRequired = errors.New("goal ID is required for goal widgets")
+var (
+	ErrGoalIDRequired     = errors.New("goal ID is required for goal widgets")
+	ErrWidgetNotInProject = errors.New("widget does not belong to this project")
+)
 
 type WidgetService struct {
 	widgetRepo *repository.WidgetRepository
@@ -74,10 +77,15 @@ func (s *WidgetService) GetByProject(ctx context.Context, projectID primitive.Ob
 	return s.widgetRepo.FindByProject(ctx, projectID)
 }
 
-func (s *WidgetService) Update(ctx context.Context, id primitive.ObjectID, req *domain.UpdateWidgetRequest) (*domain.Widget, error) {
+func (s *WidgetService) Update(ctx context.Context, projectID, id primitive.ObjectID, req *domain.UpdateWidgetRequest) (*domain.Widget, error) {
 	widget, err := s.widgetRepo.FindByID(ctx, id)
 	if err != nil {
 		return nil, err
+	}
+
+	// Verify widget belongs to the specified project
+	if widget.ProjectID != projectID {
+		return nil, ErrWidgetNotInProject
 	}
 
 	if req.Variant != nil {
@@ -100,7 +108,17 @@ func (s *WidgetService) Update(ctx context.Context, id primitive.ObjectID, req *
 	return widget, nil
 }
 
-func (s *WidgetService) Delete(ctx context.Context, id primitive.ObjectID) error {
+func (s *WidgetService) Delete(ctx context.Context, projectID, id primitive.ObjectID) error {
+	widget, err := s.widgetRepo.FindByID(ctx, id)
+	if err != nil {
+		return err
+	}
+
+	// Verify widget belongs to the specified project
+	if widget.ProjectID != projectID {
+		return ErrWidgetNotInProject
+	}
+
 	return s.widgetRepo.Delete(ctx, id)
 }
 

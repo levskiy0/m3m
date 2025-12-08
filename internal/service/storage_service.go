@@ -60,6 +60,18 @@ func (s *StorageService) resolvePath(projectID, relativePath string) (string, er
 		return "", ErrInvalidPath
 	}
 
+	// Resolve symlinks to prevent symlink-based path traversal
+	// Only check if the path exists (for reads/deletes)
+	if realPath, err := filepath.EvalSymlinks(fullPath); err == nil {
+		realBasePath, _ := filepath.EvalSymlinks(basePath)
+		if realBasePath == "" {
+			realBasePath = basePath
+		}
+		if !strings.HasPrefix(realPath, realBasePath) {
+			return "", ErrInvalidPath
+		}
+	}
+
 	return fullPath, nil
 }
 

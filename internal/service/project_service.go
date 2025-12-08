@@ -121,11 +121,18 @@ func (s *ProjectService) Delete(ctx context.Context, id primitive.ObjectID) erro
 		return err
 	}
 
-	// Delete storage directory
+	// Delete from database first to ensure atomicity
+	// If DB deletion fails, we don't want orphaned storage
+	if err := s.projectRepo.Delete(ctx, id); err != nil {
+		return err
+	}
+
+	// Delete storage directory after successful DB deletion
+	// Even if this fails, the project is already removed from DB
 	storagePath := filepath.Join(s.config.Storage.Path, project.ID.Hex())
 	os.RemoveAll(storagePath)
 
-	return s.projectRepo.Delete(ctx, id)
+	return nil
 }
 
 func (s *ProjectService) RegenerateAPIKey(ctx context.Context, id primitive.ObjectID) (*domain.Project, error) {
