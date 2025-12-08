@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import {
   ArrowUpDown,
   ArrowUp,
@@ -9,6 +9,7 @@ import {
   MoreHorizontal,
 } from 'lucide-react';
 import { formatFieldLabel } from '@/lib/format';
+import { cn } from '@/lib/utils';
 import type { ModelData, ModelField, TableConfig } from '@/types';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
@@ -66,6 +67,8 @@ export function DataTable({
   onDelete,
   onResizeStart,
 }: DataTableProps) {
+  const [focusedId, setFocusedId] = useState<string | null>(null);
+
   // Calculate total table width
   const tableWidth = useMemo(() => {
     const checkboxWidth = 48; // w-12
@@ -160,7 +163,12 @@ export function DataTable({
           {data.map((row) => (
             <TableRow
               key={row._id}
-              className="cursor-pointer text-md hover:bg-muted/50"
+              className={cn(
+                "cursor-pointer text-md hover:bg-muted/50",
+                selectedIds.has(row._id) && "bg-blue-500/10",
+                focusedId === row._id && "bg-blue-500/20 hover:bg-blue-500/25"
+              )}
+              onClick={() => setFocusedId(row._id)}
               onDoubleClick={() => onView(row)}
             >
               <TableCell className="w-12 min-w-12" onClick={(e) => e.stopPropagation()}>
