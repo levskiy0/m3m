@@ -7,7 +7,6 @@ export interface VersionInfo {
 
 export const versionApi = {
   get: async (): Promise<VersionInfo> => {
-    const { data } = await api.get<VersionInfo>('/version');
-    return data;
+    return api.get<VersionInfo>('/api/version');
   },
 };
