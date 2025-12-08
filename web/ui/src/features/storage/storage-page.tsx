@@ -5,6 +5,7 @@ import { Folder, FileCode, Save } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { storageApi } from '@/api';
+import { useTitle } from '@/hooks';
 import { getLanguageFromFilename } from '@/lib/utils';
 import { EditorTabs, EditorTab } from '@/components/ui/editor-tabs';
 import type { StorageItem } from '@/types';
@@ -26,6 +27,7 @@ interface FileEditorTab {
 }
 
 export function StoragePage() {
+  useTitle('Storage');
   const { projectId } = useParams<{ projectId: string }>();
   const queryClient = useQueryClient();
 

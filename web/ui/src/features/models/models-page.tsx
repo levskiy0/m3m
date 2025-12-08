@@ -6,7 +6,7 @@ import { toast } from 'sonner';
 
 import { modelsApi } from '@/api';
 import { queryKeys } from '@/lib/query-keys';
-import { useAutoSlug, useDeleteDialog } from '@/hooks';
+import { useAutoSlug, useDeleteDialog, useTitle } from '@/hooks';
 import type { CreateModelRequest, ModelField } from '@/types';
 import { Button } from '@/components/ui/button';
 import { LoadingButton } from '@/components/ui/loading-button';
@@ -41,6 +41,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 
 export function ModelsPage() {
+  useTitle('Models');
   const { projectId } = useParams<{ projectId: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();

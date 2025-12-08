@@ -111,6 +111,8 @@ export function ProjectDashboard() {
     enabled: !!projectId,
   });
 
+  useTitle(project?.name);
+
   const isRunning = project?.status === 'running';
   const publicUrl = project ? `${config.apiURL}/r/${project.slug}` : '';
 

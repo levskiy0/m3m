@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 
 import { goalsApi, projectsApi } from '@/api';
 import { useAuth } from '@/providers/auth-provider';
+import { useTitle } from '@/hooks';
 import { GOAL_TYPES } from '@/features/goals/constants';
 import type { Goal, CreateGoalRequest, UpdateGoalRequest, GoalType } from '@/types';
 import { Button } from '@/components/ui/button';
@@ -56,6 +57,7 @@ function slugify(text: string): string {
 }
 
 export function GlobalGoalsPage() {
+  useTitle('Goals');
   const { user } = useAuth();
   const queryClient = useQueryClient();
 

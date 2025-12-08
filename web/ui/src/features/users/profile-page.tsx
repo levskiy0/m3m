@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 
 import { usersApi } from '@/api';
 import { useAuth } from '@/providers/auth-provider';
+import { useTitle } from '@/hooks';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -28,6 +29,7 @@ function getInitials(name: string): string {
 }
 
 export function ProfilePage() {
+  useTitle('Profile');
   const { user, refresh } = useAuth();
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);

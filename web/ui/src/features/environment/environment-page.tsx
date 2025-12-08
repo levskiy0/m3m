@@ -24,6 +24,7 @@ import {
 
 import { environmentApi } from '@/api';
 import { queryKeys } from '@/lib/query-keys';
+import { useTitle } from '@/hooks';
 import { Button } from '@/components/ui/button';
 import { LoadingButton } from '@/components/ui/loading-button';
 import {
@@ -41,6 +42,7 @@ import { SortableEnvRow } from './components';
 import { useEnvEditor } from './hooks';
 
 export function EnvironmentPage() {
+  useTitle('Environment');
   const { projectId } = useParams<{ projectId: string }>();
   const queryClient = useQueryClient();
 

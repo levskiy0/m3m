@@ -56,6 +56,7 @@ import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 
 export function ProjectsPage() {
+  useTitle('Projects');
   const location = useLocation();
   const navigate = useNavigate();
   const queryClient = useQueryClient();

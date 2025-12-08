@@ -64,6 +64,8 @@ export function ProjectSettings() {
     enabled: !!projectId,
   });
 
+  useTitle(project ? `Settings - ${project.name}` : null);
+
   const { data: users = [] } = useQuery({
     queryKey: ['users'],
     queryFn: usersApi.list,

@@ -56,7 +56,7 @@ import { GOAL_TYPES } from '@/features/goals/constants';
 import { queryKeys } from '@/lib/query-keys';
 import { formatNumber, calculateTrend } from '@/lib/format';
 import { cn } from '@/lib/utils';
-import { useAutoSlug, useFormDialog, useDeleteDialog } from '@/hooks';
+import { useAutoSlug, useFormDialog, useDeleteDialog, useTitle } from '@/hooks';
 import type { Goal, CreateGoalRequest, UpdateGoalRequest, GoalType, GoalStats } from '@/types';
 import { Button } from '@/components/ui/button';
 import {
@@ -144,6 +144,7 @@ function getDateRange(preset: DatePreset): { from: Date; to: Date } {
 }
 
 export function GoalsPage() {
+  useTitle('Goals');
   const { projectId } = useParams<{ projectId: string }>();
   const queryClient = useQueryClient();
 

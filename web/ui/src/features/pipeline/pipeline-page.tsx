@@ -16,6 +16,7 @@ import {
 import { toast } from 'sonner';
 
 import { pipelineApi, runtimeApi, projectsApi } from '@/api';
+import { useTitle } from '@/hooks';
 import { DEFAULT_SERVICE_CODE, RELEASE_TAGS } from '@/features/pipeline/constants';
 import type { CreateBranchRequest, CreateReleaseRequest, LogEntry } from '@/types';
 import { Button } from '@/components/ui/button';
@@ -51,6 +52,7 @@ import { cn, downloadBlob } from '@/lib/utils';
 type PipelineTab = 'editor' | 'logs' | 'releases';
 
 export function PipelinePage() {
+  useTitle('Pipeline');
   const { projectId } = useParams<{ projectId: string }>();
   const location = useLocation();
   const queryClient = useQueryClient();

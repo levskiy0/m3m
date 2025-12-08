@@ -2,10 +2,12 @@ import { useQuery } from '@tanstack/react-query';
 import { Package, Activity, ExternalLink } from 'lucide-react';
 
 import { runtimeApi } from '@/api';
+import { useTitle } from '@/hooks';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 
 export function ModulesPage() {
+  useTitle('Modules');
   const { data: modulesInfo, isLoading } = useQuery({
     queryKey: ['modules-info'],
     queryFn: runtimeApi.getSystemInfo,

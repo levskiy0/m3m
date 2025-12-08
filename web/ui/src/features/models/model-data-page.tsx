@@ -14,6 +14,7 @@ import {
 
 import type { ModelData } from '@/types';
 import { modelsApi } from '@/api';
+import { useTitle } from '@/hooks';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ConfirmDialog } from '@/components/shared/confirm-dialog';
@@ -105,6 +106,8 @@ export function ModelDataPage() {
     refetch,
   } = useModelData({ projectId, modelId });
 
+  useTitle(model?.name);
+
   // Tab management
   const {
     tabs,
@@ -113,7 +116,6 @@ export function ModelDataPage() {
     openTab,
     closeTab,
     closeTabsForRecord,
-    updateTabFormData,
     updateTabErrors,
     markTabAsChanged,
     clearTabChanges,

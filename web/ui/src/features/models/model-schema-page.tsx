@@ -23,6 +23,7 @@ import {
 } from '@dnd-kit/sortable';
 
 import { modelsApi } from '@/api';
+import { useTitle } from '@/hooks';
 import { Button } from '@/components/ui/button';
 import { LoadingButton } from '@/components/ui/loading-button';
 import {
@@ -62,6 +63,8 @@ export function ModelSchemaPage() {
     queryFn: () => modelsApi.get(projectId!, modelId!),
     enabled: !!projectId && !!modelId,
   });
+
+  useTitle(model ? `${model.name} Schema` : null);
 
   // Load all models for ref field selection
   const { data: allModels = [] } = useQuery({

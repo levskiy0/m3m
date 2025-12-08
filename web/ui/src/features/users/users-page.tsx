@@ -15,7 +15,7 @@ import { usersApi, projectsApi } from '@/api';
 import { queryKeys } from '@/lib/query-keys';
 import { getInitials, toggleInArray } from '@/lib/utils';
 import { useAuth } from '@/providers/auth-provider';
-import { useFormDialog, useDeleteDialog } from '@/hooks';
+import { useFormDialog, useDeleteDialog, useTitle } from '@/hooks';
 import type { User, CreateUserRequest, UpdateUserRequest } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -55,6 +55,7 @@ import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 export function UsersPage() {
+  useTitle('Users');
   const { user: currentUser } = useAuth();
   const queryClient = useQueryClient();
 
