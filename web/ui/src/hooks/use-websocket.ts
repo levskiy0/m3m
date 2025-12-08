@@ -77,7 +77,6 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
           });
 
           onRunning?.(data.running);
-        } else {
         }
       },
       onGoals: (pid, data) => {

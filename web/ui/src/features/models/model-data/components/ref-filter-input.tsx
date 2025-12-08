@@ -67,9 +67,12 @@ export function RefFilterInput({
     if (value && refModelId && !selectedRecord) {
       modelsApi
         .getData(projectId, refModelId, value)
+         
         .then(setSelectedRecord)
+         
         .catch(() => setSelectedRecord(null));
     } else if (!value) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: clearing state when value becomes null
       setSelectedRecord(null);
     }
   }, [value, refModelId, projectId, selectedRecord]);
@@ -78,6 +81,7 @@ export function RefFilterInput({
   useEffect(() => {
     if (open && refModelId && !initialLoadDone.current) {
       initialLoadDone.current = true;
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: setting loading state before API call
       setIsLoading(true);
       modelsApi
         .queryData(projectId, refModelId, { limit: 25 })

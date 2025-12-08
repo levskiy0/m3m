@@ -79,36 +79,31 @@ export function useCrudMutations<
   update,
   delete: del,
 }: UseCrudMutationsOptions<TCreateData, TCreateVars, TUpdateData, TUpdateVars, TDeleteData, TDeleteVars>) {
-  const createMutation = create
-    ? useCrudMutation<TCreateData, TCreateVars>({
-        mutationFn: create.mutationFn,
-        queryKey,
-        successMessage: create.successMessage,
-        onSuccess: create.onSuccess,
-      })
-    : undefined;
+  // Always call hooks unconditionally to follow Rules of Hooks
+  const createMutation = useCrudMutation<TCreateData, TCreateVars>({
+    mutationFn: create?.mutationFn ?? (async () => undefined as TCreateData),
+    queryKey,
+    successMessage: create?.successMessage,
+    onSuccess: create?.onSuccess,
+  });
 
-  const updateMutation = update
-    ? useCrudMutation<TUpdateData, TUpdateVars>({
-        mutationFn: update.mutationFn,
-        queryKey,
-        successMessage: update.successMessage,
-        onSuccess: update.onSuccess,
-      })
-    : undefined;
+  const updateMutation = useCrudMutation<TUpdateData, TUpdateVars>({
+    mutationFn: update?.mutationFn ?? (async () => undefined as TUpdateData),
+    queryKey,
+    successMessage: update?.successMessage,
+    onSuccess: update?.onSuccess,
+  });
 
-  const deleteMutation = del
-    ? useCrudMutation<TDeleteData, TDeleteVars>({
-        mutationFn: del.mutationFn,
-        queryKey,
-        successMessage: del.successMessage,
-        onSuccess: del.onSuccess,
-      })
-    : undefined;
+  const deleteMutation = useCrudMutation<TDeleteData, TDeleteVars>({
+    mutationFn: del?.mutationFn ?? (async () => undefined as TDeleteData),
+    queryKey,
+    successMessage: del?.successMessage,
+    onSuccess: del?.onSuccess,
+  });
 
   return {
-    createMutation,
-    updateMutation,
-    deleteMutation,
+    createMutation: create ? createMutation : undefined,
+    updateMutation: update ? updateMutation : undefined,
+    deleteMutation: del ? deleteMutation : undefined,
   };
 }

@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
@@ -138,20 +138,20 @@ export function ModelDataPage() {
   const [unsavedChangesDialogOpen, setUnsavedChangesDialogOpen] = useState(false);
   const prevModelIdRef = useRef(modelId);
 
-  // Reset tabs when model changes
-  useEffect(() => {
-    if (prevModelIdRef.current !== modelId) {
-      // Model changed - check for unsaved changes
+  // Reset tabs when model changes - handle synchronously during render
+  // eslint-disable-next-line react-hooks/refs -- intentional: tracking previous value pattern
+  if (prevModelIdRef.current !== modelId) {
+    // eslint-disable-next-line react-hooks/refs -- intentional: updating ref to track changes
+    prevModelIdRef.current = modelId;
+    // Schedule dialog opening or reset for after render
+    queueMicrotask(() => {
       if (hasUnsavedChanges) {
-        // Show confirmation dialog
         setUnsavedChangesDialogOpen(true);
       } else {
-        // No unsaved changes - reset tabs immediately
         resetTabs();
       }
-      prevModelIdRef.current = modelId;
-    }
-  }, [modelId, hasUnsavedChanges, resetTabs]);
+    });
+  }
 
   // Handle unsaved changes dialog confirmation
   const handleDiscardChanges = useCallback(() => {

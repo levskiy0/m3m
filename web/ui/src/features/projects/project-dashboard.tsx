@@ -48,15 +48,12 @@ import { Button } from '@/components/ui/button';
 import {
   Card,
   CardContent,
-  CardHeader,
-  CardTitle,
 } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { EditorTabs, EditorTab } from '@/components/ui/editor-tabs';
 import { StatusBadge } from '@/components/shared/status-badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { LogsViewer } from '@/components/shared/logs-viewer';
-import { MetricCard } from '@/components/shared/metric-card';
 import { WidgetCard } from '@/components/shared/widget-card';
 import {
   Select,

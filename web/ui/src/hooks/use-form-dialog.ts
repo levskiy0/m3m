@@ -17,6 +17,7 @@ interface UseFormDialogReturn<T> {
  * Hook for managing dialog state for create/edit operations.
  * Handles open/close state and tracks whether we're creating or editing.
  */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function useFormDialog<T>(_options: UseFormDialogOptions<T> = {}): UseFormDialogReturn<T> {
   const [isOpen, setIsOpen] = useState(false);
   const [mode, setMode] = useState<'create' | 'edit'>('create');

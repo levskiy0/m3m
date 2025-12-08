@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import {
   FolderCode,
@@ -92,10 +92,18 @@ export function AppSidebar() {
     queryFn: projectsApi.list,
   });
 
-  // Use route projectId or fallback to last selected project from localStorage
-  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(() => {
-    return routeProjectId || localStorage.getItem(LAST_PROJECT_KEY);
-  });
+  // Compute selected project ID from route or localStorage
+  const selectedProjectId = useMemo(() => {
+    if (routeProjectId) {
+      localStorage.setItem(LAST_PROJECT_KEY, routeProjectId);
+      return routeProjectId;
+    }
+    const storedId = localStorage.getItem(LAST_PROJECT_KEY);
+    if (storedId && projects.some(p => p.id === storedId)) {
+      return storedId;
+    }
+    return null;
+  }, [routeProjectId, projects]);
 
   // Load models for current project
   const { data: models = [] } = useQuery({
@@ -106,24 +114,6 @@ export function AppSidebar() {
 
   // Track Data Storage collapsible state
   const [dataStorageOpen, setDataStorageOpen] = useState(true);
-
-  // Update selected project when route changes
-  useEffect(() => {
-    if (routeProjectId) {
-      setSelectedProjectId(routeProjectId);
-      localStorage.setItem(LAST_PROJECT_KEY, routeProjectId);
-    }
-  }, [routeProjectId]);
-
-  // Also update from localStorage when projects load (in case the stored project still exists)
-  useEffect(() => {
-    if (!routeProjectId && projects.length > 0) {
-      const storedId = localStorage.getItem(LAST_PROJECT_KEY);
-      if (storedId && projects.some(p => p.id === storedId)) {
-        setSelectedProjectId(storedId);
-      }
-    }
-  }, [projects, routeProjectId]);
 
   const currentProject = projects?.find((p) => p.id === selectedProjectId);
 
@@ -160,7 +150,6 @@ export function AppSidebar() {
   const isAdmin = user?.permissions?.manageUsers || user?.isRoot;
 
   const handleProjectSelect = (id: string) => {
-    setSelectedProjectId(id);
     localStorage.setItem(LAST_PROJECT_KEY, id);
     navigate(`/projects/${id}`);
   };

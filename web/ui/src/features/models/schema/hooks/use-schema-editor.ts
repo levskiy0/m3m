@@ -2,6 +2,7 @@
  * useSchemaEditor hook
  * Manages state and operations for the schema editor
  */
+/* eslint-disable react-hooks/refs -- this hook intentionally exposes ref values for sortable IDs */
 
 import { useState, useRef, useCallback } from 'react';
 import { arrayMove } from '@dnd-kit/sortable';
@@ -65,8 +66,11 @@ export function useSchemaEditor({
   }, []);
 
   // Initialize refs on first render
+   
   if (fieldIdsRef.current.length === 0 && initialFields.length > 0) {
+     
     fieldIdsRef.current = initialFields.map(() => generateFieldId());
+     
     fieldKeysRef.current = initialFields.map(f => f.key);
   }
 
@@ -195,7 +199,8 @@ export function useSchemaEditor({
     hasChanges,
     hasValidationErrors,
 
-    // Refs (for sortable)
+    // Refs (for sortable) - access the ref inside the returned object
+     
     fieldIds: fieldIdsRef.current,
 
     // Actions

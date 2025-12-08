@@ -67,12 +67,15 @@ export function RefFieldInput({
       modelsApi
         .getData(projectId, refModelId, value)
         .then((record) => {
+           
           setSelectedRecord(record);
         })
         .catch(() => {
+           
           setSelectedRecord(null);
         });
     } else if (!value) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: clearing state when value becomes null
       setSelectedRecord(null);
     }
   }, [value, refModelId, projectId, selectedRecord]);
@@ -81,6 +84,7 @@ export function RefFieldInput({
   useEffect(() => {
     if (open && refModelId && !initialLoadDone.current) {
       initialLoadDone.current = true;
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: setting loading state before API call
       setIsLoading(true);
       modelsApi
         .queryData(projectId, refModelId, { limit: INITIAL_LIMIT })

@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import type { User } from '@/types';
 import { authApi, getToken, removeToken } from '@/api';
@@ -30,6 +31,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const token = getToken();
     if (token) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: async callback after API response
       refresh().finally(() => setIsLoading(false));
     } else {
       setIsLoading(false);

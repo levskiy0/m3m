@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState, useRef } from 'react';
 import {
   ArrowUpDown,
   ArrowUp,
@@ -76,12 +76,20 @@ export function DataTable({
   onDeleteSelected,
   onResizeStart,
 }: DataTableProps) {
+  // Reset focus when data changes using a key derived from data
+  const dataKey = data.map(d => d._id).join(',');
   const [focusedId, setFocusedId] = useState<string | null>(null);
+  const prevDataKeyRef = useRef(dataKey);
 
-  // Reset focus when data changes (e.g., after tab switch or refresh)
-  useEffect(() => {
-    setFocusedId(null);
-  }, [data]);
+  // Reset focus when data key changes
+  // eslint-disable-next-line react-hooks/refs -- intentional: tracking previous value pattern
+  if (prevDataKeyRef.current !== dataKey) {
+    // eslint-disable-next-line react-hooks/refs -- intentional: updating ref to track changes
+    prevDataKeyRef.current = dataKey;
+    if (focusedId !== null) {
+      setFocusedId(null);
+    }
+  }
 
   // Calculate total table width
   const tableWidth = useMemo(() => {

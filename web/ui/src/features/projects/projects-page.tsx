@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
@@ -62,17 +62,17 @@ export function ProjectsPage() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
 
-  const [createOpen, setCreateOpen] = useState(false);
+  // Handle openCreate from location state synchronously
+  const shouldOpenCreate = location.state?.openCreate;
+  const [createOpen, setCreateOpen] = useState(shouldOpenCreate ?? false);
   const [color, setColor] = useState<string | undefined>();
   const [error, setError] = useState('');
   const { name, slug, setName, setSlug, reset: resetSlug } = useAutoSlug();
 
-  useEffect(() => {
-    if (location.state?.openCreate) {
-      setCreateOpen(true);
-      navigate(location.pathname, { replace: true, state: {} });
-    }
-  }, [location.state, location.pathname, navigate]);
+  // Clear location state after reading it
+  if (shouldOpenCreate) {
+    navigate(location.pathname, { replace: true, state: {} });
+  }
 
   const { data: projects = [], isLoading } = useQuery({
     queryKey: queryKeys.projects.all,

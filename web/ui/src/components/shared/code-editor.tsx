@@ -32,7 +32,11 @@ export function CodeEditor({
   const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
   const monacoRef = useRef<Monaco | null>(null);
   const keyBindingsRef = useRef(keyBindings);
-  keyBindingsRef.current = keyBindings;
+
+  // Update ref in effect to avoid updating during render
+  useEffect(() => {
+    keyBindingsRef.current = keyBindings;
+  }, [keyBindings]);
 
   const handleMount: OnMount = (editor, monaco) => {
     editorRef.current = editor;

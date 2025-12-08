@@ -130,6 +130,7 @@ export function PipelinePage() {
       if (initialBranchName) {
         const targetBranch = branches.find((b) => b.name === initialBranchName);
         if (targetBranch) {
+          // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: initial selection based on external data
           setSelectedBranchId(targetBranch.id);
           return;
         }
@@ -137,8 +138,10 @@ export function PipelinePage() {
       // Otherwise select develop branch
       const developBranch = branches.find((b) => b.name === 'develop');
       if (developBranch) {
+         
         setSelectedBranchId(developBranch.id);
       } else {
+         
         setSelectedBranchId(branches[0].id);
       }
     }
@@ -159,10 +162,14 @@ export function PipelinePage() {
   // Load branch code
   useEffect(() => {
     if (currentBranch) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: sync code state with fetched branch data
       setCode(currentBranch.code);
+       
       setHasChanges(false);
     } else if (branches.length === 0) {
+       
       setCode(DEFAULT_SERVICE_CODE);
+       
       setHasChanges(true);
     }
   }, [currentBranch, branches.length]);

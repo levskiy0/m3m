@@ -55,6 +55,7 @@ export function RecordView({
     for (const field of orderedFormFields) {
       initialData[field.key] = data[field.key];
     }
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: sync form data with external data prop
     setFormData(initialData);
   }, [data, orderedFormFields]);
 
