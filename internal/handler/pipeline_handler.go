@@ -27,7 +27,6 @@ func (h *PipelineHandler) Register(r *gin.RouterGroup, authMiddleware *middlewar
 	pipeline := r.Group("/projects/:id/pipeline")
 	pipeline.Use(authMiddleware.Authenticate())
 	{
-		// Branches
 		pipeline.GET("/branches", h.ListBranches)
 		pipeline.POST("/branches", h.CreateBranch)
 		pipeline.GET("/branches/:branchId", h.GetBranch)
@@ -35,7 +34,6 @@ func (h *PipelineHandler) Register(r *gin.RouterGroup, authMiddleware *middlewar
 		pipeline.POST("/branches/:branchId/reset", h.ResetBranch)
 		pipeline.DELETE("/branches/:branchId", h.DeleteBranch)
 
-		// Releases
 		pipeline.GET("/releases", h.ListReleases)
 		pipeline.POST("/releases", h.CreateRelease)
 		pipeline.DELETE("/releases/:releaseId", h.DeleteRelease)
@@ -58,8 +56,6 @@ func (h *PipelineHandler) checkAccess(c *gin.Context) (primitive.ObjectID, bool)
 
 	return projectID, true
 }
-
-// Branches
 
 func (h *PipelineHandler) ListBranches(c *gin.Context) {
 	projectID, ok := h.checkAccess(c)
@@ -191,8 +187,6 @@ func (h *PipelineHandler) DeleteBranch(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"message": "branch deleted successfully"})
 }
-
-// Releases
 
 func (h *PipelineHandler) ListReleases(c *gin.Context) {
 	projectID, ok := h.checkAccess(c)

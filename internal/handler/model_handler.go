@@ -34,14 +34,13 @@ func (h *ModelHandler) Register(r *gin.RouterGroup, authMiddleware *middleware.A
 		models.PUT("/:modelId", h.Update)
 		models.DELETE("/:modelId", h.Delete)
 
-		// Data routes
 		models.GET("/:modelId/data", h.ListData)
 		models.POST("/:modelId/data", h.CreateData)
-		models.POST("/:modelId/data/query", h.QueryData) // Advanced filtering
+		models.POST("/:modelId/data/query", h.QueryData)
 		models.GET("/:modelId/data/:dataId", h.GetData)
 		models.PUT("/:modelId/data/:dataId", h.UpdateData)
 		models.DELETE("/:modelId/data/:dataId", h.DeleteData)
-		models.POST("/:modelId/data/bulk-delete", h.BulkDeleteData) // Bulk delete
+		models.POST("/:modelId/data/bulk-delete", h.BulkDeleteData)
 	}
 }
 
@@ -181,8 +180,6 @@ func (h *ModelHandler) Delete(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "model deleted successfully"})
 }
 
-// Data handlers
-
 func (h *ModelHandler) ListData(c *gin.Context) {
 	_, ok := h.checkAccess(c)
 	if !ok {
@@ -201,7 +198,6 @@ func (h *ModelHandler) ListData(c *gin.Context) {
 		return
 	}
 
-	// Parse filter params from query string (format: filter[field]=value)
 	if query.Filters == nil {
 		query.Filters = make(map[string]string)
 	}
@@ -214,7 +210,6 @@ func (h *ModelHandler) ListData(c *gin.Context) {
 		}
 	}
 
-	// Set defaults
 	if query.Limit <= 0 {
 		query.Limit = 50
 	}
@@ -228,7 +223,6 @@ func (h *ModelHandler) ListData(c *gin.Context) {
 		return
 	}
 
-	// Calculate pagination metadata
 	totalPages := int64(0)
 	if query.Limit > 0 {
 		totalPages = (total + int64(query.Limit) - 1) / int64(query.Limit)
@@ -278,7 +272,6 @@ func (h *ModelHandler) CreateData(c *gin.Context) {
 	c.JSON(http.StatusCreated, result)
 }
 
-// QueryData handles advanced data queries with filtering
 func (h *ModelHandler) QueryData(c *gin.Context) {
 	_, ok := h.checkAccess(c)
 	if !ok {
@@ -297,7 +290,6 @@ func (h *ModelHandler) QueryData(c *gin.Context) {
 		return
 	}
 
-	// Set defaults
 	if query.Limit <= 0 {
 		query.Limit = 50
 	}
@@ -311,7 +303,6 @@ func (h *ModelHandler) QueryData(c *gin.Context) {
 		return
 	}
 
-	// Calculate pagination metadata
 	totalPages := int64(0)
 	if query.Limit > 0 {
 		totalPages = (total + int64(query.Limit) - 1) / int64(query.Limit)
@@ -419,7 +410,6 @@ func (h *ModelHandler) DeleteData(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "data deleted successfully"})
 }
 
-// BulkDeleteData deletes multiple data records by their IDs
 func (h *ModelHandler) BulkDeleteData(c *gin.Context) {
 	_, ok := h.checkAccess(c)
 	if !ok {
@@ -440,7 +430,6 @@ func (h *ModelHandler) BulkDeleteData(c *gin.Context) {
 		return
 	}
 
-	// Convert string IDs to ObjectIDs
 	objectIDs := make([]primitive.ObjectID, 0, len(req.IDs))
 	for _, idStr := range req.IDs {
 		id, err := primitive.ObjectIDFromHex(idStr)

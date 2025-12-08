@@ -63,7 +63,6 @@ func (h *ProjectHandler) Create(c *gin.Context) {
 		return
 	}
 
-	// Create default develop branch
 	h.pipelineService.EnsureDevelopBranch(c.Request.Context(), project.ID)
 
 	c.JSON(http.StatusCreated, project)
@@ -133,7 +132,6 @@ func (h *ProjectHandler) Delete(c *gin.Context) {
 		return
 	}
 
-	// Only owner or root can delete
 	if project.OwnerID != user.ID && !user.IsRoot {
 		c.JSON(http.StatusForbidden, gin.H{"error": "only owner can delete project"})
 		return
@@ -183,7 +181,6 @@ func (h *ProjectHandler) AddMember(c *gin.Context) {
 		return
 	}
 
-	// Only owner or root can add members
 	if project.OwnerID != user.ID && !user.IsRoot {
 		c.JSON(http.StatusForbidden, gin.H{"error": "only owner can manage members"})
 		return
@@ -229,7 +226,6 @@ func (h *ProjectHandler) RemoveMember(c *gin.Context) {
 		return
 	}
 
-	// Only owner or root can remove members
 	if project.OwnerID != user.ID && !user.IsRoot {
 		c.JSON(http.StatusForbidden, gin.H{"error": "only owner can manage members"})
 		return

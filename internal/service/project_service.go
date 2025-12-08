@@ -42,15 +42,12 @@ func (s *ProjectService) Create(ctx context.Context, req *domain.CreateProjectRe
 		return nil, err
 	}
 
-	// Create storage directory for project
 	storagePath := filepath.Join(s.config.Storage.Path, project.ID.Hex(), "storage")
 	if err := os.MkdirAll(storagePath, 0755); err != nil {
-		// Rollback project creation on storage error
 		s.projectRepo.Delete(ctx, project.ID)
 		return nil, err
 	}
 
-	// Create default widgets for the project
 	s.createDefaultWidgets(ctx, project.ID)
 
 	return project, nil

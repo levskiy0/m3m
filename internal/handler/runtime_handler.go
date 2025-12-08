@@ -50,7 +50,6 @@ func NewRuntimeHandler(
 }
 
 func (h *RuntimeHandler) Register(r *gin.RouterGroup, authMiddleware *middleware.AuthMiddleware) {
-	// Runtime management
 	runtime := r.Group("/projects/:id")
 	runtime.Use(authMiddleware.Authenticate())
 	{
@@ -61,19 +60,13 @@ func (h *RuntimeHandler) Register(r *gin.RouterGroup, authMiddleware *middleware
 		runtime.GET("/monitor", h.Monitor)
 		runtime.GET("/logs", h.Logs)
 		runtime.GET("/logs/download", h.DownloadLogs)
-		runtime.GET("/state", h.State) // Initial dashboard state
+		runtime.GET("/state", h.State)
 	}
 
-	// Runtime types for Monaco
 	r.GET("/runtime/types", h.Types)
-
-	// Runtime schemas for documentation
 	r.GET("/runtime/schemas", h.Schemas)
-
-	// Plugins info
 	r.GET("/plugins", h.ListPlugins)
 
-	// System info (requires auth)
 	system := r.Group("/system")
 	system.Use(authMiddleware.Authenticate())
 	{
@@ -81,9 +74,7 @@ func (h *RuntimeHandler) Register(r *gin.RouterGroup, authMiddleware *middleware
 	}
 }
 
-// RegisterPublicRoutes registers public routes on the root router (not under /api)
 func (h *RuntimeHandler) RegisterPublicRoutes(r *gin.Engine) {
-	// Project routes (public, handled by runtime router)
 	r.Any("/r/:projectSlug/*route", h.HandleRoute)
 }
 
