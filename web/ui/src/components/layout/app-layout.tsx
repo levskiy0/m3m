@@ -146,31 +146,31 @@ export function AppLayout() {
 
           {/* Right section: GitHub + Version */}
           <div className="flex items-center gap-3 px-4">
-            <a
-              href="https://github.com/levskiy0/m3m"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-2 px-2.5 py-1 border rounded-md text-sm hover:bg-muted transition-colors"
-            >
-              <Github className="h-4 w-4" />
-              <Star className="h-3.5 w-3.5 text-yellow-500" />
-            </a>
-            <Separator orientation="vertical" className="h-4" />
             <div className="flex items-center gap-2 text-sm">
               <span className="font-semibold">{versionInfo?.name || 'M3M'}</span>
               {versionInfo?.version && (
-                <span className="text-muted-foreground bg-muted px-1.5 py-0.5 rounded text-xs">
+                  <span className="text-muted-foreground bg-muted px-1.5 py-0.5 rounded text-xs">
                   {versionInfo.version}
                 </span>
               )}
             </div>
+            <Separator orientation="vertical" className="h-4"/>
+            <a
+                href="https://github.com/levskiy0/m3m"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 px-2.5 py-1 border rounded-md text-sm hover:bg-muted transition-colors"
+            >
+              <Github className="h-4 w-4"/>
+              <Star className="h-3.5 w-3.5 text-yellow-500"/>
+            </a>
           </div>
         </header>
         <main className="flex flex-1 flex-col gap-4 p-4 pt-0">
-          <Outlet />
+          <Outlet/>
         </main>
       </SidebarInset>
-      <Toaster />
+      <Toaster/>
     </SidebarProvider>
   );
 }
