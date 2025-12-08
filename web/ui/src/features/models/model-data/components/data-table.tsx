@@ -27,6 +27,13 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuSeparator,
+  ContextMenuTrigger,
+} from '@/components/ui/context-menu';
 import { SYSTEM_FIELD_LABELS, type SystemField } from '../constants';
 import { formatCellValue, formatSystemFieldValue } from '../utils';
 
@@ -46,6 +53,7 @@ interface DataTableProps {
   onView: (data: ModelData) => void;
   onEdit: (data: ModelData) => void;
   onDelete: (data: ModelData) => void;
+  onDeleteSelected: () => void;
   onResizeStart: (e: React.MouseEvent, column: string, currentWidth: number) => void;
 }
 
@@ -65,6 +73,7 @@ export function DataTable({
   onView,
   onEdit,
   onDelete,
+  onDeleteSelected,
   onResizeStart,
 }: DataTableProps) {
   const [focusedId, setFocusedId] = useState<string | null>(null);
@@ -161,76 +170,106 @@ export function DataTable({
         </TableHeader>
         <TableBody>
           {data.map((row) => (
-            <TableRow
-              key={row._id}
-              className={cn(
-                "cursor-pointer text-md hover:bg-muted/50",
-                selectedIds.has(row._id) && "bg-blue-500/10",
-                focusedId === row._id && "bg-blue-500/20 hover:bg-blue-500/25"
-              )}
-              onClick={() => setFocusedId(row._id)}
-              onDoubleClick={() => onView(row)}
-            >
-              <TableCell className="w-12 min-w-12" onClick={(e) => e.stopPropagation()}>
-                <Checkbox
-                  checked={selectedIds.has(row._id)}
-                  onCheckedChange={(checked) => onSelectRow(row._id, !!checked)}
-                />
-              </TableCell>
-              {visibleColumns.map((field) => {
-                const width = getColumnWidth(field.key);
-                return (
-                  <TableCell
-                    key={field.key}
-                    style={{ width, minWidth: width, maxWidth: width }}
-                  >
-                    <span className="block truncate font-mono whitespace-nowrap">
-                      {formatCellValue(row[field.key], field.type)}
-                    </span>
+            <ContextMenu key={row._id}>
+              <ContextMenuTrigger asChild>
+                <TableRow
+                  className={cn(
+                    "cursor-pointer text-md hover:bg-muted/50",
+                    selectedIds.has(row._id) && "bg-blue-500/10",
+                    focusedId === row._id && "bg-blue-500/20 hover:bg-blue-500/25"
+                  )}
+                  onClick={() => setFocusedId(row._id)}
+                  onDoubleClick={() => onView(row)}
+                >
+                  <TableCell className="w-12 min-w-12" onClick={(e) => e.stopPropagation()}>
+                    <Checkbox
+                      checked={selectedIds.has(row._id)}
+                      onCheckedChange={(checked) => onSelectRow(row._id, !!checked)}
+                    />
                   </TableCell>
-                );
-              })}
-              {visibleSystemColumns.map((key) => {
-                const width = getColumnWidth(key, 180);
-                return (
-                  <TableCell
+                  {visibleColumns.map((field) => {
+                    const width = getColumnWidth(field.key);
+                    return (
+                      <TableCell
+                        key={field.key}
+                        style={{ width, minWidth: width, maxWidth: width }}
+                      >
+                        <span className="block truncate font-mono whitespace-nowrap">
+                          {formatCellValue(row[field.key], field.type)}
+                        </span>
+                      </TableCell>
+                    );
+                  })}
+                  {visibleSystemColumns.map((key) => {
+                    const width = getColumnWidth(key, 180);
+                    return (
+                      <TableCell
                         key={key}
                         className="text-muted-foreground font-mono whitespace-nowrap"
-                        style={{width, minWidth: width, maxWidth: width}}
-                    >
-                    <span className="block truncate font-mono whitespace-nowrap">
-                    {formatSystemFieldValue(key, row[key])}
-                    </span>
+                        style={{ width, minWidth: width, maxWidth: width }}
+                      >
+                        <span className="block truncate font-mono whitespace-nowrap">
+                          {formatSystemFieldValue(key, row[key])}
+                        </span>
+                      </TableCell>
+                    );
+                  })}
+                  <TableCell className="w-12" onClick={(e) => e.stopPropagation()}>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="size-8">
+                          <MoreHorizontal className="size-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => onView(row)}>
+                          <Eye className="mr-2 size-4" />
+                          View
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => onEdit(row)}>
+                          <Edit className="mr-2 size-4" />
+                          Edit
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => onDelete(row)}
+                          className="text-destructive focus:text-destructive"
+                        >
+                          <Trash2 className="mr-2 size-4" />
+                          Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </TableCell>
-              );
-              })}
-                <TableCell className="w-12" onClick={(e) => e.stopPropagation()}>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className="size-8">
-                      <MoreHorizontal className="size-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => onView(row)}>
-                      <Eye className="mr-2 size-4" />
-                      View
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => onEdit(row)}>
-                      <Edit className="mr-2 size-4" />
-                      Edit
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      onClick={() => onDelete(row)}
-                      className="text-destructive focus:text-destructive"
-                    >
-                      <Trash2 className="mr-2 size-4" />
-                      Delete
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </TableCell>
-            </TableRow>
+                </TableRow>
+              </ContextMenuTrigger>
+              <ContextMenuContent>
+                <ContextMenuItem onClick={() => onView(row)}>
+                  <Eye className="mr-2 size-4" />
+                  View
+                </ContextMenuItem>
+                <ContextMenuItem onClick={() => onEdit(row)}>
+                  <Edit className="mr-2 size-4" />
+                  Edit
+                </ContextMenuItem>
+                <ContextMenuSeparator />
+                <ContextMenuItem
+                  onClick={() => onDelete(row)}
+                  className="text-destructive focus:text-destructive"
+                >
+                  <Trash2 className="mr-2 size-4" />
+                  Delete
+                </ContextMenuItem>
+                {selectedIds.size > 0 && (
+                  <ContextMenuItem
+                    onClick={onDeleteSelected}
+                    className="text-destructive focus:text-destructive"
+                  >
+                    <Trash2 className="mr-2 size-4" />
+                    Delete Selected ({selectedIds.size})
+                  </ContextMenuItem>
+                )}
+              </ContextMenuContent>
+            </ContextMenu>
           ))}
         </TableBody>
       </Table>

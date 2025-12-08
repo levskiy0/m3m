@@ -395,6 +395,7 @@ export function ModelDataPage() {
                       onView={handleView}
                       onEdit={handleView}
                       onDelete={handleDelete}
+                      onDeleteSelected={() => setBulkDeleteOpen(true)}
                       onResizeStart={handleResizeStart}
                   />
               )}
