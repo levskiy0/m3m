@@ -315,6 +315,19 @@ func (m *Manager) HandleRoute(projectID primitive.ObjectID, method, path string,
 	return runtime.Router.Handle(method, path, ctx)
 }
 
+// GetCORSConfig returns CORS configuration for a project
+func (m *Manager) GetCORSConfig(projectID primitive.ObjectID) *modules.CORSConfig {
+	m.mu.RLock()
+	runtime, ok := m.runtimes[projectID.Hex()]
+	m.mu.RUnlock()
+
+	if !ok || runtime.Router == nil {
+		return nil
+	}
+
+	return runtime.Router.GetCORSConfig()
+}
+
 // StopAll stops all running runtimes (for graceful shutdown)
 func (m *Manager) StopAll() {
 	m.mu.Lock()

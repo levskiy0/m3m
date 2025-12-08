@@ -516,13 +516,37 @@ func (h *RuntimeHandler) HandleRoute(c *gin.Context) {
 		}
 	}
 
+	// Parse cookies
+	cookies := make(map[string]string)
+	for _, cookie := range c.Request.Cookies() {
+		cookies[cookie.Name] = cookie.Value
+	}
+
+	// Get client IP
+	clientIP := c.ClientIP()
+
+	// Get User-Agent
+	userAgent := c.Request.UserAgent()
+
 	ctx := &modules.RequestContext{
-		Method:  c.Request.Method,
-		Path:    route,
-		Params:  make(map[string]string),
-		Query:   query,
-		Headers: headers,
-		Body:    string(body),
+		Method:    c.Request.Method,
+		Path:      route,
+		Params:    make(map[string]string),
+		Query:     query,
+		Headers:   headers,
+		Body:      string(body),
+		IP:        clientIP,
+		UserAgent: userAgent,
+		Cookies:   cookies,
+	}
+
+	// Handle CORS preflight if configured
+	if c.Request.Method == "OPTIONS" {
+		if corsConfig := h.runtimeManager.GetCORSConfig(project.ID); corsConfig != nil {
+			h.setCORSHeaders(c, corsConfig)
+			c.Status(http.StatusNoContent)
+			return
+		}
 	}
 
 	// Handle route
@@ -532,6 +556,24 @@ func (h *RuntimeHandler) HandleRoute(c *gin.Context) {
 		return
 	}
 
+	// Set CORS headers if configured
+	if corsConfig := h.runtimeManager.GetCORSConfig(project.ID); corsConfig != nil {
+		h.setCORSHeaders(c, corsConfig)
+	}
+
+	// Set cookies from response
+	for _, cookie := range resp.SetCookies {
+		c.SetCookie(
+			cookie.Name,
+			cookie.Value,
+			cookie.Options.MaxAge,
+			cookie.Options.Path,
+			cookie.Options.Domain,
+			cookie.Options.Secure,
+			cookie.Options.HttpOnly,
+		)
+	}
+
 	// Set response headers
 	if resp.Headers != nil {
 		for k, v := range resp.Headers {
@@ -539,7 +581,54 @@ func (h *RuntimeHandler) HandleRoute(c *gin.Context) {
 		}
 	}
 
-	c.JSON(resp.Status, resp.Body)
+	// Handle different response types
+	switch resp.Type {
+	case modules.ResponseTypeRedirect:
+		c.Redirect(resp.Status, resp.RedirectURL)
+	case modules.ResponseTypeFile:
+		// Serve file from project's storage
+		filePath, err := h.storageService.GetPath(project.ID.Hex(), resp.FilePath)
+		if err != nil {
+			c.JSON(http.StatusNotFound, gin.H{"error": "file not found"})
+			return
+		}
+		c.File(filePath)
+	case modules.ResponseTypeRaw:
+		// Raw text/string response
+		if contentType := resp.Headers["Content-Type"]; contentType != "" {
+			c.Data(resp.Status, contentType, []byte(resp.Body.(string)))
+		} else {
+			c.String(resp.Status, resp.Body.(string))
+		}
+	default:
+		// JSON response
+		c.JSON(resp.Status, resp.Body)
+	}
+}
+
+// setCORSHeaders sets CORS headers based on configuration
+func (h *RuntimeHandler) setCORSHeaders(c *gin.Context, cors *modules.CORSConfig) {
+	if len(cors.Origins) > 0 {
+		origin := c.Request.Header.Get("Origin")
+		if origin != "" {
+			for _, allowed := range cors.Origins {
+				if allowed == "*" || allowed == origin {
+					c.Header("Access-Control-Allow-Origin", origin)
+					break
+				}
+			}
+		}
+	}
+
+	if len(cors.Methods) > 0 {
+		c.Header("Access-Control-Allow-Methods", strings.Join(cors.Methods, ", "))
+	}
+
+	if len(cors.Headers) > 0 {
+		c.Header("Access-Control-Allow-Headers", strings.Join(cors.Headers, ", "))
+	}
+
+	c.Header("Access-Control-Allow-Credentials", "true")
 }
 
 // DashboardState represents the initial state for the dashboard

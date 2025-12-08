@@ -40,13 +40,13 @@ func TestJS_Scenario_URLShortener(t *testing.T) {
 		// Create short link
 		$router.post("/shorten", function(ctx) {
 			if (!ctx.body || !ctx.body.url) {
-				return $router.response(400, {error: "URL is required"});
+				return ctx.response(400, {error: "URL is required"});
 			}
 
 			var url = ctx.body.url;
 			// URL validation
 			if (!url.startsWith("http://") && !url.startsWith("https://")) {
-				return $router.response(400, {error: "Invalid URL format"});
+				return ctx.response(400, {error: "Invalid URL format"});
 			}
 
 			// Generate short code
@@ -57,7 +57,7 @@ func TestJS_Scenario_URLShortener(t *testing.T) {
 				clicks: 0
 			};
 
-			return $router.response(201, {
+			return ctx.response(201, {
 				shortCode: shortCode,
 				shortUrl: "/r/" + shortCode
 			});
@@ -69,11 +69,11 @@ func TestJS_Scenario_URLShortener(t *testing.T) {
 			var link = links[code];
 
 			if (!link) {
-				return $router.response(404, {error: "Link not found"});
+				return ctx.response(404, {error: "Link not found"});
 			}
 
 			link.clicks++;
-			return $router.response(302, {
+			return ctx.response(302, {
 				redirect: link.url,
 				clicks: link.clicks
 			});
@@ -83,9 +83,9 @@ func TestJS_Scenario_URLShortener(t *testing.T) {
 		$router.get("/stats/:code", function(ctx) {
 			var link = links[ctx.params.code];
 			if (!link) {
-				return $router.response(404, {error: "Link not found"});
+				return ctx.response(404, {error: "Link not found"});
 			}
-			return $router.response(200, {
+			return ctx.response(200, {
 				url: link.url,
 				clicks: link.clicks,
 				created: link.created
@@ -165,7 +165,7 @@ func TestJS_Scenario_WebhookProcessor(t *testing.T) {
 			// Verify signature
 			var signature = ctx.headers["X-Webhook-Signature"];
 			if (!signature) {
-				return $router.response(401, {error: "Missing signature"});
+				return ctx.response(401, {error: "Missing signature"});
 			}
 
 			// Calculate expected signature
@@ -173,13 +173,13 @@ func TestJS_Scenario_WebhookProcessor(t *testing.T) {
 			var expectedSig = $crypto.sha256(payload + SECRET);
 
 			if (signature !== expectedSig) {
-				return $router.response(401, {error: "Invalid signature"});
+				return ctx.response(401, {error: "Invalid signature"});
 			}
 
 			// Process event
 			var event = ctx.body;
 			if (!event.type || !event.data) {
-				return $router.response(400, {error: "Invalid event format"});
+				return ctx.response(400, {error: "Invalid event format"});
 			}
 
 			// Save processed event
@@ -190,14 +190,14 @@ func TestJS_Scenario_WebhookProcessor(t *testing.T) {
 				processedAt: $utils.timestamp()
 			});
 
-			return $router.response(200, {
+			return ctx.response(200, {
 				status: "processed",
 				eventId: processedEvents[processedEvents.length - 1].id
 			});
 		});
 
 		$router.get("/events", function(ctx) {
-			return $router.response(200, {
+			return ctx.response(200, {
 				count: processedEvents.length,
 				events: processedEvents
 			});
@@ -303,7 +303,7 @@ func TestJS_Scenario_APIGateway(t *testing.T) {
 			var rateCheck = checkRateLimit(clientId);
 
 			if (!rateCheck.allowed) {
-				return $router.response(429, {
+				return ctx.response(429, {
 					error: "Rate limit exceeded",
 					retryAfter: rateCheck.retryAfter
 				});
@@ -311,7 +311,7 @@ func TestJS_Scenario_APIGateway(t *testing.T) {
 
 			// Process request
 			var resource = ctx.params.resource;
-			return $router.response(200, {
+			return ctx.response(200, {
 				resource: resource,
 				data: "Sample data for " + resource,
 				rateLimitRemaining: rateCheck.remaining
@@ -376,7 +376,7 @@ func TestJS_Scenario_UserRegistration(t *testing.T) {
 		$router.post("/register", function(ctx) {
 			var body = ctx.body;
 			if (!body) {
-				return $router.response(400, {error: "Request body required"});
+				return ctx.response(400, {error: "Request body required"});
 			}
 
 			// Field validation
@@ -401,7 +401,7 @@ func TestJS_Scenario_UserRegistration(t *testing.T) {
 			}
 
 			if (errors.length > 0) {
-				return $router.response(400, {errors: errors});
+				return ctx.response(400, {errors: errors});
 			}
 
 			// Create user
@@ -416,7 +416,7 @@ func TestJS_Scenario_UserRegistration(t *testing.T) {
 				createdAt: $utils.timestamp()
 			};
 
-			return $router.response(201, {
+			return ctx.response(201, {
 				userId: userId,
 				email: body.email,
 				name: body.name
@@ -426,22 +426,22 @@ func TestJS_Scenario_UserRegistration(t *testing.T) {
 		$router.post("/login", function(ctx) {
 			var body = ctx.body;
 			if (!body || !body.email || !body.password) {
-				return $router.response(400, {error: "Email and password required"});
+				return ctx.response(400, {error: "Email and password required"});
 			}
 
 			var user = users[body.email];
 			if (!user) {
-				return $router.response(401, {error: "Invalid credentials"});
+				return ctx.response(401, {error: "Invalid credentials"});
 			}
 
 			var passwordHash = $crypto.sha256(body.password);
 			if (user.passwordHash !== passwordHash) {
-				return $router.response(401, {error: "Invalid credentials"});
+				return ctx.response(401, {error: "Invalid credentials"});
 			}
 
 			// Generate token
 			var token = $crypto.randomBytes(32);
-			return $router.response(200, {
+			return ctx.response(200, {
 				token: token,
 				userId: user.id
 			});
@@ -538,12 +538,12 @@ func TestJS_Scenario_DataPipeline(t *testing.T) {
 	h.MustRun(t, `
 		$router.post("/transform", function(ctx) {
 			if (!ctx.body || !ctx.body.data) {
-				return $router.response(400, {error: "Data array required"});
+				return ctx.response(400, {error: "Data array required"});
 			}
 
 			var data = ctx.body.data;
 			if (!Array.isArray(data)) {
-				return $router.response(400, {error: "Data must be an array"});
+				return ctx.response(400, {error: "Data must be an array"});
 			}
 
 			var operations = ctx.body.operations || [];
@@ -592,7 +592,7 @@ func TestJS_Scenario_DataPipeline(t *testing.T) {
 				}
 			}
 
-			return $router.response(200, {
+			return ctx.response(200, {
 				originalCount: data.length,
 				resultCount: result.length,
 				data: result
@@ -658,7 +658,7 @@ func TestJS_Scenario_HealthCheck(t *testing.T) {
 
 			var uptime = $utils.timestamp() - startTime;
 
-			return $router.response(200, {
+			return ctx.response(200, {
 				status: "healthy",
 				uptime: uptime,
 				requestCount: requestCount,
@@ -684,7 +684,7 @@ func TestJS_Scenario_HealthCheck(t *testing.T) {
 				}
 			}
 
-			return $router.response(allHealthy ? 200 : 503, {
+			return ctx.response(allHealthy ? 200 : 503, {
 				status: allHealthy ? "healthy" : "degraded",
 				checks: checks,
 				timestamp: $utils.timestamp()
@@ -737,7 +737,7 @@ func TestJS_Scenario_ContentCache(t *testing.T) {
 
 		$router.post("/cache", function(ctx) {
 			if (!ctx.body || !ctx.body.key || !ctx.body.value) {
-				return $router.response(400, {error: "Key and value required"});
+				return ctx.response(400, {error: "Key and value required"});
 			}
 
 			var key = ctx.body.key;
@@ -750,7 +750,7 @@ func TestJS_Scenario_ContentCache(t *testing.T) {
 				createdAt: $utils.timestamp()
 			};
 
-			return $router.response(201, {
+			return ctx.response(201, {
 				key: key,
 				expires: cache[key].expires
 			});
@@ -761,15 +761,15 @@ func TestJS_Scenario_ContentCache(t *testing.T) {
 			var entry = cache[key];
 
 			if (!entry) {
-				return $router.response(404, {error: "Key not found"});
+				return ctx.response(404, {error: "Key not found"});
 			}
 
 			if (entry.expires < $utils.timestamp()) {
 				delete cache[key];
-				return $router.response(404, {error: "Key expired"});
+				return ctx.response(404, {error: "Key expired"});
 			}
 
-			return $router.response(200, {
+			return ctx.response(200, {
 				key: key,
 				value: entry.value,
 				expires: entry.expires,
@@ -780,10 +780,10 @@ func TestJS_Scenario_ContentCache(t *testing.T) {
 		$router.delete("/cache/:key", function(ctx) {
 			var key = ctx.params.key;
 			if (!cache[key]) {
-				return $router.response(404, {error: "Key not found"});
+				return ctx.response(404, {error: "Key not found"});
 			}
 			delete cache[key];
-			return $router.response(204, {});
+			return ctx.response(204, {});
 		});
 	`)
 
@@ -846,7 +846,7 @@ func TestJS_Scenario_AnalyticsTracker(t *testing.T) {
 		$router.post("/track/event", function(ctx) {
 			var body = ctx.body;
 			if (!body || !body.name) {
-				return $router.response(400, {error: "Event name required"});
+				return ctx.response(400, {error: "Event name required"});
 			}
 
 			var event = {
@@ -860,19 +860,19 @@ func TestJS_Scenario_AnalyticsTracker(t *testing.T) {
 
 			events.push(event);
 
-			return $router.response(201, {eventId: event.id});
+			return ctx.response(201, {eventId: event.id});
 		});
 
 		$router.post("/track/pageview", function(ctx) {
 			var body = ctx.body;
 			if (!body || !body.path) {
-				return $router.response(400, {error: "Path required"});
+				return ctx.response(400, {error: "Path required"});
 			}
 
 			var path = body.path;
 			pageViews[path] = (pageViews[path] || 0) + 1;
 
-			return $router.response(201, {
+			return ctx.response(201, {
 				path: path,
 				totalViews: pageViews[path]
 			});
@@ -885,7 +885,7 @@ func TestJS_Scenario_AnalyticsTracker(t *testing.T) {
 			}
 			topPages.sort(function(a, b) { return b.views - a.views; });
 
-			return $router.response(200, {
+			return ctx.response(200, {
 				totalEvents: events.length,
 				totalPageViews: topPages.reduce(function(sum, p) { return sum + p.views; }, 0),
 				topPages: topPages.slice(0, 10),
@@ -962,7 +962,7 @@ func TestJS_Scenario_PaymentWebhook(t *testing.T) {
 		$router.post("/payment/webhook", function(ctx) {
 			var body = ctx.body;
 			if (!body || !body.event) {
-				return $router.response(400, {error: "Invalid webhook payload"});
+				return ctx.response(400, {error: "Invalid webhook payload"});
 			}
 
 			var event = body.event;
@@ -980,7 +980,7 @@ func TestJS_Scenario_PaymentWebhook(t *testing.T) {
 
 				case "payment.completed":
 					if (!payments[data.paymentId]) {
-						return $router.response(404, {error: "Payment not found"});
+						return ctx.response(404, {error: "Payment not found"});
 					}
 					payments[data.paymentId].status = "completed";
 					payments[data.paymentId].completedAt = $utils.timestamp();
@@ -993,7 +993,7 @@ func TestJS_Scenario_PaymentWebhook(t *testing.T) {
 
 				case "payment.failed":
 					if (!payments[data.paymentId]) {
-						return $router.response(404, {error: "Payment not found"});
+						return ctx.response(404, {error: "Payment not found"});
 					}
 					payments[data.paymentId].status = "failed";
 					payments[data.paymentId].failReason = data.reason || "Unknown";
@@ -1001,17 +1001,17 @@ func TestJS_Scenario_PaymentWebhook(t *testing.T) {
 
 				case "payment.refunded":
 					if (!payments[data.paymentId]) {
-						return $router.response(404, {error: "Payment not found"});
+						return ctx.response(404, {error: "Payment not found"});
 					}
 					payments[data.paymentId].status = "refunded";
 					payments[data.paymentId].refundedAt = $utils.timestamp();
 					break;
 
 				default:
-					return $router.response(400, {error: "Unknown event type"});
+					return ctx.response(400, {error: "Unknown event type"});
 			}
 
-			return $router.response(200, {
+			return ctx.response(200, {
 				received: true,
 				event: event,
 				timestamp: $utils.timestamp()
@@ -1021,17 +1021,17 @@ func TestJS_Scenario_PaymentWebhook(t *testing.T) {
 		$router.get("/payment/:id", function(ctx) {
 			var payment = payments[ctx.params.id];
 			if (!payment) {
-				return $router.response(404, {error: "Payment not found"});
+				return ctx.response(404, {error: "Payment not found"});
 			}
-			return $router.response(200, payment);
+			return ctx.response(200, payment);
 		});
 
 		$router.get("/order/:id", function(ctx) {
 			var order = orders[ctx.params.id];
 			if (!order) {
-				return $router.response(404, {error: "Order not found"});
+				return ctx.response(404, {error: "Order not found"});
 			}
-			return $router.response(200, order);
+			return ctx.response(200, order);
 		});
 	`)
 
@@ -1139,7 +1139,7 @@ func TestJS_Scenario_HTTPAggregator(t *testing.T) {
 			var postsResp = $http.get(API_BASE + "/posts");
 
 			if (usersResp.status !== 200 || postsResp.status !== 200) {
-				return $router.response(502, {error: "Failed to fetch data from upstream"});
+				return ctx.response(502, {error: "Failed to fetch data from upstream"});
 			}
 
 			var users = $encoding.jsonParse(usersResp.body) || [];
@@ -1156,7 +1156,7 @@ func TestJS_Scenario_HTTPAggregator(t *testing.T) {
 				}
 			};
 
-			return $router.response(200, result);
+			return ctx.response(200, result);
 		});
 
 		$router.get("/users/:id/posts", function(ctx) {
@@ -1166,7 +1166,7 @@ func TestJS_Scenario_HTTPAggregator(t *testing.T) {
 			var postsResp = $http.get(API_BASE + "/posts");
 
 			if (usersResp.status !== 200) {
-				return $router.response(502, {error: "Failed to fetch users"});
+				return ctx.response(502, {error: "Failed to fetch users"});
 			}
 
 			var users = $encoding.jsonParse(usersResp.body) || [];
@@ -1179,10 +1179,10 @@ func TestJS_Scenario_HTTPAggregator(t *testing.T) {
 			}
 
 			if (!user) {
-				return $router.response(404, {error: "User not found"});
+				return ctx.response(404, {error: "User not found"});
 			}
 
-			return $router.response(200, {
+			return ctx.response(200, {
 				user: user,
 				posts: $encoding.jsonParse(postsResp.body) || []
 			});
@@ -1269,9 +1269,9 @@ func TestJS_Error_HandlerWithTryCatch(t *testing.T) {
 			try {
 				// Potentially failing code
 				var result = someUndefinedVar;
-				return $router.response(200, {result: result});
+				return ctx.response(200, {result: result});
 			} catch (e) {
-				return $router.response(500, {error: e.message});
+				return ctx.response(500, {error: e.message});
 			}
 		});
 	`)

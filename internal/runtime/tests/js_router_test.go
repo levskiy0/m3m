@@ -108,9 +108,9 @@ func TestJS_Router_PostBody(t *testing.T) {
 	h.MustRun(t, `
 		$router.post("/users", function(ctx) {
 			if (!ctx.body) {
-				return $router.response(400, {error: "body required"});
+				return ctx.response(400, {error: "body required"});
 			}
-			return $router.response(201, {
+			return ctx.response(201, {
 				created: true,
 				name: ctx.body.name,
 				email: ctx.body.email
@@ -236,7 +236,7 @@ func TestJS_Router_InfiniteLoop(t *testing.T) {
 		$router.get("/loop", function(ctx) {
 			var count = 0;
 			while (count < 1000000) { count++; }
-			return $router.response(200, {count: count});
+			return ctx.response(200, {count: count});
 		});
 	`)
 
@@ -269,7 +269,7 @@ func TestJS_Router_SequentialMultipleRequests(t *testing.T) {
 		var requestCount = 0;
 		$router.get("/sequential", function(ctx) {
 			requestCount++;
-			return $router.response(200, {
+			return ctx.response(200, {
 				id: ctx.query.id || "unknown",
 				count: requestCount
 			});
@@ -318,9 +318,9 @@ func TestJS_Router_Headers(t *testing.T) {
 		$router.get("/auth", function(ctx) {
 			var auth = ctx.headers["Authorization"];
 			if (!auth) {
-				return $router.response(401, {error: "No auth header"});
+				return ctx.response(401, {error: "No auth header"});
 			}
-			return $router.response(200, {auth: auth});
+			return ctx.response(200, {auth: auth});
 		});
 	`)
 
@@ -347,7 +347,7 @@ func TestJS_Router_ResponseHelper(t *testing.T) {
 
 	h.MustRun(t, `
 		$router.get("/helper", function(ctx) {
-			return $router.response(201, {message: "created"});
+			return ctx.response(201, {message: "created"});
 		});
 	`)
 
@@ -367,16 +367,16 @@ func TestJS_Router_AllMethods(t *testing.T) {
 
 	h.MustRun(t, `
 		$router.get("/resource", function(ctx) {
-			return $router.response(200, {method: "GET"});
+			return ctx.response(200, {method: "GET"});
 		});
 		$router.post("/resource", function(ctx) {
-			return $router.response(201, {method: "POST"});
+			return ctx.response(201, {method: "POST"});
 		});
 		$router.put("/resource", function(ctx) {
-			return $router.response(200, {method: "PUT"});
+			return ctx.response(200, {method: "PUT"});
 		});
 		$router.delete("/resource", function(ctx) {
-			return $router.response(204, {method: "DELETE"});
+			return ctx.response(204, {method: "DELETE"});
 		});
 	`)
 
