@@ -197,21 +197,29 @@ $service.start(() => {
       <section className="space-y-4">
         <h2 className="text-xl font-semibold">Important Notes</h2>
 
-        <div className="border border-yellow-500/50 bg-yellow-500/5 rounded-lg p-4">
-          <ul className="text-sm text-muted-foreground space-y-2">
-            <li>
-              <strong>Development branches don't auto-start.</strong> After server restart, you need
-              to manually navigate to the Pipeline page and start the service.
-            </li>
-            <li>
-              <strong>Only releases auto-start.</strong> If you need your service to persist through
-              restarts, create a release and enable auto-start in project settings.
-            </li>
-            <li>
-              <strong>Code changes require restart.</strong> After saving code, stop and start the
-              service to apply changes.
-            </li>
-          </ul>
+        <div className="space-y-3">
+          <div className="border rounded-lg p-4">
+            <h3 className="font-medium mb-1">Development branches don't auto-start</h3>
+            <p className="text-sm text-muted-foreground">
+              After server restart, you need to manually navigate to the Pipeline page and start the
+              service.
+            </p>
+          </div>
+
+          <div className="border rounded-lg p-4">
+            <h3 className="font-medium mb-1">Only releases auto-start</h3>
+            <p className="text-sm text-muted-foreground">
+              If you need your service to persist through restarts, create a release and enable
+              auto-start in project settings.
+            </p>
+          </div>
+
+          <div className="border rounded-lg p-4">
+            <h3 className="font-medium mb-1">Code changes require restart</h3>
+            <p className="text-sm text-muted-foreground">
+              After saving code, stop and start the service to apply changes.
+            </p>
+          </div>
         </div>
       </section>
     </div>
