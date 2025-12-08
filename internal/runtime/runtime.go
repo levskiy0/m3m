@@ -193,9 +193,7 @@ func (m *Manager) Start(ctx context.Context, projectID primitive.ObjectID, code 
 	return nil
 }
 
-// stopRuntime stops a runtime without lock
 func (m *Manager) stopRuntime(runtime *ProjectRuntime) {
-	// Stop metrics collection first
 	if runtime.metricsCancel != nil {
 		runtime.metricsCancel()
 	}
