@@ -3,6 +3,7 @@ package websocket
 import (
 	"context"
 	"log/slog"
+	"sort"
 	"sync"
 	"time"
 
@@ -12,6 +13,20 @@ import (
 	"m3m/internal/runtime"
 	"m3m/internal/service"
 )
+
+// GoalStatsResponse represents aggregated goal statistics (same as handler)
+type GoalStatsResponse struct {
+	GoalID     string          `json:"goalID"`
+	Value      int64           `json:"value"`
+	TotalValue int64           `json:"totalValue,omitempty"`
+	DailyStats []DailyStatItem `json:"dailyStats,omitempty"`
+}
+
+// DailyStatItem represents a single day's statistics
+type DailyStatItem struct {
+	Date  string `json:"date"`
+	Value int64  `json:"value"`
+}
 
 // RuntimeManager interface for getting runtime stats
 type RuntimeManager interface {
@@ -131,13 +146,12 @@ func (b *Broadcaster) broadcastMonitorData() {
 	}
 }
 
-// broadcastGoalsData sends goals stats to all project subscribers
+// broadcastGoalsData sends aggregated goals stats to all project subscribers
 func (b *Broadcaster) broadcastGoalsData() {
 	if b.goalService == nil {
 		return
 	}
 
-	// Get all running projects
 	if b.runtimeManager == nil {
 		return
 	}
@@ -147,7 +161,6 @@ func (b *Broadcaster) broadcastGoalsData() {
 	for _, projectID := range runningProjects {
 		projectIDStr := projectID.Hex()
 
-		// Only broadcast if there are subscribers
 		if !b.hub.HasSubscribers(projectIDStr) {
 			continue
 		}
@@ -172,23 +185,83 @@ func (b *Broadcaster) broadcastGoalsData() {
 			goalIDs[i] = g.ID.Hex()
 		}
 
-		// Get stats for last 14 days
+		// Get stats for last 7 days
 		now := time.Now()
 		startDate := now.AddDate(0, 0, -7)
+		today := now.Format("2006-01-02")
 
 		stats, err := b.goalService.GetStats(ctx, &domain.GoalStatsQuery{
 			GoalIDs:   goalIDs,
 			ProjectID: projectIDStr,
 			StartDate: startDate.Format("2006-01-02"),
-			EndDate:   now.Format("2006-01-02"),
+			EndDate:   today,
 		})
-		cancel()
+		if err != nil {
+			cancel()
+			continue
+		}
 
+		// Get total values
+		totalValues, err := b.goalService.GetTotalValues(ctx, goalIDs)
+		cancel()
 		if err != nil {
 			continue
 		}
 
-		b.hub.BroadcastToProject(projectIDStr, EventGoals, stats)
+		// Aggregate stats by goal ID (same logic as handler)
+		goalStatsMap := make(map[string]*GoalStatsResponse)
+
+		for _, stat := range stats {
+			goalID := stat.GoalID.Hex()
+			if _, ok := goalStatsMap[goalID]; !ok {
+				goalStatsMap[goalID] = &GoalStatsResponse{
+					GoalID:     goalID,
+					DailyStats: []DailyStatItem{},
+				}
+			}
+
+			gs := goalStatsMap[goalID]
+			gs.DailyStats = append(gs.DailyStats, DailyStatItem{
+				Date:  stat.Date,
+				Value: stat.Value,
+			})
+
+			// Set current value (today's value)
+			if stat.Date == today || stat.Date == "total" {
+				gs.Value = stat.Value
+			}
+		}
+
+		// Build result with total values
+		result := make([]GoalStatsResponse, 0, len(goalStatsMap))
+		for goalID, gs := range goalStatsMap {
+			gs.TotalValue = totalValues[goalID]
+			sort.Slice(gs.DailyStats, func(i, j int) bool {
+				return gs.DailyStats[i].Date < gs.DailyStats[j].Date
+			})
+			result = append(result, *gs)
+		}
+
+		// Add empty responses for goals with no stats
+		for _, goalID := range goalIDs {
+			found := false
+			for _, gs := range result {
+				if gs.GoalID == goalID {
+					found = true
+					break
+				}
+			}
+			if !found {
+				result = append(result, GoalStatsResponse{
+					GoalID:     goalID,
+					Value:      0,
+					TotalValue: totalValues[goalID],
+					DailyStats: []DailyStatItem{},
+				})
+			}
+		}
+
+		b.hub.BroadcastToProject(projectIDStr, EventGoals, result)
 	}
 }
 

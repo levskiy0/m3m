@@ -57,10 +57,16 @@ export function useProjectRuntime({
     queryClient.invalidateQueries({ queryKey: ['monitor', projectId] });
   }, [queryClient, projectId]);
 
-  const handleGoalsUpdate = useCallback(() => {
-    // Refetch goals stats when we receive WS notification
-    // Use prefix match to invalidate all goal stats queries for this project
-    queryClient.invalidateQueries({ queryKey: ['project-goal-stats', projectId] });
+  const handleGoalsUpdate = useCallback((data: unknown) => {
+    // Update goals stats cache directly from WS data (no HTTP refetch needed)
+    // WS now sends aggregated data in same format as /api/goals/stats
+    if (Array.isArray(data) && data.length > 0) {
+      // Update cache for any matching goal stats query
+      queryClient.setQueriesData(
+        { queryKey: ['project-goal-stats', projectId] },
+        data
+      );
+    }
   }, [queryClient, projectId]);
 
   // Subscribe to WebSocket events
