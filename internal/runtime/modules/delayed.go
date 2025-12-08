@@ -12,7 +12,7 @@ type DelayedModule struct {
 
 func NewDelayedModule(poolSize int) *DelayedModule {
 	if poolSize <= 0 {
-		poolSize = 10
+		poolSize = 50
 	}
 	return &DelayedModule{
 		poolSize: poolSize,
