@@ -16,9 +16,10 @@ import (
 type LogCallback func()
 
 type LoggerModule struct {
-	file      *os.File
-	mu        sync.Mutex
-	onLogFunc LogCallback
+	file        *os.File
+	mu          sync.Mutex
+	onLogFunc   LogCallback
+	notifyTimer *time.Timer
 }
 
 func NewLoggerModule(logPath string) *LoggerModule {
@@ -74,9 +75,11 @@ func (l *LoggerModule) log(level string, args ...interface{}) {
 	l.file.WriteString(logLine)
 	l.file.Sync() // Flush buffer to disk immediately
 
-	// Notify about new log
 	if l.onLogFunc != nil {
-		go l.onLogFunc()
+		if l.notifyTimer != nil {
+			l.notifyTimer.Stop()
+		}
+		l.notifyTimer = time.AfterFunc(1*time.Second, l.onLogFunc)
 	}
 }
 

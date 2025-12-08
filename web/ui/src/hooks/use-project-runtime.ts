@@ -39,11 +39,10 @@ export function useProjectRuntime({
   }, [queryClient, projectId]);
 
   const handleLogUpdate = useCallback(() => {
-    // Throttle log fetches - only fetch if last fetch was > 3 seconds ago
     const now = Date.now();
-    if (now - lastLogFetchRef.current > 3000) {
+    if (now - lastLogFetchRef.current > 500) {
       lastLogFetchRef.current = now;
-      queryClient.invalidateQueries({ queryKey: queryKeys.logs.project(projectId) });
+      queryClient.refetchQueries({ queryKey: queryKeys.logs.project(projectId) });
     }
   }, [queryClient, projectId]);
 
