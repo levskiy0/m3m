@@ -4,6 +4,8 @@
 BINARY_NAME=m3m
 BUILD_DIR=./build
 MAIN_PATH=./cmd/m3m
+VERSION?=$(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
+LDFLAGS=-ldflags "-X m3m/internal/app.Version=$(VERSION)"
 
 # Go commands
 GOCMD=go
@@ -28,15 +30,15 @@ web-dev:
 
 # Build the application
 build: web-build
-	@echo "Building..."
+	@echo "Building $(VERSION)..."
 	@mkdir -p $(BUILD_DIR)
-	$(GOBUILD) -o $(BUILD_DIR)/$(BINARY_NAME) $(MAIN_PATH)
+	$(GOBUILD) $(LDFLAGS) -o $(BUILD_DIR)/$(BINARY_NAME) $(MAIN_PATH)
 
 # Build without web (for development)
 build-backend:
-	@echo "Building backend only..."
+	@echo "Building backend only $(VERSION)..."
 	@mkdir -p $(BUILD_DIR)
-	$(GOBUILD) -o $(BUILD_DIR)/$(BINARY_NAME) $(MAIN_PATH)
+	$(GOBUILD) $(LDFLAGS) -o $(BUILD_DIR)/$(BINARY_NAME) $(MAIN_PATH)
 
 # Run the application
 run: build
@@ -74,21 +76,21 @@ new-admin:
 
 # Build for Linux
 build-linux:
-	@echo "Building for Linux..."
+	@echo "Building for Linux $(VERSION)..."
 	@mkdir -p $(BUILD_DIR)
-	GOOS=linux GOARCH=amd64 $(GOBUILD) -o $(BUILD_DIR)/$(BINARY_NAME)-linux $(MAIN_PATH)
+	GOOS=linux GOARCH=amd64 $(GOBUILD) $(LDFLAGS) -o $(BUILD_DIR)/$(BINARY_NAME)-linux $(MAIN_PATH)
 
 # Build for Windows
 build-windows:
-	@echo "Building for Windows..."
+	@echo "Building for Windows $(VERSION)..."
 	@mkdir -p $(BUILD_DIR)
-	GOOS=windows GOARCH=amd64 $(GOBUILD) -o $(BUILD_DIR)/$(BINARY_NAME).exe $(MAIN_PATH)
+	GOOS=windows GOARCH=amd64 $(GOBUILD) $(LDFLAGS) -o $(BUILD_DIR)/$(BINARY_NAME).exe $(MAIN_PATH)
 
 # Build for macOS
 build-darwin:
-	@echo "Building for macOS..."
+	@echo "Building for macOS $(VERSION)..."
 	@mkdir -p $(BUILD_DIR)
-	GOOS=darwin GOARCH=amd64 $(GOBUILD) -o $(BUILD_DIR)/$(BINARY_NAME)-darwin $(MAIN_PATH)
+	GOOS=darwin GOARCH=amd64 $(GOBUILD) $(LDFLAGS) -o $(BUILD_DIR)/$(BINARY_NAME)-darwin $(MAIN_PATH)
 
 # Build all platforms
 build-all: build-linux build-windows build-darwin

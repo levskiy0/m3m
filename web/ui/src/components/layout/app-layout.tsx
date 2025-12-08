@@ -1,8 +1,9 @@
 import React from 'react';
 import { Outlet, useLocation, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
+import { Star, Github } from 'lucide-react';
 
-import { projectsApi } from '@/api';
+import { projectsApi, versionApi } from '@/api';
 import { AppSidebar } from './app-sidebar';
 import {
   Breadcrumb,
@@ -89,8 +90,6 @@ function useBreadcrumbs(): BreadcrumbItem[] {
     } else {
       breadcrumbs.push({ label: 'Projects' });
     }
-  } else if (pathSegments[0] === 'goals') {
-    breadcrumbs.push({ label: 'Global Goals' });
   } else if (pathSegments[0] === 'docs') {
     breadcrumbs.push({ label: 'Documentation' });
   } else if (pathSegments[0] === 'system') {
@@ -110,11 +109,17 @@ function useBreadcrumbs(): BreadcrumbItem[] {
 export function AppLayout() {
   const breadcrumbs = useBreadcrumbs();
 
+  const { data: versionInfo } = useQuery({
+    queryKey: ['version'],
+    queryFn: versionApi.get,
+    staleTime: Infinity,
+  });
+
   return (
     <SidebarProvider>
       <AppSidebar />
       <SidebarInset>
-        <header className="z-10 fixed bg-background w-full flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
+        <header className="sticky top-0 z-10 bg-background flex h-16 shrink-0 items-center justify-between gap-2 border-b transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
           <div className="flex items-center gap-2 px-4">
             <SidebarTrigger className="-ml-1" />
             <Separator
@@ -138,8 +143,30 @@ export function AppLayout() {
               </BreadcrumbList>
             </Breadcrumb>
           </div>
+
+          {/* Right section: GitHub + Version */}
+          <div className="flex items-center gap-3 px-4">
+            <a
+              href="https://github.com/levskiy0/m3m"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 px-2.5 py-1 border rounded-md text-sm hover:bg-muted transition-colors"
+            >
+              <Github className="h-4 w-4" />
+              <Star className="h-3.5 w-3.5 text-yellow-500" />
+            </a>
+            <Separator orientation="vertical" className="h-4" />
+            <div className="flex items-center gap-2 text-sm">
+              <span className="font-semibold">{versionInfo?.name || 'M3M'}</span>
+              {versionInfo?.version && (
+                <span className="text-muted-foreground bg-muted px-1.5 py-0.5 rounded text-xs">
+                  {versionInfo.version}
+                </span>
+              )}
+            </div>
+          </div>
         </header>
-        <main className="flex flex-1 flex-col gap-4 p-4 pt-0 mt-16">
+        <main className="flex flex-1 flex-col gap-4 p-4 pt-0">
           <Outlet />
         </main>
       </SidebarInset>

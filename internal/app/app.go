@@ -78,6 +78,14 @@ func RegisterRoutes(
 		c.JSON(http.StatusOK, gin.H{"status": "ok"})
 	})
 
+	// Version endpoint (public)
+	r.GET("/api/version", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{
+			"version": Version,
+			"name":    "M3M",
+		})
+	})
+
 	api := r.Group("/api")
 
 	// Public routes

@@ -1,4 +1,5 @@
 import { useTitle } from '@/hooks';
+import { AlertTriangle } from 'lucide-react';
 
 export function GettingStartedPage() {
   useTitle('Getting Started - Docs');
@@ -12,24 +13,107 @@ export function GettingStartedPage() {
         </p>
       </div>
 
-      {/* Overview */}
-      <section className="space-y-4">
-        <h2 className="text-xl font-semibold">What is M3M?</h2>
-        <p className="text-muted-foreground">
-          M3M was created to simplify deploying personal services and small automations.
-          When you need to quickly build a small service that handles webhooks with custom logic,
-          collects statistics, and stores data — without the overhead of configuring Docker,
-          managing resources, and orchestrating deployments.
-        </p>
-        <p className="text-muted-foreground">
-          Write your service in JavaScript, deploy it on your own hosting — and you're done.
-          Need to update or remove it? Just as quick. Need statistics or database records?
-          They're all built-in.
-        </p>
-        <p className="text-muted-foreground">
-          Each service runs in an isolated JavaScript runtime with access to built-in modules
-          for routing, scheduling, storage, database operations, goal tracking, and more.
-        </p>
+      {/* Development Warning Banner */}
+      <div className="flex items-start gap-3 p-4 bg-orange-500/10 border border-orange-500/30 rounded-lg">
+        <AlertTriangle className="h-5 w-5 text-orange-500 shrink-0 mt-0.5" />
+        <div className="text-sm">
+          <p className="font-medium text-orange-600 dark:text-orange-400">
+            Project Under Development
+          </p>
+          <p className="text-muted-foreground mt-1">
+            M3M is currently in active development. Some features may be incomplete, unstable, or
+            subject to change. Use in production at your own risk.
+          </p>
+        </div>
+      </div>
+
+      {/* Why M3M? */}
+      <section className="space-y-6">
+        <h2 className="text-xl font-semibold">Why M3M?</h2>
+
+        {/* The Problem */}
+        <div className="space-y-3">
+          <h3 className="font-medium text-destructive">The Problem: Infrastructure Overkill</h3>
+          <p className="text-muted-foreground">
+            We live in an era where deploying a simple 50-line Telegram bot or a webhook handler
+            requires a Dockerfile, a docker-compose.yml, 500MB of Node.js base images, and a bunch
+            of external dependencies.
+          </p>
+          <p className="text-muted-foreground">
+            Your VPS is bloated with layers, your RAM is consumed by identical Node processes,
+            and updating a single line of code feels like a ritual.
+          </p>
+        </div>
+
+        {/* The Solution */}
+        <div className="space-y-3">
+          <h3 className="font-medium text-green-600 dark:text-green-400">
+            The Solution: Unified Runtime
+          </h3>
+          <p className="text-muted-foreground">
+            M3M was born to kill this complexity. It is a single, lightweight binary that acts
+            as a <strong>private ecosystem</strong> for your scripts.
+          </p>
+          <p className="text-muted-foreground">
+            Instead of managing separate containers for every task, you have one environment
+            that provides everything out of the box:
+          </p>
+          <div className="grid sm:grid-cols-2 gap-3">
+            <div className="border rounded-lg p-3">
+              <p className="text-sm">
+                <span className="text-muted-foreground">Need an API?</span>
+                <br />
+                <code className="font-mono text-sm bg-muted px-1.5 py-0.5 rounded">$router</code>
+              </p>
+            </div>
+            <div className="border rounded-lg p-3">
+              <p className="text-sm">
+                <span className="text-muted-foreground">Need a cron job?</span>
+                <br />
+                <code className="font-mono text-sm bg-muted px-1.5 py-0.5 rounded">$schedule</code>
+              </p>
+            </div>
+            <div className="border rounded-lg p-3">
+              <p className="text-sm">
+                <span className="text-muted-foreground">Need to save data?</span>
+                <br />
+                <code className="font-mono text-sm bg-muted px-1.5 py-0.5 rounded">$database</code>{' '}
+                <span className="text-xs text-muted-foreground">(zero-config)</span>
+              </p>
+            </div>
+            <div className="border rounded-lg p-3">
+              <p className="text-sm">
+                <span className="text-muted-foreground">Need background tasks?</span>
+                <br />
+                <code className="font-mono text-sm bg-muted px-1.5 py-0.5 rounded">$delayed</code>
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* The Philosophy */}
+        <div className="space-y-3">
+          <h3 className="font-medium">The Philosophy: "Code First, Infrastructure Never"</h3>
+          <p className="text-muted-foreground">
+            M3M is for developers who want to write logic in the browser (or their editor),
+            hit <strong>Save</strong>, and walk away. It's for those who value their time
+            and their server resources.
+          </p>
+          <ul className="space-y-2 text-sm text-muted-foreground">
+            <li className="flex items-start gap-2">
+              <span className="text-green-500 mt-0.5">✓</span>
+              <span>No more NPM dependency hell for micro-tasks</span>
+            </li>
+            <li className="flex items-start gap-2">
+              <span className="text-green-500 mt-0.5">✓</span>
+              <span>No more Docker storage anxiety</span>
+            </li>
+            <li className="flex items-start gap-2">
+              <span className="text-green-500 mt-0.5">✓</span>
+              <span>No more cloud bills for things that should run on your $5 VPS</span>
+            </li>
+          </ul>
+        </div>
       </section>
 
       {/* CLI Commands */}

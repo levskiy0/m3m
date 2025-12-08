@@ -76,7 +76,7 @@ var versionCmd = &cobra.Command{
 	Use:   "version",
 	Short: "Print the version number",
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("M3M v1.0.0")
+		fmt.Printf("M3M %s\n", app.Version)
 	},
 }
 

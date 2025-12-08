@@ -9,3 +9,4 @@ export { storageApi } from './storage';
 export { modelsApi } from './models';
 export { environmentApi } from './environment';
 export { runtimeApi } from './runtime';
+export { versionApi } from './version';
