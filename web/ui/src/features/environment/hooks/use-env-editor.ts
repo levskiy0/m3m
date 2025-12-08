@@ -97,19 +97,16 @@ export function useEnvEditor({ initialEnvVars }: UseEnvEditorOptions) {
     const { active, over } = event;
 
     if (over && active.id !== over.id) {
-      setEnvIds((currentIds) => {
-        const oldIndex = currentIds.indexOf(active.id as string);
-        const newIndex = currentIds.indexOf(over.id as string);
+      const oldIndex = envIds.indexOf(active.id as string);
+      const newIndex = envIds.indexOf(over.id as string);
 
-        if (oldIndex === -1 || newIndex === -1) return currentIds;
+      if (oldIndex === -1 || newIndex === -1) return;
 
-        setEnvVars((currentEnvVars) => arrayMove(currentEnvVars, oldIndex, newIndex));
-        setHasChanges(true);
-
-        return arrayMove(currentIds, oldIndex, newIndex);
-      });
+      setEnvIds(arrayMove(envIds, oldIndex, newIndex));
+      setEnvVars(arrayMove(envVars, oldIndex, newIndex));
+      setHasChanges(true);
     }
-  }, []);
+  }, [envIds, envVars]);
 
   // Get changes for saving
   const getChanges = useCallback(() => {
