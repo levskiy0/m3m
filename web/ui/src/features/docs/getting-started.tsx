@@ -35,7 +35,7 @@ export function GettingStartedPage() {
         <div className="space-y-3">
           <h3 className="font-medium text-red-500">The Problem: Infrastructure Overkill</h3>
           <p className="text-muted-foreground">
-            We live in an era where deploying a simple 50-line Telegram bot or a webhook handler
+            We live in an era where deploying a simple 50-line integration or a webhook handler
             requires a Dockerfile, a docker-compose.yml, 500MB of Node.js base images, and a bunch
             of external dependencies.
           </p>
