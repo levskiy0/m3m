@@ -10,7 +10,7 @@ import { cn } from '@/lib/utils';
 
 const staticPages = [
   { id: 'getting-started', title: 'Getting Started', icon: Rocket },
-  { id: 'lifecycle', title: 'Life Cycle', icon: RefreshCw },
+  { id: 'lifecycle', title: 'Development Guide', icon: RefreshCw },
 ];
 
 export function DocsLayout() {

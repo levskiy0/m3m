@@ -32,6 +32,58 @@ export function GettingStartedPage() {
         </p>
       </section>
 
+      {/* CLI Commands */}
+      <section className="space-y-4">
+        <h2 className="text-xl font-semibold">CLI Commands</h2>
+        <p className="text-muted-foreground mb-4">
+          M3M provides a command-line interface for managing the server and users:
+        </p>
+
+        <div className="space-y-3">
+          <div className="border rounded-lg p-4">
+            <h3 className="font-medium mb-1">Start the Server</h3>
+            <pre className="bg-muted rounded-md p-3 text-sm overflow-x-auto">
+              <code>{`m3m serve`}</code>
+            </pre>
+            <p className="text-sm text-muted-foreground mt-2">
+              Starts the M3M server using the default config file (<code className="font-mono text-sm bg-muted px-1.5 py-0.5 rounded">config.yaml</code>).
+            </p>
+          </div>
+
+          <div className="border rounded-lg p-4">
+            <h3 className="font-medium mb-1">Custom Config File</h3>
+            <pre className="bg-muted rounded-md p-3 text-sm overflow-x-auto">
+              <code>{`m3m serve -c /path/to/config.yaml
+# or
+m3m serve --config /path/to/config.yaml`}</code>
+            </pre>
+            <p className="text-sm text-muted-foreground mt-2">
+              Use a custom configuration file path.
+            </p>
+          </div>
+
+          <div className="border rounded-lg p-4">
+            <h3 className="font-medium mb-1">Create Root Admin</h3>
+            <pre className="bg-muted rounded-md p-3 text-sm overflow-x-auto">
+              <code>{`m3m new-admin admin@example.com yourpassword`}</code>
+            </pre>
+            <p className="text-sm text-muted-foreground mt-2">
+              Creates the first root administrator user. This user has full access to all projects and can manage other users.
+            </p>
+          </div>
+
+          <div className="border rounded-lg p-4">
+            <h3 className="font-medium mb-1">Check Version</h3>
+            <pre className="bg-muted rounded-md p-3 text-sm overflow-x-auto">
+              <code>{`m3m version`}</code>
+            </pre>
+            <p className="text-sm text-muted-foreground mt-2">
+              Displays the current M3M version.
+            </p>
+          </div>
+        </div>
+      </section>
+
       {/* Service Lifecycle */}
       <section className="space-y-4">
         <h2 className="text-xl font-semibold">Service Lifecycle</h2>

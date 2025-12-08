@@ -11,7 +11,6 @@ import { ModelsPage } from '@/features/models/models-page';
 import { ModelSchemaPage } from '@/features/models/model-schema-page';
 import { ModelDataPage } from '@/features/models/model-data-page';
 import { GoalsPage } from '@/features/goals/goals-page';
-import { GlobalGoalsPage } from '@/features/goals/global-goals-page';
 import { ModulesPage } from '@/features/modules/modules-page';
 import { DocsLayout } from '@/features/docs/docs-layout';
 import { GettingStartedPage } from '@/features/docs/getting-started';
@@ -101,7 +100,6 @@ export function AppRouter() {
             <Route path="/projects/:projectId/logs" element={<LogsPage />} />
 
             {/* Global */}
-            <Route path="/goals" element={<GlobalGoalsPage />} />
             <Route path="/modules" element={<ModulesPage />} />
 
             {/* Documentation */}

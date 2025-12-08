@@ -14,7 +14,6 @@ import {
   Variable,
   ChevronsUpDown,
   Plus,
-  Globe,
   Package,
   Sun,
   Moon,
@@ -386,20 +385,8 @@ export function AppSidebar() {
 
         {/* Global Section */}
         <SidebarGroup>
-          <SidebarGroupLabel>Global</SidebarGroupLabel>
+          <SidebarGroupLabel>Information</SidebarGroupLabel>
           <SidebarMenu>
-            <SidebarMenuItem>
-              <SidebarMenuButton
-                asChild
-                isActive={location.pathname === '/goals'}
-                tooltip="Global Goals"
-              >
-                <Link to="/goals">
-                  <Globe />
-                  <span>Global Goals</span>
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
             <SidebarMenuItem>
               <SidebarMenuButton
                 asChild

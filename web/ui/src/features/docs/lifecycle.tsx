@@ -1,12 +1,12 @@
 import { useTitle } from '@/hooks';
 
 export function LifecyclePage() {
-  useTitle('Life Cycle - Docs');
+  useTitle('Development Guide - Docs');
 
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight mb-2">Life Cycle</h1>
+        <h1 className="text-3xl font-bold tracking-tight mb-2">Development Guide</h1>
         <p className="text-muted-foreground text-lg">
           Understanding how to develop, debug, and deploy your services.
         </p>
