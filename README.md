@@ -45,18 +45,6 @@ M3M is for developers who want to write logic in the browser (or their editor), 
 
 ---
 
-## Features
-
-| | |
-|-|-|
-| **Batteries Included** | Built-in Router, Scheduler, Key-Value DB, Logger, HTTP client, and more. |
-| **Isolated Runtime** | Powered by [Goja](https://github.com/dop251/goja) (pure Go JS engine). Safe and lightweight. |
-| **Plugin System** | Support for `.so` plugins for high-performance. |
-| **Stateful** | Persistent storage built-in. Your data survives restarts. |
-| **Web UI** | Monaco-based code editor, real-time logs, project management — all in the browser. |
-
----
-
 ## Example
 
 ```javascript
