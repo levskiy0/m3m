@@ -6,7 +6,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, Save, Table, Database, FileText, Key, Type, Settings2, Asterisk } from 'lucide-react';
+import { Plus, Save, Table, Database, FileText, Type, Settings2, Asterisk } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   DndContext,

@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Camera, Save, Key } from 'lucide-react';
+import { Camera, Key } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { usersApi } from '@/api';
@@ -33,7 +33,7 @@ export function ProfilePage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [name, setName] = useState(user?.name || '');
-  const [nameChanged, setNameChanged] = useState(false);
+  const [, setNameChanged] = useState(false);
 
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
