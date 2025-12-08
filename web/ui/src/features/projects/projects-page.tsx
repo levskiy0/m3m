@@ -20,7 +20,7 @@ import { config } from '@/lib/config';
 import { queryKeys } from '@/lib/query-keys';
 import { formatUptime } from '@/lib/format';
 import { useAuth } from '@/providers/auth-provider';
-import { useAutoSlug } from '@/hooks';
+import { useAutoSlug, useTitle } from '@/hooks';
 import type { Project, CreateProjectRequest } from '@/types';
 import { Button } from '@/components/ui/button';
 import {

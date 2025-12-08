@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { FolderCode } from 'lucide-react';
 
 import { useAuth } from '@/providers/auth-provider';
+import { useTitle } from '@/hooks';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -21,6 +22,7 @@ import {
 import { Input } from '@/components/ui/input';
 
 export function LoginPage() {
+  useTitle('Login');
   const navigate = useNavigate();
   const { login } = useAuth();
   const [email, setEmail] = useState('');

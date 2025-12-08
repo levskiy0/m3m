@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 
 import { projectsApi, usersApi } from '@/api';
 import { useAuth } from '@/providers/auth-provider';
+import { useTitle } from '@/hooks';
 import type { UpdateProjectRequest } from '@/types';
 import { Button } from '@/components/ui/button';
 import {

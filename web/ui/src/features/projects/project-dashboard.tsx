@@ -42,7 +42,7 @@ import { projectsApi, pipelineApi, goalsApi, widgetsApi } from '@/api';
 import { config } from '@/lib/config';
 import { queryKeys } from '@/lib/query-keys';
 import { cn } from '@/lib/utils';
-import { useProjectRuntime } from '@/hooks';
+import { useProjectRuntime, useTitle } from '@/hooks';
 import type { LogEntry, GoalStats, WidgetVariant, WidgetType, CreateWidgetRequest, UpdateWidgetRequest, Widget, Goal, RuntimeStats } from '@/types';
 import { Button } from '@/components/ui/button';
 import {
