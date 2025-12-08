@@ -33,14 +33,14 @@ I wanted a tool where I could just write JavaScript, hit **Run**, and have persi
 
 ## Features
 
-| |                                                                                              |
-|---|----------------------------------------------------------------------------------------------|
-| **Zero Config** | Single binary deployment. No NPM or Composer install, no Docker required.                    |
-| **Batteries Included** | Built-in Router, Scheduler, Key-Value DB, Logger, HTTP client, and more.                     |
+| |                                                                                             |
+|---|---------------------------------------------------------------------------------------------|
+| **Zero Config** | Single binary deployment. No NPM or Composer install, no Docker required.                   |
+| **Batteries Included** | Built-in Router, Scheduler, Key-Value DB, Logger, HTTP client, and more.                    |
 | **Isolated Runtime** | Powered by [Goja](https://github.com/dop251/goja) (pure Go JS engine). Safe and lightweight. |
-| **Plugin System** | Support for `.so` plugins for high-performance.            |
-| **Stateful** | Persistent storage built-in. Your data survives restarts.                                    |
-| **Web UI** | Monaco-based code editor, real-time logs, project management — all in the browser.           |
+| **Plugin System** | Support for `.so` plugins for high-performance.                                             |
+| **Stateful** | Persistent storage built-in. Your data survives restarts.                                   |
+| **Web UI** | Monaco-based code editor, real-time logs, project management — all in the browser.          |
 
 ---
 
