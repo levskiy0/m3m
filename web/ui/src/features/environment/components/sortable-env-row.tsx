@@ -10,7 +10,7 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 
 import type { EnvType } from '@/types';
-import { ENV_TYPES } from '@/lib/constants';
+import { ENV_TYPES } from '@/features/environment/constants';
 import { copyToClipboard } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';

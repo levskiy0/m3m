@@ -52,7 +52,7 @@ import {
 } from 'date-fns';
 
 import { goalsApi } from '@/api';
-import { GOAL_TYPES } from '@/lib/constants';
+import { GOAL_TYPES } from '@/features/goals/constants';
 import { queryKeys } from '@/lib/query-keys';
 import { formatNumber, calculateTrend } from '@/lib/format';
 import { cn } from '@/lib/utils';

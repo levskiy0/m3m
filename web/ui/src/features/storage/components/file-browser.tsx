@@ -23,7 +23,7 @@ import {
 import { toast } from 'sonner';
 
 import { storageApi } from '@/api';
-import { EDITABLE_MIME_TYPES } from '@/lib/constants';
+import { EDITABLE_MIME_TYPES } from '@/features/storage/constants';
 import { formatBytes } from '@/lib/format';
 import { cn, isImageFile } from '@/lib/utils';
 import type { StorageItem } from '@/types';

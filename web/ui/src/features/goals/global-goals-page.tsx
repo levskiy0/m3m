@@ -5,7 +5,7 @@ import { toast } from 'sonner';
 
 import { goalsApi, projectsApi } from '@/api';
 import { useAuth } from '@/providers/auth-provider';
-import { GOAL_TYPES } from '@/lib/constants';
+import { GOAL_TYPES } from '@/features/goals/constants';
 import type { Goal, CreateGoalRequest, UpdateGoalRequest, GoalType } from '@/types';
 import { Button } from '@/components/ui/button';
 import {

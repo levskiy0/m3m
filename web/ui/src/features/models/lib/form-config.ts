@@ -4,7 +4,7 @@
  */
 
 import type { ModelField, FormConfig, FieldView, FieldType } from '@/types';
-import { FIELD_VIEWS } from '@/lib/constants';
+import { FIELD_VIEWS } from '@/features/models/constants';
 
 /**
  * Create default form config from model fields

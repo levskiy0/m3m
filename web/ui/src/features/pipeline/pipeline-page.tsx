@@ -16,7 +16,7 @@ import {
 import { toast } from 'sonner';
 
 import { pipelineApi, runtimeApi, projectsApi } from '@/api';
-import { DEFAULT_SERVICE_CODE, RELEASE_TAGS } from '@/lib/constants';
+import { DEFAULT_SERVICE_CODE, RELEASE_TAGS } from '@/features/pipeline/constants';
 import type { CreateBranchRequest, CreateReleaseRequest, LogEntry } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
