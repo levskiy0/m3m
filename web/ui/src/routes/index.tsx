@@ -13,7 +13,10 @@ import { ModelDataPage } from '@/features/models/model-data-page';
 import { GoalsPage } from '@/features/goals/goals-page';
 import { GlobalGoalsPage } from '@/features/goals/global-goals-page';
 import { ModulesPage } from '@/features/modules/modules-page';
-import { DocsPage } from '@/features/docs/docs-page';
+import { DocsLayout } from '@/features/docs/docs-layout';
+import { GettingStartedPage } from '@/features/docs/getting-started';
+import { DatabaseGuidePage } from '@/features/docs/database-guide';
+import { ModulePage } from '@/features/docs/module-page';
 import { EnvironmentPage } from '@/features/environment/environment-page';
 import { UsersPage } from '@/features/users/users-page';
 import { ProfilePage } from '@/features/users/profile-page';
@@ -100,7 +103,14 @@ export function AppRouter() {
             {/* Global */}
             <Route path="/goals" element={<GlobalGoalsPage />} />
             <Route path="/modules" element={<ModulesPage />} />
-            <Route path="/docs" element={<DocsPage />} />
+
+            {/* Documentation */}
+            <Route path="/docs" element={<DocsLayout />}>
+              <Route index element={<Navigate to="/docs/getting-started" replace />} />
+              <Route path="getting-started" element={<GettingStartedPage />} />
+              <Route path="database" element={<DatabaseGuidePage />} />
+              <Route path="api/:moduleId" element={<ModulePage />} />
+            </Route>
 
             {/* Settings */}
             <Route path="/settings/users" element={<UsersPage />} />

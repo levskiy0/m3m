@@ -450,7 +450,13 @@ func (h *RuntimeHandler) Types(c *gin.Context) {
 }
 
 func (h *RuntimeHandler) Schemas(c *gin.Context) {
+	// Get built-in module schemas
 	schemas := modules.GetAllSchemas()
+
+	// Add plugin schemas
+	pluginSchemas := h.pluginLoader.GetAllSchemas()
+	schemas = append(schemas, pluginSchemas...)
+
 	c.JSON(http.StatusOK, schemas)
 }
 

@@ -12,6 +12,7 @@ import (
 
 	"m3m/internal/config"
 	pkgplugin "m3m/pkg/plugin"
+	"m3m/pkg/schema"
 )
 
 // Plugin is an alias to pkg/plugin.Plugin for backward compatibility
@@ -198,4 +199,13 @@ func (l *Loader) GetPluginInfos() []PluginInfo {
 		})
 	}
 	return infos
+}
+
+// GetAllSchemas returns schemas from all loaded plugins
+func (l *Loader) GetAllSchemas() []schema.ModuleSchema {
+	schemas := make([]schema.ModuleSchema, 0)
+	for _, p := range l.plugins {
+		schemas = append(schemas, p.GetSchema())
+	}
+	return schemas
 }
