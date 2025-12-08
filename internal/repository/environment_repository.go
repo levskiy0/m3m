@@ -73,7 +73,8 @@ func (r *EnvironmentRepository) FindByKey(ctx context.Context, projectID primiti
 }
 
 func (r *EnvironmentRepository) FindByProject(ctx context.Context, projectID primitive.ObjectID) ([]*domain.EnvVar, error) {
-	cursor, err := r.collection.Find(ctx, bson.M{"project_id": projectID})
+	opts := options.Find().SetSort(bson.D{{Key: "order", Value: 1}})
+	cursor, err := r.collection.Find(ctx, bson.M{"project_id": projectID}, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -124,4 +125,35 @@ func (r *EnvironmentRepository) DeleteByKey(ctx context.Context, projectID primi
 func (r *EnvironmentRepository) DeleteByProject(ctx context.Context, projectID primitive.ObjectID) error {
 	_, err := r.collection.DeleteMany(ctx, bson.M{"project_id": projectID})
 	return err
+}
+
+// BulkUpdate replaces all environment variables for a project
+func (r *EnvironmentRepository) BulkUpdate(ctx context.Context, projectID primitive.ObjectID, envVars []*domain.EnvVar) ([]*domain.EnvVar, error) {
+	// Delete all existing vars for the project
+	if _, err := r.collection.DeleteMany(ctx, bson.M{"project_id": projectID}); err != nil {
+		return nil, err
+	}
+
+	// If no vars to insert, return empty slice
+	if len(envVars) == 0 {
+		return []*domain.EnvVar{}, nil
+	}
+
+	// Prepare documents for insertion
+	now := time.Now()
+	docs := make([]interface{}, len(envVars))
+	for i, ev := range envVars {
+		ev.ID = primitive.NewObjectID()
+		ev.ProjectID = projectID
+		ev.CreatedAt = now
+		ev.UpdatedAt = now
+		docs[i] = ev
+	}
+
+	// Insert all new vars
+	if _, err := r.collection.InsertMany(ctx, docs); err != nil {
+		return nil, err
+	}
+
+	return envVars, nil
 }

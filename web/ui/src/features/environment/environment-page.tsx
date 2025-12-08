@@ -70,7 +70,6 @@ export function EnvironmentPage() {
     handleDragEnd,
     resetState,
     setHasChanges,
-    getChanges,
   } = useEnvEditor({ initialEnvVars: envVars });
 
   // Reset state when env vars change from server
@@ -80,35 +79,22 @@ export function EnvironmentPage() {
     }
   }, [envVars, isLoading, resetState]);
 
-  // Save mutation - handles create, update, and delete
+  // Save mutation - bulk update all env vars
   const saveMutation = useMutation({
     mutationFn: async () => {
-      const { toCreate, toUpdate, toDelete } = getChanges();
-
-      // Delete removed vars
-      for (const key of toDelete) {
-        await environmentApi.delete(projectId!, key);
-      }
-
-      // Create new vars
-      for (const env of toCreate) {
-        await environmentApi.create(projectId!, {
+      const items = editableEnvVars
+        .filter((env) => env.key) // Filter out empty keys
+        .map((env, index) => ({
           key: env.key,
           type: env.type,
           value: env.value,
-        });
-      }
+          order: index,
+        }));
 
-      // Update existing vars
-      for (const env of toUpdate) {
-        await environmentApi.update(projectId!, env.key, {
-          type: env.type,
-          value: env.value,
-        });
-      }
+      return environmentApi.bulkUpdate(projectId!, { items });
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.environment.all(projectId!) });
+    onSuccess: (data) => {
+      queryClient.setQueryData(queryKeys.environment.all(projectId!), data);
       setHasChanges(false);
       toast.success('Environment saved');
     },

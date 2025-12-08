@@ -29,7 +29,7 @@ func (h *EnvironmentHandler) Register(r *gin.RouterGroup, authMiddleware *middle
 	{
 		env.GET("", h.List)
 		env.POST("", h.Create)
-		env.PUT("/:key", h.Update)
+		env.PUT("", h.BulkUpdate)
 		env.DELETE("/:key", h.Delete)
 	}
 }
@@ -86,26 +86,25 @@ func (h *EnvironmentHandler) Create(c *gin.Context) {
 	c.JSON(http.StatusCreated, envVar)
 }
 
-func (h *EnvironmentHandler) Update(c *gin.Context) {
+func (h *EnvironmentHandler) BulkUpdate(c *gin.Context) {
 	projectID, ok := h.checkAccess(c)
 	if !ok {
 		return
 	}
 
-	key := c.Param("key")
-	var req domain.UpdateEnvVarRequest
+	var req domain.BulkUpdateEnvVarRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	envVar, err := h.envService.Update(c.Request.Context(), projectID, key, &req)
+	envVars, err := h.envService.BulkUpdate(c.Request.Context(), projectID, &req)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusOK, envVar)
+	c.JSON(http.StatusOK, envVars)
 }
 
 func (h *EnvironmentHandler) Delete(c *gin.Context) {

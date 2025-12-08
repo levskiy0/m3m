@@ -79,3 +79,17 @@ func (s *EnvironmentService) GetEnvMap(ctx context.Context, projectID primitive.
 
 	return result, nil
 }
+
+func (s *EnvironmentService) BulkUpdate(ctx context.Context, projectID primitive.ObjectID, req *domain.BulkUpdateEnvVarRequest) ([]*domain.EnvVar, error) {
+	envVars := make([]*domain.EnvVar, len(req.Items))
+	for i, item := range req.Items {
+		envVars[i] = &domain.EnvVar{
+			Key:   item.Key,
+			Type:  item.Type,
+			Value: item.Value,
+			Order: item.Order,
+		}
+	}
+
+	return s.envRepo.BulkUpdate(ctx, projectID, envVars)
+}

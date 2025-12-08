@@ -236,6 +236,7 @@ export interface Environment {
   key: string;
   type: EnvType;
   value: string;
+  order: number;
 }
 
 export type EnvType = 'string' | 'text' | 'json' | 'integer' | 'float' | 'boolean';
@@ -249,6 +250,17 @@ export interface CreateEnvRequest {
 export interface UpdateEnvRequest {
   type?: EnvType;
   value?: string;
+}
+
+export interface BulkEnvItem {
+  key: string;
+  type: EnvType;
+  value: unknown;
+  order: number;
+}
+
+export interface BulkUpdateEnvRequest {
+  items: BulkEnvItem[];
 }
 
 // Model types

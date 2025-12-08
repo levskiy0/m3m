@@ -1,21 +1,16 @@
 import { api } from './client';
-import type { Environment, CreateEnvRequest, UpdateEnvRequest } from '@/types';
+import type { Environment, BulkUpdateEnvRequest } from '@/types';
 
 export const environmentApi = {
   list: async (projectId: string): Promise<Environment[]> => {
     return api.get<Environment[]>(`/api/projects/${projectId}/env`);
   },
 
-  create: async (projectId: string, data: CreateEnvRequest): Promise<Environment> => {
-    return api.post<Environment>(`/api/projects/${projectId}/env`, data);
-  },
-
-  update: async (
+  bulkUpdate: async (
     projectId: string,
-    key: string,
-    data: UpdateEnvRequest
-  ): Promise<Environment> => {
-    return api.put<Environment>(`/api/projects/${projectId}/env/${key}`, data);
+    data: BulkUpdateEnvRequest
+  ): Promise<Environment[]> => {
+    return api.put<Environment[]>(`/api/projects/${projectId}/env`, data);
   },
 
   delete: async (projectId: string, key: string): Promise<void> => {
