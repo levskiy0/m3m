@@ -67,6 +67,9 @@ func (h *RuntimeHandler) Register(r *gin.RouterGroup, authMiddleware *middleware
 	// Runtime types for Monaco
 	r.GET("/runtime/types", h.Types)
 
+	// Runtime schemas for documentation
+	r.GET("/runtime/schemas", h.Schemas)
+
 	// Plugins info
 	r.GET("/plugins", h.ListPlugins)
 
@@ -444,6 +447,11 @@ func (h *RuntimeHandler) DownloadLogs(c *gin.Context) {
 func (h *RuntimeHandler) Types(c *gin.Context) {
 	types := h.runtimeManager.GetTypeDefinitions()
 	c.String(http.StatusOK, types)
+}
+
+func (h *RuntimeHandler) Schemas(c *gin.Context) {
+	schemas := modules.GetAllSchemas()
+	c.JSON(http.StatusOK, schemas)
 }
 
 func (h *RuntimeHandler) ListPlugins(c *gin.Context) {

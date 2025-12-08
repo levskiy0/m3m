@@ -13,6 +13,7 @@ import { ModelDataPage } from '@/features/models/model-data-page';
 import { GoalsPage } from '@/features/goals/goals-page';
 import { GlobalGoalsPage } from '@/features/goals/global-goals-page';
 import { ModulesPage } from '@/features/modules/modules-page';
+import { DocsPage } from '@/features/docs/docs-page';
 import { EnvironmentPage } from '@/features/environment/environment-page';
 import { UsersPage } from '@/features/users/users-page';
 import { ProfilePage } from '@/features/users/profile-page';
@@ -99,6 +100,7 @@ export function AppRouter() {
             {/* Global */}
             <Route path="/goals" element={<GlobalGoalsPage />} />
             <Route path="/modules" element={<ModulesPage />} />
+            <Route path="/docs" element={<DocsPage />} />
 
             {/* Settings */}
             <Route path="/settings/users" element={<UsersPage />} />

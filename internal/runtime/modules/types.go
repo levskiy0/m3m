@@ -8,7 +8,6 @@ import (
 func GetAllSchemas() []schema.ModuleSchema {
 	return []schema.ModuleSchema{
 		GetLoggerSchema(),
-		GetConsoleSchema(),
 		GetRouterSchema(),
 		GetScheduleSchema(),
 		GetEnvSchema(),

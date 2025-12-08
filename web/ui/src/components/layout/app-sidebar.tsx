@@ -21,6 +21,7 @@ import {
   Monitor,
   ChevronRight,
   Table2,
+  BookOpen,
 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import {
@@ -408,6 +409,18 @@ export function AppSidebar() {
                 <Link to="/modules">
                   <Package />
                   <span>Modules</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                asChild
+                isActive={location.pathname === '/docs'}
+                tooltip="Documentation"
+              >
+                <Link to="/docs">
+                  <BookOpen />
+                  <span>Documentation</span>
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>

@@ -9,6 +9,41 @@ export interface Plugin {
   url?: string;
 }
 
+export interface ParamSchema {
+  name: string;
+  type: string;
+  description: string;
+  optional?: boolean;
+}
+
+export interface MethodSchema {
+  name: string;
+  description: string;
+  params?: ParamSchema[];
+  returns?: ParamSchema;
+}
+
+export interface TypeSchema {
+  name: string;
+  description?: string;
+  fields: ParamSchema[];
+}
+
+export interface NestedModuleSchema {
+  name: string;
+  description: string;
+  methods: MethodSchema[];
+}
+
+export interface ModuleSchema {
+  name: string;
+  description: string;
+  methods: MethodSchema[];
+  types?: TypeSchema[];
+  nested?: NestedModuleSchema[];
+  rawTypes?: string;
+}
+
 export interface SystemInfo {
   version: string;
   go_version: string;
@@ -67,6 +102,10 @@ export const runtimeApi = {
 
   getTypes: async (): Promise<string> => {
     return api.getText('/api/runtime/types');
+  },
+
+  getSchemas: async (): Promise<ModuleSchema[]> => {
+    return api.get<ModuleSchema[]>('/api/runtime/schemas');
   },
 
   listPlugins: async (): Promise<Plugin[]> => {

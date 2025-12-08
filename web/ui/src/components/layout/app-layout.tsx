@@ -91,6 +91,8 @@ function useBreadcrumbs(): BreadcrumbItem[] {
     }
   } else if (pathSegments[0] === 'goals') {
     breadcrumbs.push({ label: 'Global Goals' });
+  } else if (pathSegments[0] === 'docs') {
+    breadcrumbs.push({ label: 'Documentation' });
   } else if (pathSegments[0] === 'system') {
     breadcrumbs.push({ label: 'System Info' });
   } else if (pathSegments[0] === 'settings') {
@@ -112,7 +114,7 @@ export function AppLayout() {
     <SidebarProvider>
       <AppSidebar />
       <SidebarInset>
-        <header className="fixed bg-background w-full flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
+        <header className="z-10 fixed bg-background w-full flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
           <div className="flex items-center gap-2 px-4">
             <SidebarTrigger className="-ml-1" />
             <Separator
