@@ -78,6 +78,10 @@ func (h *WebSocketHandler) HandleWebSocket(c *gin.Context) {
 
 func (h *WebSocketHandler) validateToken(tokenString string) (string, error) {
 	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+		// Validate signing algorithm to prevent algorithm substitution attacks
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, jwt.ErrSignatureInvalid
+		}
 		return []byte(h.config.JWT.Secret), nil
 	})
 
