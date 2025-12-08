@@ -45,17 +45,13 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
         }
       },
       onRunning: (pid, data) => {
-        console.log('[WS] onRunning handler called:', { pid, data, expectedProjectId: projectId });
-
         if (projectId && pid === projectId) {
           const newStatus = data.running ? 'running' : 'stopped';
-          console.log('[WS] Updating cache with status:', newStatus);
 
           // Update status query cache
           queryClient.setQueryData(
             queryKeys.projects.status(projectId),
             (old: Record<string, unknown> | undefined) => {
-              console.log('[WS] status cache old value:', old);
               return {
                 ...old,
                 status: newStatus,
@@ -67,7 +63,6 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
           queryClient.setQueryData(
             queryKeys.projects.detail(projectId),
             (old: Record<string, unknown> | undefined) => {
-              console.log('[WS] detail cache old value:', old);
               if (!old) return old;
               return { ...old, status: newStatus };
             }
@@ -83,7 +78,6 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
 
           onRunning?.(data.running);
         } else {
-          console.log('[WS] onRunning: projectId mismatch or missing', { projectId, pid });
         }
       },
       onGoals: (pid, data) => {
