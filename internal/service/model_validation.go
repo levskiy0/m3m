@@ -39,7 +39,6 @@ func (e ValidationErrors) Error() string {
 	return strings.Join(msgs, "; ")
 }
 
-// IsValidationError checks if error is a ValidationErrors
 func IsValidationError(err error) bool {
 	var ve ValidationErrors
 	return errors.As(err, &ve)

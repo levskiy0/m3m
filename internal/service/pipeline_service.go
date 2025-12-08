@@ -22,7 +22,6 @@ func NewPipelineService(pipelineRepo *repository.PipelineRepository) *PipelineSe
 	}
 }
 
-// Branch methods
 func (s *PipelineService) CreateBranch(ctx context.Context, projectID primitive.ObjectID, req *domain.CreateBranchRequest) (*domain.Branch, error) {
 	var code string
 
@@ -171,7 +170,6 @@ func (s *PipelineService) DeleteBranchByID(ctx context.Context, projectID primit
 	return s.pipelineRepo.DeleteBranch(ctx, branchID)
 }
 
-// Release methods
 func (s *PipelineService) CreateRelease(ctx context.Context, projectID primitive.ObjectID, req *domain.CreateReleaseRequest) (*domain.Release, error) {
 	branch, err := s.pipelineRepo.FindBranchByName(ctx, projectID, req.BranchName)
 	if err != nil {

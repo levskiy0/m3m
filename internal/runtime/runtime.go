@@ -97,17 +97,14 @@ func (m *Manager) Start(ctx context.Context, projectID primitive.ObjectID, code 
 	vm := goja.New()
 	vm.SetFieldNameMapper(goja.TagFieldNameMapper("json", true))
 
-	// Create log file
 	logFile, err := m.storageService.CreateLogFile(projectIDStr)
 	if err != nil {
 		cancel()
 		return fmt.Errorf("failed to create log file: %w", err)
 	}
 
-	// Initialize modules
 	loggerModule := modules.NewLoggerModule(logFile)
 
-	// Set log callback for broadcasting
 	if m.logBroadcaster != nil {
 		loggerModule.SetOnLog(func() {
 			m.logBroadcaster.BroadcastLogUpdate(projectIDStr)
@@ -119,25 +116,20 @@ func (m *Manager) Start(ctx context.Context, projectID primitive.ObjectID, code 
 	schedulerModule := modules.NewScheduleModule(m.logger)
 	serviceModule := modules.NewServiceModule(vm, m.config.Runtime.Timeout)
 
-	// Get environment variables
 	envMap, _ := m.envService.GetEnvMap(ctx, projectID)
 
-	// Register built-in modules
 	if err := m.registerModules(vm, projectID, loggerModule, routerModule, schedulerModule, serviceModule, envMap); err != nil {
 		cancel()
 		return fmt.Errorf("failed to register modules: %w", err)
 	}
 
-	// Register plugins
 	if err := m.plugins.RegisterAll(vm); err != nil {
 		cancel()
 		return fmt.Errorf("failed to register plugins: %w", err)
 	}
 
-	// Create metrics context
 	metricsCtx, metricsCancel := context.WithCancel(context.Background())
 
-	// Create runtime instance
 	runtime := &ProjectRuntime{
 		ProjectID:     projectID,
 		VM:            vm,

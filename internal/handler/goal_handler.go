@@ -41,7 +41,6 @@ func NewGoalHandler(goalService *service.GoalService, projectService *service.Pr
 }
 
 func (h *GoalHandler) Register(r *gin.RouterGroup, authMiddleware *middleware.AuthMiddleware) {
-	// Global goals
 	goals := r.Group("/goals")
 	goals.Use(authMiddleware.Authenticate())
 	{
@@ -54,7 +53,6 @@ func (h *GoalHandler) Register(r *gin.RouterGroup, authMiddleware *middleware.Au
 		goals.DELETE("/:id", authMiddleware.RequirePermission("manage_users"), h.Delete)
 	}
 
-	// Project goals
 	projectGoals := r.Group("/projects/:id/goals")
 	projectGoals.Use(authMiddleware.Authenticate())
 	{
@@ -301,8 +299,6 @@ func (h *GoalHandler) GetGoalStats(c *gin.Context) {
 
 	c.JSON(http.StatusOK, response)
 }
-
-// Project goals
 
 func (h *GoalHandler) ListProject(c *gin.Context) {
 	projectID, err := primitive.ObjectIDFromHex(c.Param("id"))

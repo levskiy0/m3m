@@ -107,7 +107,6 @@ func (h *Hub) Run() {
 		case client := <-h.unregister:
 			h.mu.Lock()
 			if _, ok := h.clients[client]; ok {
-				// Remove from all project subscriptions
 				client.mu.RLock()
 				for projectID := range client.projectIDs {
 					if clients, ok := h.projectClients[projectID]; ok {
@@ -180,7 +179,6 @@ func (h *Hub) Run() {
 				select {
 				case client.send <- message:
 				default:
-					// Client buffer full, skip
 					h.logger.Warn("Client buffer full, skipping message")
 				}
 			}
@@ -309,7 +307,6 @@ func (c *Client) WritePump() {
 			}
 			w.Write(message)
 
-			// Add queued messages to the current websocket message
 			n := len(c.send)
 			for i := 0; i < n; i++ {
 				w.Write([]byte{'\n'})

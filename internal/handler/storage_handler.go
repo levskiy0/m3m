@@ -42,13 +42,9 @@ func (h *StorageHandler) Register(r *gin.RouterGroup, authMiddleware *middleware
 	}
 }
 
-// RegisterPublicRoutes registers CDN routes at root level (not under /api)
 func (h *StorageHandler) RegisterPublicRoutes(r *gin.Engine) {
-	// /cdn/download/{project-id}/path/to/file - force download
 	r.GET("/cdn/download/:id/*path", h.PublicDownload)
-	// /cdn/resize/{WxH}/{project-id}/path/to/file - resized image
 	r.GET("/cdn/resize/:size/:id/*path", h.CDNResize)
-	// /cdn/{project-id}/path/to/file - direct view (must be last - catches all)
 	r.GET("/cdn/:id/*path", h.CDN)
 }
 
@@ -269,7 +265,6 @@ func (h *StorageHandler) Thumbnail(c *gin.Context) {
 	c.Data(http.StatusOK, "image/jpeg", data)
 }
 
-// CDN serves files publicly without authentication (inline)
 func (h *StorageHandler) CDN(c *gin.Context) {
 	projectID := c.Param("id")
 	path := c.Param("path")
@@ -288,7 +283,6 @@ func (h *StorageHandler) CDN(c *gin.Context) {
 	c.File(filePath)
 }
 
-// PublicDownload serves files with Content-Disposition: attachment (force download)
 func (h *StorageHandler) PublicDownload(c *gin.Context) {
 	projectID := c.Param("id")
 	path := c.Param("path")
@@ -307,7 +301,6 @@ func (h *StorageHandler) PublicDownload(c *gin.Context) {
 	c.FileAttachment(filePath, filepath.Base(path))
 }
 
-// CDNResize serves resized images (e.g., /cdn/50x50/{project-id}/path/to/image.png)
 func (h *StorageHandler) CDNResize(c *gin.Context) {
 	sizeParam := c.Param("size")
 	projectID := c.Param("id")
