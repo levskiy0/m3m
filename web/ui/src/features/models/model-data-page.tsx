@@ -157,6 +157,11 @@ export function ModelDataPage() {
     setUnsavedChangesDialogOpen(false);
   }, [resetTabs]);
 
+  // Clear selection when switching tabs or models
+  useEffect(() => {
+    clearSelection();
+  }, [activeTabId, modelId, clearSelection]);
+
   // Field errors for inline editing in view tabs
   const [viewFieldErrors, setViewFieldErrors] = useState<Record<string, Record<string, string>>>({});
 

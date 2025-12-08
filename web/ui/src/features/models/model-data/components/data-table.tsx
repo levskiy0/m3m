@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   ArrowUpDown,
   ArrowUp,
@@ -77,6 +77,11 @@ export function DataTable({
   onResizeStart,
 }: DataTableProps) {
   const [focusedId, setFocusedId] = useState<string | null>(null);
+
+  // Reset focus when data changes (e.g., after tab switch or refresh)
+  useEffect(() => {
+    setFocusedId(null);
+  }, [data]);
 
   // Calculate total table width
   const tableWidth = useMemo(() => {
