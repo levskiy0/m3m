@@ -71,13 +71,20 @@ export function MultiSelect({
                   className="rounded-sm px-1.5 py-0 font-normal"
                 >
                   {v}
-                  <button
-                    type="button"
-                    className="ml-1 ring-offset-background rounded-sm outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                  <span
+                    role="button"
+                    tabIndex={0}
+                    className="ml-1 ring-offset-background rounded-sm outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 cursor-pointer"
                     onClick={(e) => handleRemove(v, e)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        handleRemove(v, e as unknown as React.MouseEvent);
+                      }
+                    }}
                   >
                     <X className="size-3" />
-                  </button>
+                  </span>
                 </Badge>
               ))
             )}

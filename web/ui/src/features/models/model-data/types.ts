@@ -10,6 +10,7 @@ export interface Tab {
   data?: ModelData;
   formData?: Record<string, unknown>;
   fieldErrors?: Record<string, string>;
+  hasChanges?: boolean;
 }
 
 export interface ActiveFilter {

@@ -31,6 +31,7 @@ interface RecordViewProps {
   fieldErrors?: Record<string, string>;
   projectId?: string;
   models?: Model[];
+  onFormChange?: (hasChanges: boolean) => void;
 }
 
 export function RecordView({
@@ -43,6 +44,7 @@ export function RecordView({
   fieldErrors,
   projectId,
   models,
+  onFormChange,
 }: RecordViewProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState<Record<string, unknown>>({});
@@ -68,7 +70,8 @@ export function RecordView({
     }
     setFormData(initialData);
     setIsEditing(false);
-  }, [data, orderedFormFields]);
+    onFormChange?.(false);
+  }, [data, orderedFormFields, onFormChange]);
 
   const handleSave = useCallback((closeAfterSave: boolean) => {
     onSave(formData, closeAfterSave);
@@ -79,7 +82,8 @@ export function RecordView({
 
   const handleFieldChange = useCallback((key: string, value: unknown) => {
     setFormData(prev => ({ ...prev, [key]: value }));
-  }, []);
+    onFormChange?.(true);
+  }, [onFormChange]);
 
   return (
     <Card className="rounded-t-none !mt-0 h-full max-w-4xl">

@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
@@ -115,6 +115,10 @@ export function ModelDataPage() {
     closeTabsForRecord,
     updateTabFormData,
     updateTabErrors,
+    markTabAsChanged,
+    clearTabChanges,
+    resetTabs,
+    hasUnsavedChanges,
   } = useTabs(model?.fields);
 
   // Column resizing
@@ -127,6 +131,31 @@ export function ModelDataPage() {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
+
+  // Unsaved changes confirmation dialog
+  const [unsavedChangesDialogOpen, setUnsavedChangesDialogOpen] = useState(false);
+  const prevModelIdRef = useRef(modelId);
+
+  // Reset tabs when model changes
+  useEffect(() => {
+    if (prevModelIdRef.current !== modelId) {
+      // Model changed - check for unsaved changes
+      if (hasUnsavedChanges) {
+        // Show confirmation dialog
+        setUnsavedChangesDialogOpen(true);
+      } else {
+        // No unsaved changes - reset tabs immediately
+        resetTabs();
+      }
+      prevModelIdRef.current = modelId;
+    }
+  }, [modelId, hasUnsavedChanges, resetTabs]);
+
+  // Handle unsaved changes dialog confirmation
+  const handleDiscardChanges = useCallback(() => {
+    resetTabs();
+    setUnsavedChangesDialogOpen(false);
+  }, [resetTabs]);
 
   // Field errors for inline editing in view tabs
   const [viewFieldErrors, setViewFieldErrors] = useState<Record<string, Record<string, string>>>({});
@@ -145,12 +174,14 @@ export function ModelDataPage() {
         delete next[tabId];
         return next;
       });
+      // Clear hasChanges flag
+      clearTabChanges(tabId);
       if (closeAfterSave) {
         closeTab(tabId);
         setActiveTabId('table');
       }
     },
-    onUpdateSuccess: (_tabId, closeAfterSave, dataId) => {
+    onUpdateSuccess: (tabId, closeAfterSave, dataId) => {
       // Clear field errors on success
       if (dataId) {
         setViewFieldErrors(prev => {
@@ -159,6 +190,8 @@ export function ModelDataPage() {
           return next;
         });
       }
+      // Clear hasChanges flag
+      clearTabChanges(tabId);
       if (closeAfterSave && dataId) {
         closeTabsForRecord(dataId);
       }
@@ -313,6 +346,7 @@ export function ModelDataPage() {
             }
             onClose={tab.id !== 'table' ? () => closeTab(tab.id) : undefined}
             className={tab.type === 'table' ? "bg-background" : ""}
+            dirty={tab.hasChanges}
           >
             {tab.title}
           </EditorTab>
@@ -402,6 +436,7 @@ export function ModelDataPage() {
             fieldErrors={viewFieldErrors[activeTab.data._id]}
             projectId={projectId}
             models={allModels}
+            onFormChange={(hasChanges) => markTabAsChanged(activeTab.id, hasChanges)}
           />
         )}
 
@@ -426,6 +461,7 @@ export function ModelDataPage() {
             fieldErrors={createFieldErrors[activeTab.id]}
             projectId={projectId}
             models={allModels}
+            onFormChange={(hasChanges) => markTabAsChanged(activeTab.id, hasChanges)}
           />
         )}
       </div>
@@ -452,6 +488,17 @@ export function ModelDataPage() {
         variant="destructive"
         onConfirm={() => bulkDeleteMutation.mutate(Array.from(selectedIds))}
         isLoading={bulkDeleteMutation.isPending}
+      />
+
+      {/* Unsaved Changes Confirm */}
+      <ConfirmDialog
+        open={unsavedChangesDialogOpen}
+        onOpenChange={setUnsavedChangesDialogOpen}
+        title="Unsaved Changes"
+        description="You have unsaved changes. Do you want to discard them?"
+        confirmLabel="Discard"
+        variant="destructive"
+        onConfirm={handleDiscardChanges}
       />
     </div>
   );

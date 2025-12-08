@@ -28,6 +28,7 @@ interface RecordCreateProps {
   fieldErrors?: Record<string, string>;
   projectId?: string;
   models?: Model[];
+  onFormChange?: (hasChanges: boolean) => void;
 }
 
 export function RecordCreate({
@@ -39,6 +40,7 @@ export function RecordCreate({
   fieldErrors,
   projectId,
   models,
+  onFormChange,
 }: RecordCreateProps) {
   const [formData, setFormData] = useState<Record<string, unknown>>({});
 
@@ -48,7 +50,8 @@ export function RecordCreate({
 
   const handleFieldChange = useCallback((key: string, value: unknown) => {
     setFormData(prev => ({ ...prev, [key]: value }));
-  }, []);
+    onFormChange?.(true);
+  }, [onFormChange]);
 
   return (
     <Card className="rounded-t-none !mt-0 h-full max-w-4xl">
