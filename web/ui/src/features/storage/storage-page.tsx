@@ -8,7 +8,6 @@ import { storageApi } from '@/api';
 import { getLanguageFromFilename } from '@/lib/utils';
 import { EditorTabs, EditorTab } from '@/components/ui/editor-tabs';
 import type { StorageItem } from '@/types';
-import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { LoadingButton } from '@/components/ui/loading-button';

@@ -49,8 +49,7 @@ interface SortableRowProps {
 function SortableRow({
   item,
   config,
-  fields,
-  onToggleColumn,
+                       onToggleColumn,
   onToggleFilter,
   onToggleSortable,
   onToggleSearchable,
