@@ -48,10 +48,11 @@ export function useColumnResize({ modelId }: UseColumnResizeOptions) {
     resizingRef.current = { column, startX: e.clientX, startWidth: currentWidth };
 
     const handleMouseMove = (e: MouseEvent) => {
-      if (!resizingRef.current) return;
-      const delta = e.clientX - resizingRef.current.startX;
-      const newWidth = Math.max(50, resizingRef.current.startWidth + delta);
-      setColumnWidths(prev => ({ ...prev, [resizingRef.current!.column]: newWidth }));
+      const resizing = resizingRef.current;
+      if (!resizing) return;
+      const delta = e.clientX - resizing.startX;
+      const newWidth = Math.max(50, resizing.startWidth + delta);
+      setColumnWidths(prev => ({ ...prev, [resizing.column]: newWidth }));
     };
 
     const handleMouseUp = () => {
