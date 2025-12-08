@@ -6,7 +6,8 @@
       "Bash(make build-backend:*)",
       "Bash(npm run lint:*)",
       "mcp__shadcn__view_items_in_registries",
-      "mcp__shadcn__get_item_examples_from_registries"
+      "mcp__shadcn__get_item_examples_from_registries",
+      "Bash(npm run format:check:*)"
     ],
     "deny": [],
     "ask": []
