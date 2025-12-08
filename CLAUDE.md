@@ -28,7 +28,9 @@ make dev
 make web-install    # Install npm dependencies
 make web-build      # Build frontend
 make web-dev        # Run Vite dev server
-cd web/ui && npm run lint  # Lint frontend code
+cd web/ui && npm run lint      # Lint frontend code
+cd web/ui && npm run lint:fix  # Fix linting issues
+cd web/ui && npm run format    # Format code with Prettier
 
 # Tests
 make test                              # Run all tests
@@ -88,7 +90,9 @@ Located in `web/ui/`:
 - Forms: react-hook-form with zod validation
 - Built assets are embedded into Go binary via `web/static.go`
 
-shadcn/ui Field components (FieldGroup, Field, FieldLabel, FieldDescription, FieldSeparator) are used for form layouts. Run `npm run lint` in `web/ui/` to check for issues.
+The frontend uses feature-based organization in `src/features/` (auth, environment, goals, models, pipeline, projects, storage, users). API client functions are in `src/api/`.
+
+shadcn/ui Field components (FieldGroup, Field, FieldLabel, FieldDescription, FieldError, FieldSeparator) are used for form layouts.
 
 ### Key Domain Concepts
 
