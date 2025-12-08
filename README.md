@@ -19,9 +19,15 @@
 
 ## Why M3M?
 
-I built M3M because I was tired of writing `Dockerfile` and `docker-compose.yml` for simple integrations and cron scripts. Every 50-line webhook handler or simple integration microservice required 500MB of Node.js / Golang / PHP base images, a stack of external dependencies, and deployment rituals.
+I built M3M because I was tired of writing `Dockerfile` and `docker-compose.yml` for simple integrations and cron scripts.
 
-I wanted a tool where I could just write JavaScript, hit **Run**, and have persistent storage, scheduling, and HTTP routing out of the box. No heavy containers. No orchestration overhead. No NPM dependency hell for micro-tasks.
+Every 50-line webhook handler or simple microservice required **500MB of base images** (Node.js, Python, PHP), a stack of external dependencies, and annoying deployment rituals.
+
+I wanted a tool where I could just write JavaScript, hit **Run**, and have persistent storage, scheduling, and HTTP routing **out of the box**.
+
+* 🚫 No heavy containers.
+* 🚫 No orchestration overhead.
+* 🚫 No NPM dependency hell for micro-tasks.
 
 ---
 
