@@ -25,9 +25,9 @@ Every 50-line webhook handler or simple microservice required **500MB of base im
 
 I wanted a tool where I could just write JavaScript, hit **Run**, and have persistent storage, scheduling, and HTTP routing **out of the box**.
 
-* 🚫 No heavy containers.
-* 🚫 No orchestration overhead.
-* 🚫 No NPM dependency hell for micro-tasks.
+* No heavy containers.
+* No orchestration overhead.
+* No NPM dependency hell for micro-tasks.
 
 ---
 
