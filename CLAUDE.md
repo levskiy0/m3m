@@ -53,13 +53,35 @@ The backend uses dependency injection via `uber-go/fx`. The application is struc
 - **cmd/m3m/main.go**: CLI entry point using Cobra (serve, new-admin, version commands)
 - **internal/app/app.go**: Application bootstrap, DI wiring, route registration
 - **internal/config/**: YAML configuration via Viper
-- **internal/domain/**: Domain models (Project, Pipeline, Goal, Environment, Model, User)
-- **internal/repository/**: MongoDB repositories
-- **internal/service/**: Business logic layer
+- **internal/domain/**: Domain models (Project, Pipeline, Goal, Environment, Model, User, Widget)
+- **internal/repository/**: MongoDB repositories (one per domain entity)
+- **internal/service/**: Business logic layer with validation (model_validation.go, model_schema_validation.go)
 - **internal/handler/**: HTTP handlers (Gin framework)
 - **internal/middleware/**: Auth (JWT) and CORS middleware
 - **internal/runtime/**: JavaScript runtime manager using GOJA
+- **internal/websocket/**: WebSocket support for real-time logs
 - **internal/plugin/**: Plugin loader for extending runtime
+
+#### Backend Handler → Service → Repository Flow
+
+```
+Handler (HTTP) → Service (Business Logic) → Repository (MongoDB)
+     ↓
+  runtime_handler.go  →  RuntimeManager  →  Project/Pipeline repos
+  project_handler.go  →  ProjectService  →  ProjectRepository
+  model_handler.go    →  ModelService    →  ModelRepository
+  storage_handler.go  →  StorageService  →  (file system)
+```
+
+#### Key Handlers
+- **auth_handler.go**: Login/logout endpoints
+- **project_handler.go**: CRUD for projects, start/stop control
+- **pipeline_handler.go**: Branch and release management
+- **model_handler.go**: Schema definitions CRUD
+- **goal_handler.go**: Metrics tracking endpoints
+- **runtime_handler.go**: Execute code, manage running services, logs
+- **storage_handler.go**: File storage operations
+- **websocket_handler.go**: Real-time log streaming
 
 ### JavaScript Runtime
 
@@ -90,9 +112,55 @@ Located in `web/ui/`:
 - Forms: react-hook-form with zod validation
 - Built assets are embedded into Go binary via `web/static.go`
 
-The frontend uses feature-based organization in `src/features/` (auth, environment, goals, models, pipeline, projects, storage, users). API client functions are in `src/api/`.
+#### Frontend Structure
 
-shadcn/ui Field components (FieldGroup, Field, FieldLabel, FieldDescription, FieldError, FieldSeparator) are used for form layouts.
+```
+src/
+├── api/                    # API client functions (one file per domain)
+│   ├── client.ts           # Axios instance, auth interceptors
+│   ├── auth.ts, projects.ts, models.ts, pipeline.ts, goals.ts, etc.
+├── components/
+│   ├── ui/                 # shadcn/ui base components
+│   ├── layout/             # App layout, sidebar (app-layout.tsx, app-sidebar.tsx)
+│   └── shared/             # Reusable components (code-editor, logs-viewer, widget-card, etc.)
+├── features/               # Feature modules (domain-based)
+│   ├── auth/               # Login page
+│   ├── projects/           # Project list, CRUD
+│   ├── pipeline/           # Branch/release management, code editor
+│   ├── models/             # Schema definitions
+│   │   ├── schema/         # Schema editor components
+│   │   ├── model-data/     # Data browser components
+│   │   └── lib/            # Schema utilities
+│   ├── goals/              # Metrics tracking UI
+│   ├── environment/        # Environment variables management
+│   ├── storage/            # File storage browser
+│   ├── users/              # User management
+│   ├── docs/               # Documentation viewer
+│   └── modules/            # Runtime modules info
+├── hooks/                  # Custom React hooks
+│   ├── use-crud-mutation.ts    # Generic CRUD mutation helper
+│   ├── use-form-dialog.ts      # Dialog state management
+│   ├── use-project-runtime.ts  # Runtime state (logs, status)
+│   └── use-websocket.ts        # WebSocket connection hook
+├── providers/              # React context providers
+│   ├── auth-provider.tsx   # Auth state context
+│   ├── query-provider.tsx  # React Query client
+│   └── theme-provider.tsx  # Dark/light theme
+├── lib/                    # Utilities
+│   ├── query-keys.ts       # React Query key factory
+│   ├── websocket.ts        # WebSocket client class
+│   └── utils.ts            # Helper functions (cn, formatters)
+├── routes/                 # Route definitions (index.tsx)
+└── types/                  # TypeScript types (mirrors backend domain)
+```
+
+#### Key Patterns
+
+- **API layer**: Each `api/*.ts` file exports functions that call backend endpoints. Uses axios with JWT interceptors in `client.ts`.
+- **React Query**: All server state uses `@tanstack/react-query`. Query keys defined in `lib/query-keys.ts`.
+- **Feature isolation**: Each feature folder is self-contained with its own components, hooks, and sub-features.
+- **Form handling**: Uses `react-hook-form` + `zod` schemas. shadcn/ui Field components for consistent form layouts.
+- **Real-time logs**: WebSocket via `use-websocket.ts` hook connecting to `/api/ws/logs/{projectId}`.
 
 ### Key Domain Concepts
 

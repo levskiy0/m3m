@@ -16,9 +16,19 @@ export function GettingStartedPage() {
       <section className="space-y-4">
         <h2 className="text-xl font-semibold">What is M3M?</h2>
         <p className="text-muted-foreground">
-          M3M is a platform for creating JavaScript mini-services. Each service runs in an isolated
-          JavaScript runtime with access to built-in modules for routing, scheduling, storage,
-          database operations, and more.
+          M3M was created to simplify deploying personal services and small automations.
+          When you need to quickly build a small service that handles webhooks with custom logic,
+          collects statistics, and stores data — without the overhead of configuring Docker,
+          managing resources, and orchestrating deployments.
+        </p>
+        <p className="text-muted-foreground">
+          Write your service in JavaScript, deploy it on your own hosting — and you're done.
+          Need to update or remove it? Just as quick. Need statistics or database records?
+          They're all built-in.
+        </p>
+        <p className="text-muted-foreground">
+          Each service runs in an isolated JavaScript runtime with access to built-in modules
+          for routing, scheduling, storage, database operations, goal tracking, and more.
         </p>
       </section>
 

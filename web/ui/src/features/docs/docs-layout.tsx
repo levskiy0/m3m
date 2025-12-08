@@ -1,6 +1,6 @@
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Search, Rocket, Code2 } from 'lucide-react';
+import { Search, Rocket, Code2, RefreshCw } from 'lucide-react';
 import { useState, useMemo } from 'react';
 
 import { runtimeApi } from '@/api';
@@ -10,6 +10,7 @@ import { cn } from '@/lib/utils';
 
 const staticPages = [
   { id: 'getting-started', title: 'Getting Started', icon: Rocket },
+  { id: 'lifecycle', title: 'Life Cycle', icon: RefreshCw },
 ];
 
 export function DocsLayout() {
