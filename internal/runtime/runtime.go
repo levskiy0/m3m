@@ -209,9 +209,7 @@ func (m *Manager) stopRuntime(runtime *ProjectRuntime) {
 	}
 }
 
-// collectMetrics runs in a goroutine and collects metrics periodically
 func (rt *ProjectRuntime) collectMetrics(ctx context.Context) {
-	// Collect initial snapshot
 	rt.collectSnapshot()
 
 	ticker := time.NewTicker(MetricsInterval)
