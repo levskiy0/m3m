@@ -98,6 +98,9 @@ func (s *ProjectService) Update(ctx context.Context, id primitive.ObjectID, req 
 	if req.Name != nil {
 		project.Name = *req.Name
 	}
+	if req.Slug != nil {
+		project.Slug = *req.Slug
+	}
 	if req.Color != nil {
 		project.Color = *req.Color
 	}

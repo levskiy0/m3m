@@ -88,8 +88,8 @@ export function ProjectSettings() {
   const updateMutation = useMutation({
     mutationFn: (data: UpdateProjectRequest) =>
       projectsApi.update(projectId!, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['project', projectId] });
+    onSuccess: (updatedProject) => {
+      queryClient.setQueryData(['project', projectId], updatedProject);
       queryClient.invalidateQueries({ queryKey: ['projects'] });
       setHasChanges(false);
       toast.success('Project updated');

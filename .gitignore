@@ -1,7 +1,8 @@
 .idea
 .DS_Store
 test/*.**
-bin
+bin/
+build/
 internal/app/dist/
 plugins/*.so
 logs

@@ -37,6 +37,7 @@ type CreateProjectRequest struct {
 
 type UpdateProjectRequest struct {
 	Name      *string `json:"name"`
+	Slug      *string `json:"slug"`
 	Color     *string `json:"color"`
 	AutoStart *bool   `json:"auto_start"`
 }
