@@ -240,6 +240,46 @@ func (s *ModelService) DeleteManyData(ctx context.Context, modelID primitive.Obj
 	return s.modelRepo.DeleteManyData(ctx, model, dataIDs)
 }
 
+// UpsertData inserts or updates a data record based on filter
+func (s *ModelService) UpsertData(ctx context.Context, modelID primitive.ObjectID, filter bson.M, data map[string]interface{}) (map[string]interface{}, bool, error) {
+	model, err := s.modelRepo.FindByID(ctx, modelID)
+	if err != nil {
+		return nil, false, err
+	}
+
+	// Apply defaults for missing fields (only on insert)
+	dataWithDefaults := s.applyDefaults(model, data)
+
+	// Validate data against schema
+	validator := NewDataValidator(model)
+	validatedData, err := validator.ValidateAndCoerce(dataWithDefaults)
+	if err != nil {
+		return nil, false, err
+	}
+
+	result, isNew, err := s.modelRepo.UpsertData(ctx, model, filter, validatedData)
+	if err != nil {
+		return nil, false, err
+	}
+
+	return bson.M{
+		"id":         result.ID,
+		"data":       result.Data,
+		"created_at": result.CreatedAt,
+		"updated_at": result.UpdatedAt,
+	}, isNew, nil
+}
+
+// FindOneAndUpdateData finds and updates a document atomically
+func (s *ModelService) FindOneAndUpdateData(ctx context.Context, modelID primitive.ObjectID, filter bson.M, updateOps map[string]interface{}, returnNew bool) (map[string]interface{}, error) {
+	model, err := s.modelRepo.FindByID(ctx, modelID)
+	if err != nil {
+		return nil, err
+	}
+
+	return s.modelRepo.FindOneAndUpdateData(ctx, model, filter, updateOps, returnNew)
+}
+
 func (s *ModelService) applyDefaults(model *domain.Model, data map[string]interface{}) map[string]interface{} {
 	result := make(map[string]interface{})
 

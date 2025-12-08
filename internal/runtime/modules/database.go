@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/dop251/goja"
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 
 	"m3m/internal/domain"
@@ -263,11 +264,70 @@ func (c *CollectionWrapper) Count(filter map[string]interface{}) int64 {
 	return total
 }
 
+// Upsert inserts a document or updates it if one matches the filter
+func (c *CollectionWrapper) Upsert(filter map[string]interface{}, data map[string]interface{}) map[string]interface{} {
+	if c.modelID.IsZero() {
+		return nil
+	}
+
+	ctx := context.Background()
+	mongoFilter := c.convertFilterToBson(filter)
+
+	result, _, err := c.modelService.UpsertData(ctx, c.modelID, mongoFilter, data)
+	if err != nil {
+		return nil
+	}
+
+	return result
+}
+
+// FindOneAndUpdate finds a document, updates it atomically and returns the result
+func (c *CollectionWrapper) FindOneAndUpdate(filter map[string]interface{}, update map[string]interface{}, options map[string]interface{}) map[string]interface{} {
+	if c.modelID.IsZero() {
+		return nil
+	}
+
+	ctx := context.Background()
+	mongoFilter := c.convertFilterToBson(filter)
+
+	returnNew := false
+	if options != nil {
+		if rn, ok := options["returnNew"].(bool); ok {
+			returnNew = rn
+		}
+	}
+
+	result, err := c.modelService.FindOneAndUpdateData(ctx, c.modelID, mongoFilter, update, returnNew)
+	if err != nil {
+		return nil
+	}
+
+	return result
+}
+
+// convertFilterToBson converts a JavaScript filter object to MongoDB bson.M
+func (c *CollectionWrapper) convertFilterToBson(filter map[string]interface{}) bson.M {
+	result := bson.M{}
+	for k, v := range filter {
+		if opMap, ok := v.(map[string]interface{}); ok {
+			// Handle operators like {$gt: 10}
+			mongoOps := bson.M{}
+			for op, val := range opMap {
+				mongoOps[op] = val
+			}
+			result[k] = mongoOps
+		} else {
+			result[k] = v
+		}
+	}
+	return result
+}
+
 // GetSchema implements JSSchemaProvider
 func (d *DatabaseModule) GetSchema() schema.ModuleSchema {
 	return schema.ModuleSchema{
 		Name:        "$database",
-		Description: "Database operations for model-based data storage. Supports MongoDB-style filter operators: $eq, $ne, $gt, $gte, $lt, $lte, $contains, $startsWith, $endsWith, $in, $nin",
+		Description: "Database operations for model-based data storage. Supports MongoDB-style filter operators: $eq, $ne, $gt, $gte, $lt, $lte, $contains, $startsWith, $endsWith, $in, $nin. Update operators: $set, $inc, $unset, $push, $pull, $addToSet",
 		Types: []schema.TypeSchema{
 			{
 				Name:        "QueryOptions",
@@ -277,6 +337,13 @@ func (d *DatabaseModule) GetSchema() schema.ModuleSchema {
 					{Name: "limit", Type: "number", Description: "Results per page (default: 100)"},
 					{Name: "sort", Type: "string", Description: "Field to sort by"},
 					{Name: "order", Type: "'asc' | 'desc'", Description: "Sort order"},
+				},
+			},
+			{
+				Name:        "FindOneAndUpdateOptions",
+				Description: "Options for findOneAndUpdate",
+				Fields: []schema.ParamSchema{
+					{Name: "returnNew", Type: "boolean", Description: "Return the modified document rather than the original (default: false)"},
 				},
 			},
 			{
@@ -290,6 +357,8 @@ func (d *DatabaseModule) GetSchema() schema.ModuleSchema {
 					{Name: "update", Type: "(id: string, data: object) => boolean", Description: "Update a document by ID"},
 					{Name: "delete", Type: "(id: string) => boolean", Description: "Delete a document by ID"},
 					{Name: "count", Type: "(filter?: object) => number", Description: "Count documents matching filter"},
+					{Name: "upsert", Type: "(filter: object, data: object) => object | null", Description: "Insert or update a document. If a document matches the filter, update it; otherwise insert a new document"},
+					{Name: "findOneAndUpdate", Type: "(filter: object, update: object, options?: FindOneAndUpdateOptions) => object | null", Description: "Atomically find and update a document. Supports update operators: {$inc: {field: 1}}, {$set: {field: value}}"},
 				},
 			},
 		},

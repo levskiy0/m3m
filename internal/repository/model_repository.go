@@ -249,6 +249,128 @@ func (r *ModelRepository) DeleteManyData(ctx context.Context, model *domain.Mode
 	return result.DeletedCount, nil
 }
 
+// UpsertData inserts or updates a document based on filter
+func (r *ModelRepository) UpsertData(ctx context.Context, model *domain.Model, filter bson.M, data map[string]interface{}) (*domain.ModelData, bool, error) {
+	collectionName := r.dataCollectionName(model.ProjectID, model.Slug)
+	collection := r.db.Collection(collectionName)
+
+	now := time.Now()
+	newID := primitive.NewObjectID()
+
+	update := bson.M{
+		"$set": bson.M{"_updated_at": now},
+		"$setOnInsert": bson.M{
+			"_id":         newID,
+			"_model_id":   model.ID,
+			"_created_at": now,
+		},
+	}
+
+	for k, v := range data {
+		update["$set"].(bson.M)[k] = v
+	}
+
+	opts := options.Update().SetUpsert(true)
+	result, err := collection.UpdateOne(ctx, filter, update, opts)
+	if err != nil {
+		return nil, false, err
+	}
+
+	isNew := result.UpsertedCount > 0
+
+	// Find the document to return
+	var doc bson.M
+	if isNew {
+		err = collection.FindOne(ctx, bson.M{"_id": newID}).Decode(&doc)
+	} else {
+		err = collection.FindOne(ctx, filter).Decode(&doc)
+	}
+	if err != nil {
+		return nil, isNew, err
+	}
+
+	modelData := &domain.ModelData{
+		ID:        doc["_id"].(primitive.ObjectID),
+		ModelID:   model.ID,
+		Data:      r.extractUserData(doc),
+		CreatedAt: doc["_created_at"].(primitive.DateTime).Time(),
+		UpdatedAt: doc["_updated_at"].(primitive.DateTime).Time(),
+	}
+
+	return modelData, isNew, nil
+}
+
+// FindOneAndUpdateData finds and updates a document atomically
+func (r *ModelRepository) FindOneAndUpdateData(ctx context.Context, model *domain.Model, filter bson.M, updateOps map[string]interface{}, returnNew bool) (map[string]interface{}, error) {
+	collectionName := r.dataCollectionName(model.ProjectID, model.Slug)
+	collection := r.db.Collection(collectionName)
+
+	update := r.buildUpdateDocument(updateOps)
+	update["$set"].(bson.M)["_updated_at"] = time.Now()
+
+	opts := options.FindOneAndUpdate()
+	if returnNew {
+		opts.SetReturnDocument(options.After)
+	} else {
+		opts.SetReturnDocument(options.Before)
+	}
+
+	var result bson.M
+	err := collection.FindOneAndUpdate(ctx, filter, update, opts).Decode(&result)
+	if err != nil {
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			return nil, ErrDataNotFound
+		}
+		return nil, err
+	}
+
+	return result, nil
+}
+
+// buildUpdateDocument converts update operations to MongoDB update document
+func (r *ModelRepository) buildUpdateDocument(updateOps map[string]interface{}) bson.M {
+	update := bson.M{
+		"$set": bson.M{},
+	}
+
+	for op, value := range updateOps {
+		switch op {
+		case "$set":
+			if setMap, ok := value.(map[string]interface{}); ok {
+				for k, v := range setMap {
+					update["$set"].(bson.M)[k] = v
+				}
+			}
+		case "$inc":
+			update["$inc"] = value
+		case "$unset":
+			update["$unset"] = value
+		case "$push":
+			update["$push"] = value
+		case "$pull":
+			update["$pull"] = value
+		case "$addToSet":
+			update["$addToSet"] = value
+		default:
+			// Treat as $set field
+			update["$set"].(bson.M)[op] = value
+		}
+	}
+
+	return update
+}
+
+// extractUserData extracts user data fields from a document (excludes system fields)
+func (r *ModelRepository) extractUserData(doc bson.M) map[string]interface{} {
+	data := make(map[string]interface{})
+	for k, v := range doc {
+		if k != "_id" && k != "_model_id" && k != "_created_at" && k != "_updated_at" {
+			data[k] = v
+		}
+	}
+	return data
+}
+
 func (r *ModelRepository) DropDataCollection(ctx context.Context, model *domain.Model) error {
 	collectionName := r.dataCollectionName(model.ProjectID, model.Slug)
 	return r.db.Collection(collectionName).Drop(ctx)
