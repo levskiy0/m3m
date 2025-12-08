@@ -1,14 +1,14 @@
-<p align="center">
+<p align="left">
   <img src="web/ui/public/favicon.svg" width="80" alt="M3M Logo" />
 </p>
 
-<h1 align="center">M3M — Mini Services Manager</h1>
+<h1 align="left">M3M — Mini Services Manager</h1>
 
-<p align="center">
+<p align="left">
   <strong>Run JavaScript services with zero infrastructure overhead</strong>
 </p>
 
-<p align="center">
+<p align="left">
   <img alt="Go" src="https://img.shields.io/badge/Go-1.23-00ADD8?logo=go&logoColor=white" />
   <img alt="License" src="https://img.shields.io/badge/License-MIT-blue" />
   <img alt="Platform" src="https://img.shields.io/badge/Platform-Linux%20%7C%20Mac%20%7C%20Windows-lightgrey" />
