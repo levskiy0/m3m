@@ -3,7 +3,7 @@
  * Manages state and operations for the environment editor
  */
 
-import { useState, useRef, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { arrayMove } from '@dnd-kit/sortable';
 import type { DragEndEvent } from '@dnd-kit/core';
 
@@ -12,6 +12,13 @@ import type { EnvRowData } from '../components';
 
 interface UseEnvEditorOptions {
   initialEnvVars: Environment[];
+}
+
+// Counter for generating unique IDs
+let idCounter = 0;
+function generateEnvId() {
+  idCounter += 1;
+  return `env-${idCounter}-${Date.now()}`;
 }
 
 export function useEnvEditor({ initialEnvVars }: UseEnvEditorOptions) {
@@ -23,41 +30,26 @@ export function useEnvEditor({ initialEnvVars }: UseEnvEditorOptions) {
       isNew: false,
     }))
   );
+  const [envIds, setEnvIds] = useState<string[]>(() =>
+    initialEnvVars.map(() => generateEnvId())
+  );
   const [hasChanges, setHasChanges] = useState(false);
   const [deletedKeys, setDeletedKeys] = useState<string[]>([]);
 
-  // Stable IDs for sortable
-  const envIdsRef = useRef<string[]>([]);
-  const idCounterRef = useRef(0);
-
-  // Generate unique env ID
-  const generateEnvId = useCallback(() => {
-    idCounterRef.current += 1;
-    return `env-${idCounterRef.current}-${Date.now()}`;
-  }, []);
-
-  // Initialize refs on first render
-  if (envIdsRef.current.length === 0 && initialEnvVars.length > 0) {
-    envIdsRef.current = initialEnvVars.map(() => generateEnvId());
-  }
-
   // Reset state when env vars change from server
-  const resetState = useCallback(
-    (newEnvVars: Environment[]) => {
-      setEnvVars(
-        newEnvVars.map((e) => ({
-          key: e.key,
-          type: e.type,
-          value: e.value,
-          isNew: false,
-        }))
-      );
-      envIdsRef.current = newEnvVars.map(() => generateEnvId());
-      setHasChanges(false);
-      setDeletedKeys([]);
-    },
-    [generateEnvId]
-  );
+  const resetState = useCallback((newEnvVars: Environment[]) => {
+    setEnvVars(
+      newEnvVars.map((e) => ({
+        key: e.key,
+        type: e.type,
+        value: e.value,
+        isNew: false,
+      }))
+    );
+    setEnvIds(newEnvVars.map(() => generateEnvId()));
+    setHasChanges(false);
+    setDeletedKeys([]);
+  }, []);
 
   // Add new env var
   const addEnvVar = useCallback(() => {
@@ -69,9 +61,9 @@ export function useEnvEditor({ initialEnvVars }: UseEnvEditorOptions) {
     };
 
     setEnvVars((prev) => [...prev, newEnv]);
-    envIdsRef.current = [...envIdsRef.current, generateEnvId()];
+    setEnvIds((prev) => [...prev, generateEnvId()]);
     setHasChanges(true);
-  }, [generateEnvId]);
+  }, []);
 
   // Update env var
   const updateEnvVar = useCallback(
@@ -96,29 +88,28 @@ export function useEnvEditor({ initialEnvVars }: UseEnvEditorOptions) {
       }
       return prev.filter((_, i) => i !== index);
     });
-    envIdsRef.current = envIdsRef.current.filter((_, i) => i !== index);
+    setEnvIds((prev) => prev.filter((_, i) => i !== index));
     setHasChanges(true);
   }, []);
 
   // Handle drag end for reordering
-  const handleDragEnd = useCallback(
-    (event: DragEndEvent) => {
-      const { active, over } = event;
+  const handleDragEnd = useCallback((event: DragEndEvent) => {
+    const { active, over } = event;
 
-      if (over && active.id !== over.id) {
-        const oldIndex = envIdsRef.current.indexOf(active.id as string);
-        const newIndex = envIdsRef.current.indexOf(over.id as string);
+    if (over && active.id !== over.id) {
+      setEnvIds((currentIds) => {
+        const oldIndex = currentIds.indexOf(active.id as string);
+        const newIndex = currentIds.indexOf(over.id as string);
 
-        if (oldIndex === -1 || newIndex === -1) return;
+        if (oldIndex === -1 || newIndex === -1) return currentIds;
 
-        const newEnvVars = arrayMove(envVars, oldIndex, newIndex);
-        envIdsRef.current = arrayMove(envIdsRef.current, oldIndex, newIndex);
-        setEnvVars(newEnvVars);
+        setEnvVars((currentEnvVars) => arrayMove(currentEnvVars, oldIndex, newIndex));
         setHasChanges(true);
-      }
-    },
-    [envVars]
-  );
+
+        return arrayMove(currentIds, oldIndex, newIndex);
+      });
+    }
+  }, []);
 
   // Get changes for saving
   const getChanges = useCallback(() => {
@@ -145,8 +136,8 @@ export function useEnvEditor({ initialEnvVars }: UseEnvEditorOptions) {
     hasValidationErrors: hasValidationErrors || hasDuplicateKeys,
     deletedKeys,
 
-    // Refs (for sortable)
-    envIds: envIdsRef.current,
+    // IDs for sortable
+    envIds,
 
     // Actions
     addEnvVar,
