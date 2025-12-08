@@ -152,10 +152,9 @@ export function LifecyclePage() {
           </div>
 
           <div className="border rounded-lg p-4">
-            <h3 className="font-medium mb-1">3. Enable Auto-Start</h3>
+            <h3 className="font-medium mb-1">3. Start</h3>
             <p className="text-sm text-muted-foreground">
-              In project settings, enable <strong>Auto-start</strong> if you want the service to
-              automatically start on server restart.
+              In the project Overview, click <strong>Start</strong> and choose release for running.
             </p>
           </div>
         </div>
