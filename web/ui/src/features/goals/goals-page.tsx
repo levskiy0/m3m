@@ -194,7 +194,6 @@ export function GoalsPage() {
       endDate: format(dateRange.to, 'yyyy-MM-dd'),
     }),
     enabled: !!projectId && goals.length > 0,
-    refetchInterval: 10000,
   });
 
   const createMutation = useMutation({
