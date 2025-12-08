@@ -549,8 +549,8 @@ func (m *Manager) registerModules(
 	goalsModule := modules.NewGoalsModule(m.goalService, projectID)
 	goalsModule.Register(vm)
 
-	// Stateless modules
-	httpModule := modules.NewHTTPModule(m.config.Runtime.Timeout)
+	// HTTP module (needs storage for download functionality)
+	httpModule := modules.NewHTTPModule(m.config.Runtime.Timeout, m.storageService, projectIDStr)
 	httpModule.Register(vm)
 
 	modules.NewCryptoModule().Register(vm)
