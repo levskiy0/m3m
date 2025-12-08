@@ -1,6 +1,7 @@
 package service
 
 import (
+	"archive/zip"
 	"errors"
 	"fmt"
 	"image"
@@ -237,6 +238,351 @@ func (s *StorageService) Exists(projectID, relativePath string) bool {
 // GetPath returns the absolute filesystem path for a file in project storage
 func (s *StorageService) GetPath(projectID, relativePath string) (string, error) {
 	return s.resolvePath(projectID, relativePath)
+}
+
+// Stat returns detailed file information
+func (s *StorageService) Stat(projectID, relativePath string) (*FileInfo, error) {
+	fullPath, err := s.resolvePath(projectID, relativePath)
+	if err != nil {
+		return nil, err
+	}
+
+	info, err := os.Stat(fullPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, ErrFileNotFound
+		}
+		return nil, err
+	}
+
+	fileInfo := &FileInfo{
+		Name:      info.Name(),
+		Path:      relativePath,
+		IsDir:     info.IsDir(),
+		Size:      info.Size(),
+		UpdatedAt: info.ModTime(),
+	}
+
+	if !info.IsDir() {
+		fileInfo.MimeType = getMimeType(info.Name())
+		fileInfo.URL = fmt.Sprintf("%s/cdn/%s%s", s.config.Server.URI, projectID, relativePath)
+		fileInfo.DownloadURL = fmt.Sprintf("%s/cdn/download/%s%s", s.config.Server.URI, projectID, relativePath)
+		if strings.HasPrefix(fileInfo.MimeType, "image/") {
+			fileInfo.ThumbURL = fmt.Sprintf("%s/cdn/resize/64x64/%s%s", s.config.Server.URI, projectID, relativePath)
+		}
+	}
+
+	return fileInfo, nil
+}
+
+// Append adds content to the end of a file
+func (s *StorageService) Append(projectID, relativePath string, content []byte) error {
+	fullPath, err := s.resolvePath(projectID, relativePath)
+	if err != nil {
+		return err
+	}
+
+	dir := filepath.Dir(fullPath)
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return err
+	}
+
+	f, err := os.OpenFile(fullPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	_, err = f.Write(content)
+	return err
+}
+
+// Copy copies a file or directory
+func (s *StorageService) Copy(projectID, srcPath, dstPath string) error {
+	srcFullPath, err := s.resolvePath(projectID, srcPath)
+	if err != nil {
+		return err
+	}
+
+	dstFullPath, err := s.resolvePath(projectID, dstPath)
+	if err != nil {
+		return err
+	}
+
+	srcInfo, err := os.Stat(srcFullPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return ErrFileNotFound
+		}
+		return err
+	}
+
+	if srcInfo.IsDir() {
+		return s.copyDir(srcFullPath, dstFullPath)
+	}
+	return s.copyFile(srcFullPath, dstFullPath)
+}
+
+func (s *StorageService) copyFile(src, dst string) error {
+	// Ensure destination directory exists
+	if err := os.MkdirAll(filepath.Dir(dst), 0755); err != nil {
+		return err
+	}
+
+	srcFile, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer srcFile.Close()
+
+	dstFile, err := os.Create(dst)
+	if err != nil {
+		return err
+	}
+	defer dstFile.Close()
+
+	_, err = io.Copy(dstFile, srcFile)
+	return err
+}
+
+func (s *StorageService) copyDir(src, dst string) error {
+	if err := os.MkdirAll(dst, 0755); err != nil {
+		return err
+	}
+
+	entries, err := os.ReadDir(src)
+	if err != nil {
+		return err
+	}
+
+	for _, entry := range entries {
+		srcPath := filepath.Join(src, entry.Name())
+		dstPath := filepath.Join(dst, entry.Name())
+
+		if entry.IsDir() {
+			if err := s.copyDir(srcPath, dstPath); err != nil {
+				return err
+			}
+		} else {
+			if err := s.copyFile(srcPath, dstPath); err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
+// Move moves a file or directory
+func (s *StorageService) Move(projectID, srcPath, dstPath string) error {
+	srcFullPath, err := s.resolvePath(projectID, srcPath)
+	if err != nil {
+		return err
+	}
+
+	dstFullPath, err := s.resolvePath(projectID, dstPath)
+	if err != nil {
+		return err
+	}
+
+	// Ensure destination directory exists
+	if err := os.MkdirAll(filepath.Dir(dstFullPath), 0755); err != nil {
+		return err
+	}
+
+	// Clean up resize cache for source path
+	s.cleanupResizeCache(projectID, srcPath)
+
+	return os.Rename(srcFullPath, dstFullPath)
+}
+
+// Glob returns files matching a glob pattern
+func (s *StorageService) Glob(projectID, pattern string) ([]string, error) {
+	basePath := s.getProjectStoragePath(projectID)
+	fullPattern := filepath.Join(basePath, pattern)
+
+	matches, err := filepath.Glob(fullPattern)
+	if err != nil {
+		return nil, err
+	}
+
+	// Convert to relative paths
+	result := make([]string, 0, len(matches))
+	for _, match := range matches {
+		relPath, err := filepath.Rel(basePath, match)
+		if err != nil {
+			continue
+		}
+		result = append(result, relPath)
+	}
+
+	return result, nil
+}
+
+// Zip creates a zip archive from source paths
+func (s *StorageService) Zip(projectID string, srcPaths []string, dstPath string) error {
+	dstFullPath, err := s.resolvePath(projectID, dstPath)
+	if err != nil {
+		return err
+	}
+
+	// Ensure destination directory exists
+	if err := os.MkdirAll(filepath.Dir(dstFullPath), 0755); err != nil {
+		return err
+	}
+
+	zipFile, err := os.Create(dstFullPath)
+	if err != nil {
+		return err
+	}
+	defer zipFile.Close()
+
+	zipWriter := zip.NewWriter(zipFile)
+	defer zipWriter.Close()
+
+	for _, srcPath := range srcPaths {
+		srcFullPath, err := s.resolvePath(projectID, srcPath)
+		if err != nil {
+			return err
+		}
+
+		info, err := os.Stat(srcFullPath)
+		if err != nil {
+			return err
+		}
+
+		if info.IsDir() {
+			if err := s.addDirToZip(zipWriter, srcFullPath, srcPath); err != nil {
+				return err
+			}
+		} else {
+			if err := s.addFileToZip(zipWriter, srcFullPath, srcPath); err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
+func (s *StorageService) addFileToZip(zipWriter *zip.Writer, filePath, archivePath string) error {
+	file, err := os.Open(filePath)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	info, err := file.Stat()
+	if err != nil {
+		return err
+	}
+
+	header, err := zip.FileInfoHeader(info)
+	if err != nil {
+		return err
+	}
+	header.Name = archivePath
+	header.Method = zip.Deflate
+
+	writer, err := zipWriter.CreateHeader(header)
+	if err != nil {
+		return err
+	}
+
+	_, err = io.Copy(writer, file)
+	return err
+}
+
+func (s *StorageService) addDirToZip(zipWriter *zip.Writer, dirPath, archivePath string) error {
+	entries, err := os.ReadDir(dirPath)
+	if err != nil {
+		return err
+	}
+
+	for _, entry := range entries {
+		entryPath := filepath.Join(dirPath, entry.Name())
+		entryArchivePath := filepath.Join(archivePath, entry.Name())
+
+		if entry.IsDir() {
+			if err := s.addDirToZip(zipWriter, entryPath, entryArchivePath); err != nil {
+				return err
+			}
+		} else {
+			if err := s.addFileToZip(zipWriter, entryPath, entryArchivePath); err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
+// Unzip extracts a zip archive
+func (s *StorageService) Unzip(projectID, srcPath, dstPath string) error {
+	srcFullPath, err := s.resolvePath(projectID, srcPath)
+	if err != nil {
+		return err
+	}
+
+	dstFullPath, err := s.resolvePath(projectID, dstPath)
+	if err != nil {
+		return err
+	}
+
+	reader, err := zip.OpenReader(srcFullPath)
+	if err != nil {
+		return err
+	}
+	defer reader.Close()
+
+	for _, file := range reader.File {
+		filePath := filepath.Join(dstFullPath, file.Name)
+
+		// Check for path traversal
+		if !strings.HasPrefix(filePath, filepath.Clean(dstFullPath)+string(os.PathSeparator)) {
+			return ErrInvalidPath
+		}
+
+		if file.FileInfo().IsDir() {
+			if err := os.MkdirAll(filePath, 0755); err != nil {
+				return err
+			}
+			continue
+		}
+
+		if err := os.MkdirAll(filepath.Dir(filePath), 0755); err != nil {
+			return err
+		}
+
+		dstFile, err := os.OpenFile(filePath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, file.Mode())
+		if err != nil {
+			return err
+		}
+
+		srcFile, err := file.Open()
+		if err != nil {
+			dstFile.Close()
+			return err
+		}
+
+		_, err = io.Copy(dstFile, srcFile)
+		srcFile.Close()
+		dstFile.Close()
+
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// GetURL returns the public URL for a file
+func (s *StorageService) GetURL(projectID, relativePath string) string {
+	if !strings.HasPrefix(relativePath, "/") {
+		relativePath = "/" + relativePath
+	}
+	return fmt.Sprintf("%s/cdn/%s%s", s.config.Server.URI, projectID, relativePath)
 }
 
 // cleanupResizeCache removes all cached resized versions of a file or directory
