@@ -57,6 +57,12 @@ export function useProjectRuntime({
     queryClient.invalidateQueries({ queryKey: ['monitor', projectId] });
   }, [queryClient, projectId]);
 
+  const handleGoalsUpdate = useCallback(() => {
+    // Refetch goals stats when we receive WS notification
+    // Use prefix match to invalidate all goal stats queries for this project
+    queryClient.invalidateQueries({ queryKey: ['project-goal-stats', projectId] });
+  }, [queryClient, projectId]);
+
   // Subscribe to WebSocket events
   useWebSocket({
     projectId,
@@ -64,6 +70,7 @@ export function useProjectRuntime({
     onMonitor: handleMonitorUpdate,
     onLog: handleLogUpdate,
     onRunning: handleRunningChange,
+    onGoals: handleGoalsUpdate,
   });
 
   // Queries - fetch initial data, then rely on WebSocket for updates

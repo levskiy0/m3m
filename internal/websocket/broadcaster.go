@@ -174,7 +174,7 @@ func (b *Broadcaster) broadcastGoalsData() {
 
 		// Get stats for last 14 days
 		now := time.Now()
-		startDate := now.AddDate(0, 0, -14)
+		startDate := now.AddDate(0, 0, -7)
 
 		stats, err := b.goalService.GetStats(ctx, &domain.GoalStatsQuery{
 			GoalIDs:   goalIDs,
