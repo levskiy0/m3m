@@ -15,7 +15,7 @@ storage:
   path: "./storage"
 
 runtime:
-  worker_pool_size: 10
+  worker_pool_size: 50
   timeout: 30s
 
 plugins:
