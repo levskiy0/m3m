@@ -17,17 +17,31 @@
 
 ---
 
+> **Note:** M3M is currently in active development. Some features may be incomplete, unstable, or subject to change. Use in production at your own risk.
+
+---
+
 ## Why M3M?
 
-I built M3M because I was tired of writing `Dockerfile` and `docker-compose.yml` for simple integrations and cron scripts.
+### The Problem: Infrastructure Overkill
 
-Every 50-line webhook handler or simple microservice required **500MB of base images** (Node.js, Python, PHP), a stack of external dependencies, and annoying deployment rituals.
+We live in an era where deploying a simple 50-line integration or a webhook handler requires a Dockerfile, a docker-compose.yml, 500MB of Node.js base images, and a bunch of external dependencies.
 
-I wanted a tool where I could just write JavaScript, hit **Run**, and have persistent storage, scheduling, and HTTP routing **out of the box**.
+Your VPS is bloated with layers, your RAM is consumed by identical Node processes, and updating a single line of code feels like a ritual.
 
-* No heavy containers.
-* No orchestration overhead.
-* No NPM dependency hell for micro-tasks.
+### The Solution: Unified Runtime
+
+M3M was born to kill this complexity. It is a single, lightweight binary that acts as a **private ecosystem** for your scripts.
+
+Instead of managing separate containers for every task, you have one environment that provides everything out of the box.
+
+### The Philosophy
+
+M3M is for developers who want to write logic in the browser (or their editor), hit **Save**, and walk away. It's for those who value their time and their server resources.
+
+- No more NPM dependency hell for micro-tasks
+- No more Docker storage anxiety
+- No more cloud bills for things that should run on your $5 VPS
 
 ---
 
@@ -44,7 +58,7 @@ I wanted a tool where I could just write JavaScript, hit **Run**, and have persi
 
 ---
 
-## Show Me The Code
+## Example
 
 ```javascript
 $service.boot(() => {
@@ -77,6 +91,52 @@ $service.start(() => {
 - **Network:** `$http`, `$smtp`
 - **Utils:** `$crypto`, `$encoding`, `$utils`, `$delayed`, `$validator`
 - **Media:** `$image`, `$draw`
+
+---
+
+## Service Lifecycle
+
+Every service has three lifecycle phases managed by the `$service` module:
+
+### 1. Boot Phase
+
+Initialize your service, set up routes, and configure modules.
+
+```javascript
+$service.boot(() => {
+  // Set up routes
+  $router.get('/hello', (ctx) => {
+    return { message: 'Hello World!' };
+  });
+
+  // Configure scheduler
+  $schedule.every('1h', () => {
+    $logger.info('Hourly task running');
+  });
+});
+```
+
+### 2. Start Phase
+
+Called when service is ready. Good for initial data loading.
+
+```javascript
+$service.start(() => {
+  $logger.info('Service started!');
+  // Load initial data, etc.
+});
+```
+
+### 3. Shutdown Phase
+
+Called when service is stopping. Clean up resources here.
+
+```javascript
+$service.shutdown(() => {
+  $logger.info('Service stopping...');
+  // Close connections, save state, etc.
+});
+```
 
 ---
 

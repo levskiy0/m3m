@@ -93,7 +93,7 @@ export function GettingStartedPage() {
 
         {/* The Philosophy */}
         <div className="space-y-3">
-          <h3 className="font-medium">The Philosophy: "Code First, Infrastructure Never"</h3>
+          <h3 className="font-medium">The Philosophy</h3>
           <p className="text-muted-foreground">
             M3M is for developers who want to write logic in the browser (or their editor),
             hit <strong>Save</strong>, and walk away. It's for those who value their time
