@@ -8,7 +8,7 @@ logs/
 
 issue.md
 
-test/*.**
+test/
 plugins/*.so
 storage/
 
