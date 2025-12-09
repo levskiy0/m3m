@@ -10,7 +10,7 @@ import (
 	"m3m/internal/config"
 )
 
-//go:embed ui/dist/*
+//go:embed all:ui/dist
 var staticFS embed.FS
 
 // GetFileSystem returns the filesystem for static files
