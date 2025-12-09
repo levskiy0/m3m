@@ -1,0 +1,369 @@
+package modules
+
+import (
+	"bytes"
+	"image"
+	"image/jpeg"
+	"image/png"
+	"os"
+	"path/filepath"
+	"strings"
+
+	"github.com/dop251/goja"
+	"golang.org/x/image/draw"
+
+	"m3m/internal/service"
+	"m3m/pkg/schema"
+)
+
+type ImageModule struct {
+	storage   *service.StorageService
+	projectID string
+}
+
+type ImageInfo struct {
+	Width  int    `json:"width"`
+	Height int    `json:"height"`
+	Format string `json:"format"`
+}
+
+func NewImageModule(storage *service.StorageService, projectID string) *ImageModule {
+	return &ImageModule{
+		storage:   storage,
+		projectID: projectID,
+	}
+}
+
+// Name returns the module name for JavaScript
+func (m *ImageModule) Name() string {
+	return "$image"
+}
+
+// Register registers the module into the JavaScript VM
+func (m *ImageModule) Register(vm interface{}) {
+	vm.(*goja.Runtime).Set(m.Name(), map[string]interface{}{
+		"info":            m.Info,
+		"resize":          m.Resize,
+		"resizeKeepRatio": m.ResizeKeepRatio,
+		"crop":            m.Crop,
+		"thumbnail":       m.Thumbnail,
+		"readAsBase64":    m.ReadAsBase64,
+	})
+}
+
+// Info returns information about an image (width, height, format)
+func (m *ImageModule) Info(path string) *ImageInfo {
+	data, err := m.storage.Read(m.projectID, path)
+	if err != nil {
+		return nil
+	}
+
+	img, format, err := image.Decode(bytes.NewReader(data))
+	if err != nil {
+		return nil
+	}
+
+	bounds := img.Bounds()
+	return &ImageInfo{
+		Width:  bounds.Dx(),
+		Height: bounds.Dy(),
+		Format: format,
+	}
+}
+
+// Resize resizes an image to the specified dimensions and saves to destination
+func (m *ImageModule) Resize(src, dst string, width, height int) bool {
+	data, err := m.storage.Read(m.projectID, src)
+	if err != nil {
+		return false
+	}
+
+	img, format, err := image.Decode(bytes.NewReader(data))
+	if err != nil {
+		return false
+	}
+
+	// Create resized image
+	resized := image.NewRGBA(image.Rect(0, 0, width, height))
+	draw.CatmullRom.Scale(resized, resized.Bounds(), img, img.Bounds(), draw.Over, nil)
+
+	// Encode to bytes
+	var buf bytes.Buffer
+	if err := m.encodeImage(&buf, resized, format, dst); err != nil {
+		return false
+	}
+
+	// Write to storage
+	return m.storage.Write(m.projectID, dst, buf.Bytes()) == nil
+}
+
+// ResizeKeepRatio resizes an image keeping aspect ratio (fit within bounds)
+func (m *ImageModule) ResizeKeepRatio(src, dst string, maxWidth, maxHeight int) bool {
+	info := m.Info(src)
+	if info == nil {
+		return false
+	}
+
+	// Calculate new dimensions keeping aspect ratio
+	ratio := float64(info.Width) / float64(info.Height)
+	newWidth := maxWidth
+	newHeight := int(float64(maxWidth) / ratio)
+
+	if newHeight > maxHeight {
+		newHeight = maxHeight
+		newWidth = int(float64(maxHeight) * ratio)
+	}
+
+	return m.Resize(src, dst, newWidth, newHeight)
+}
+
+// Crop crops an image to the specified region
+func (m *ImageModule) Crop(src, dst string, x, y, width, height int) bool {
+	data, err := m.storage.Read(m.projectID, src)
+	if err != nil {
+		return false
+	}
+
+	img, format, err := image.Decode(bytes.NewReader(data))
+	if err != nil {
+		return false
+	}
+
+	bounds := img.Bounds()
+	// Validate crop bounds
+	if x < 0 || y < 0 || x+width > bounds.Dx() || y+height > bounds.Dy() {
+		return false
+	}
+
+	// Create cropped image
+	cropped := image.NewRGBA(image.Rect(0, 0, width, height))
+	cropRect := image.Rect(x, y, x+width, y+height)
+	draw.Copy(cropped, image.Point{}, img, cropRect, draw.Over, nil)
+
+	// Encode to bytes
+	var buf bytes.Buffer
+	if err := m.encodeImage(&buf, cropped, format, dst); err != nil {
+		return false
+	}
+
+	// Write to storage
+	return m.storage.Write(m.projectID, dst, buf.Bytes()) == nil
+}
+
+// Thumbnail creates a square thumbnail
+func (m *ImageModule) Thumbnail(src, dst string, size int) bool {
+	data, err := m.storage.Read(m.projectID, src)
+	if err != nil {
+		return false
+	}
+
+	img, format, err := image.Decode(bytes.NewReader(data))
+	if err != nil {
+		return false
+	}
+
+	bounds := img.Bounds()
+	w, h := bounds.Dx(), bounds.Dy()
+
+	// Calculate crop region for center square
+	var cropRect image.Rectangle
+	if w > h {
+		offset := (w - h) / 2
+		cropRect = image.Rect(offset, 0, offset+h, h)
+	} else {
+		offset := (h - w) / 2
+		cropRect = image.Rect(0, offset, w, offset+w)
+	}
+
+	// First crop to square
+	square := image.NewRGBA(image.Rect(0, 0, cropRect.Dx(), cropRect.Dy()))
+	draw.Copy(square, image.Point{}, img, cropRect, draw.Over, nil)
+
+	// Then resize to target size
+	thumb := image.NewRGBA(image.Rect(0, 0, size, size))
+	draw.CatmullRom.Scale(thumb, thumb.Bounds(), square, square.Bounds(), draw.Over, nil)
+
+	// Encode to bytes
+	var buf bytes.Buffer
+	if err := m.encodeImage(&buf, thumb, format, dst); err != nil {
+		return false
+	}
+
+	// Write to storage
+	return m.storage.Write(m.projectID, dst, buf.Bytes()) == nil
+}
+
+// encodeImage encodes an image to the appropriate format
+func (m *ImageModule) encodeImage(buf *bytes.Buffer, img image.Image, originalFormat, dstPath string) error {
+	// Determine format from destination extension, falling back to original format
+	ext := strings.ToLower(filepath.Ext(dstPath))
+	format := originalFormat
+
+	switch ext {
+	case ".png":
+		format = "png"
+	case ".jpg", ".jpeg":
+		format = "jpeg"
+	}
+
+	switch format {
+	case "png":
+		return png.Encode(buf, img)
+	default:
+		return jpeg.Encode(buf, img, &jpeg.Options{Quality: 85})
+	}
+}
+
+// ReadAsBase64 reads an image and returns it as base64 data URI
+func (m *ImageModule) ReadAsBase64(path string) string {
+	data, err := m.storage.Read(m.projectID, path)
+	if err != nil {
+		return ""
+	}
+
+	// Detect format
+	_, format, err := image.DecodeConfig(bytes.NewReader(data))
+	if err != nil {
+		return ""
+	}
+
+	// Determine MIME type
+	mimeType := "image/jpeg"
+	switch format {
+	case "png":
+		mimeType = "image/png"
+	case "gif":
+		mimeType = "image/gif"
+	case "webp":
+		mimeType = "image/webp"
+	}
+
+	// Encode to base64
+	encoded := m.base64Encode(data)
+	return "data:" + mimeType + ";base64," + encoded
+}
+
+func (m *ImageModule) base64Encode(data []byte) string {
+	const base64Table = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
+	var result strings.Builder
+	result.Grow(((len(data) + 2) / 3) * 4)
+
+	for i := 0; i < len(data); i += 3 {
+		var n uint32
+		remaining := len(data) - i
+		switch remaining {
+		case 1:
+			n = uint32(data[i]) << 16
+		case 2:
+			n = uint32(data[i])<<16 | uint32(data[i+1])<<8
+		default:
+			n = uint32(data[i])<<16 | uint32(data[i+1])<<8 | uint32(data[i+2])
+		}
+
+		result.WriteByte(base64Table[(n>>18)&0x3F])
+		result.WriteByte(base64Table[(n>>12)&0x3F])
+		if remaining > 1 {
+			result.WriteByte(base64Table[(n>>6)&0x3F])
+		} else {
+			result.WriteByte('=')
+		}
+		if remaining > 2 {
+			result.WriteByte(base64Table[n&0x3F])
+		} else {
+			result.WriteByte('=')
+		}
+	}
+
+	return result.String()
+}
+
+// Ensure image module is registered with proper file handling
+func init() {
+	// Register decoders for common formats
+	// PNG and JPEG are registered by default when importing image/png and image/jpeg
+	// Additional formats can be registered here if needed
+	_ = os.Getenv("") // Prevent unused import error
+}
+
+// GetSchema implements JSSchemaProvider
+func (m *ImageModule) GetSchema() schema.ModuleSchema {
+	return schema.ModuleSchema{
+		Name:        "$image",
+		Description: "Image manipulation operations (resize, crop, thumbnail)",
+		Types: []schema.TypeSchema{
+			{
+				Name:        "ImageInfo",
+				Description: "Information about an image",
+				Fields: []schema.ParamSchema{
+					{Name: "width", Type: "number", Description: "Image width in pixels"},
+					{Name: "height", Type: "number", Description: "Image height in pixels"},
+					{Name: "format", Type: "string", Description: "Image format (png, jpeg, etc.)"},
+				},
+			},
+		},
+		Methods: []schema.MethodSchema{
+			{
+				Name:        "info",
+				Description: "Get image information (dimensions, format)",
+				Params:      []schema.ParamSchema{{Name: "path", Type: "string", Description: "Path to image in storage"}},
+				Returns:     &schema.ParamSchema{Type: "ImageInfo | null"},
+			},
+			{
+				Name:        "resize",
+				Description: "Resize image to exact dimensions",
+				Params: []schema.ParamSchema{
+					{Name: "src", Type: "string", Description: "Source image path"},
+					{Name: "dst", Type: "string", Description: "Destination image path"},
+					{Name: "width", Type: "number", Description: "Target width"},
+					{Name: "height", Type: "number", Description: "Target height"},
+				},
+				Returns: &schema.ParamSchema{Type: "boolean"},
+			},
+			{
+				Name:        "resizeKeepRatio",
+				Description: "Resize image keeping aspect ratio within bounds",
+				Params: []schema.ParamSchema{
+					{Name: "src", Type: "string", Description: "Source image path"},
+					{Name: "dst", Type: "string", Description: "Destination image path"},
+					{Name: "maxWidth", Type: "number", Description: "Maximum width"},
+					{Name: "maxHeight", Type: "number", Description: "Maximum height"},
+				},
+				Returns: &schema.ParamSchema{Type: "boolean"},
+			},
+			{
+				Name:        "crop",
+				Description: "Crop a region from image",
+				Params: []schema.ParamSchema{
+					{Name: "src", Type: "string", Description: "Source image path"},
+					{Name: "dst", Type: "string", Description: "Destination image path"},
+					{Name: "x", Type: "number", Description: "X offset"},
+					{Name: "y", Type: "number", Description: "Y offset"},
+					{Name: "width", Type: "number", Description: "Crop width"},
+					{Name: "height", Type: "number", Description: "Crop height"},
+				},
+				Returns: &schema.ParamSchema{Type: "boolean"},
+			},
+			{
+				Name:        "thumbnail",
+				Description: "Create a square thumbnail from center",
+				Params: []schema.ParamSchema{
+					{Name: "src", Type: "string", Description: "Source image path"},
+					{Name: "dst", Type: "string", Description: "Destination image path"},
+					{Name: "size", Type: "number", Description: "Thumbnail size (width and height)"},
+				},
+				Returns: &schema.ParamSchema{Type: "boolean"},
+			},
+			{
+				Name:        "readAsBase64",
+				Description: "Read image as base64 data URI",
+				Params:      []schema.ParamSchema{{Name: "path", Type: "string", Description: "Path to image in storage"}},
+				Returns:     &schema.ParamSchema{Type: "string"},
+			},
+		},
+	}
+}
+
+// GetImageSchema returns the image schema (static version)
+func GetImageSchema() schema.ModuleSchema {
+	return (&ImageModule{}).GetSchema()
+}

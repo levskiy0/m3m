@@ -1,0 +1,17 @@
+.idea
+.DS_Store
+.claude
+
+bin/
+build/
+logs/
+
+issue.md
+
+test/
+plugins/*.so
+storage/
+
+web/ui/dist
+web/ui/node_modules
+web/ui/.env
