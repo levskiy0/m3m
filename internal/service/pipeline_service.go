@@ -289,12 +289,12 @@ func (s *PipelineService) getDefaultCode() string {
 $service.boot(() => {
 	// Example: Simple HTTP endpoint
 	$router.get('/health', function(ctx) {
-		return $router.response(200, { status: 'ok' });
+		return ctx.response(200, { status: 'ok' });
 	});
 	
 	// Example: Scheduled task
 	$schedule.daily(function() {
-		logger.info('Daily task executed');
+		$logger.info('Daily task executed');
 	});
 })
 

@@ -18,7 +18,7 @@ $service.start(() => {
 
   // Example: HTTP route
   $router.get('/health', (ctx) => {
-    return $router.response(200, { status: 'ok' });
+    return ctx.response(200, { status: 'ok' });
   });
 
   // Example: Scheduled task
