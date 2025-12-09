@@ -1,0 +1,47 @@
+# Build artifacts
+build/
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Test files
+*_test.go
+*.test
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Dependencies (will be downloaded in build)
+vendor/
+web/ui/node_modules/
+web/ui/dist/
+
+# Local files
+*.local
+.env
+.env.*
+config.local.yaml
+
+# Data directories
+storage/
+logs/
+data/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Git
+.git/
+.gitignore
+
+# Documentation
+*.md
+!README.md
+
+# Tests
+test/

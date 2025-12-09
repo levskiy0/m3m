@@ -137,10 +137,42 @@ Runs comfortably on a **$5/mo VPS** with 512MB RAM alongside 20+ active services
 
 ### Docker (Recommended)
 
-The fastest way to get started. One command:
+One command to run everything (MongoDB included in the image):
 
 ```bash
+docker run -d \
+  --name m3m \
+  -p 8080:8080 \
+  -v m3m-data:/app/data \
+  -e M3M_JWT_SECRET=your-secret-key \
+  levskiy0/m3m:latest
+```
 
+Create admin user:
+
+```bash
+docker exec m3m /app/m3m new-admin admin@example.com yourpassword
+```
+
+Open http://localhost:8080 and login.
+
+**Environment Variables:**
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `M3M_SERVER_PORT` | `8080` | Server port |
+| `M3M_JWT_SECRET` | `change-me-in-production` | JWT signing secret |
+| `M3M_JWT_EXPIRATION` | `168h` | JWT token expiration |
+| `M3M_LOGGING_LEVEL` | `info` | Log level (debug/info/warn/error) |
+
+**Volume:**
+
+- `/app/data` - All persistent data (storage, logs, MongoDB database)
+
+**Run specific version:**
+
+```bash
+docker run -d levskiy0/m3m:v1.0.0
 ```
 
 ### From Source

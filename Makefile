@@ -120,6 +120,21 @@ build-plugins:
 	@cp plugins/*.so $(BUILD_DIR)/plugins/ 2>/dev/null || true
 	@echo "Plugins copied to $(BUILD_DIR)/plugins/"
 
+# Docker
+DOCKER_IMAGE=levskiy0/m3m
+
+docker-build:
+	@echo "Building Docker image $(VERSION)..."
+	docker build --build-arg VERSION=$(VERSION) -t $(DOCKER_IMAGE):$(VERSION) -t $(DOCKER_IMAGE):latest .
+
+docker-push:
+	@echo "Pushing Docker image..."
+	docker push $(DOCKER_IMAGE):$(VERSION)
+	docker push $(DOCKER_IMAGE):latest
+
+docker-release: docker-build docker-push
+	@echo "Released $(DOCKER_IMAGE):$(VERSION)"
+
 # Help
 help:
 	@echo "M3M Makefile commands:"
@@ -139,3 +154,6 @@ help:
 	@echo "  make build-plugin  - Build single plugin (PLUGIN=name)"
 	@echo "  make build-plugins - Build all plugins"
 	@echo "  make build-all     - Build for all platforms"
+	@echo "  make docker-build  - Build Docker image"
+	@echo "  make docker-push   - Push to Docker Hub"
+	@echo "  make docker-release - Build and push (VERSION=v1.0.0)"
