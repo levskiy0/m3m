@@ -133,10 +133,17 @@ func registerUIRoutes(r *gin.Engine, cfg *config.Config, logger *slog.Logger) {
 		return
 	}
 
+	// Get root filesystem for static files (favicon, etc.)
+	rootFS, err := web.GetFileSystem()
+	if err != nil {
+		logger.Error("Failed to get root filesystem", "error", err)
+		return
+	}
+
 	// Serve static assets
 	r.StaticFS("/assets", assetsFS)
 
-	// SPA fallback - all non-API routes return index.html
+	// SPA fallback - all non-API routes return index.html or static files
 	r.NoRoute(func(c *gin.Context) {
 		path := c.Request.URL.Path
 
@@ -149,6 +156,15 @@ func registerUIRoutes(r *gin.Engine, cfg *config.Config, logger *slog.Logger) {
 		// Skip health check
 		if path == "/health" {
 			return
+		}
+
+		if strings.Contains(path, ".") && !strings.HasPrefix(path, "/assets/") {
+			filePath := strings.TrimPrefix(path, "/")
+			if file, err := rootFS.Open(filePath); err == nil {
+				file.Close()
+				c.FileFromFS(path, rootFS)
+				return
+			}
 		}
 
 		// Return index.html for SPA routing
@@ -197,7 +213,6 @@ func AutoStartRuntimes(
 			go func() {
 				logger.Info("Starting autostart process...")
 
-				// Find all projects with status "running"
 				projects, err := projectService.GetByStatus(ctx, domain.ProjectStatusRunning)
 				if err != nil {
 					logger.Error("Failed to get running projects", "error", err)
@@ -212,7 +227,6 @@ func AutoStartRuntimes(
 				logger.Info("Found projects to autostart", "count", len(projects))
 
 				for _, project := range projects {
-					// Skip projects that were running in debug mode
 					if strings.HasPrefix(project.RunningSource, "debug:") {
 						logger.Info("Skipping debug mode project, setting to stopped",
 							"project", project.Slug, "source", project.RunningSource)
@@ -221,7 +235,6 @@ func AutoStartRuntimes(
 						continue
 					}
 
-					// Get release version from running source or use active release
 					var release *domain.Release
 					if strings.HasPrefix(project.RunningSource, "release:") {
 						version := strings.TrimPrefix(project.RunningSource, "release:")
@@ -232,7 +245,6 @@ func AutoStartRuntimes(
 						}
 					}
 
-					// Fallback to active release
 					if release == nil {
 						release, err = pipelineService.GetActiveRelease(ctx, project.ID)
 						if err != nil {
@@ -244,7 +256,6 @@ func AutoStartRuntimes(
 						}
 					}
 
-					// Start runtime
 					if err := runtimeManager.Start(ctx, project.ID, release.Code); err != nil {
 						logger.Error("Failed to autostart project",
 							"project", project.Slug, "error", err)
@@ -273,16 +284,10 @@ func StartWebSocket(
 ) {
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
-			// Start hub in goroutine
 			go hub.Run()
 
-			// Set runtime manager for broadcaster
 			broadcaster.SetRuntimeManager(runtimeManager)
-
-			// Set log broadcaster on runtime manager
 			runtimeManager.SetLogBroadcaster(broadcaster)
-
-			// Start broadcaster
 			broadcaster.Start(ctx)
 
 			logger.Info("WebSocket hub and broadcaster started")
