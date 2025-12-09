@@ -266,7 +266,7 @@ func TestIsolation_FunctionRecursion(t *testing.T) {
 	}
 }
 
-// TestIsolation_RouterHandlerTimeout tests that route handlers can be timed out
+// TestIsolation_RouterHandlerTimeout tests that route handlers can be timed out manually
 func TestIsolation_RouterHandlerTimeout(t *testing.T) {
 	h := NewJSTestHelper(t)
 	router := h.SetupRouter()
