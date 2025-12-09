@@ -226,7 +226,7 @@ export function GoalsPage() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: () => goalsApi.deleteProject(projectId!, deleteDialog.itemToDelete!.id),
+    mutationFn: (goalId: string) => goalsApi.deleteProject(projectId!, goalId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.goals.project(projectId!) });
       deleteDialog.close();
@@ -299,7 +299,7 @@ export function GoalsPage() {
 
   const handleSubmit = () => {
     if (formDialog.mode === 'create') {
-      createMutation.mutate({ name, slug, color, type, description });
+      createMutation.mutate({ name, slug, color, type, description, gridSpan, showTotal });
     } else {
       updateMutation.mutate({ name, color, description, gridSpan, showTotal });
     }
@@ -645,7 +645,7 @@ export function GoalsPage() {
         description={`Are you sure you want to delete "${deleteDialog.itemToDelete?.name}"? All statistics will be lost.`}
         confirmLabel="Delete"
         variant="destructive"
-        onConfirm={() => deleteMutation.mutate()}
+        onConfirm={() => deleteDialog.itemToDelete && deleteMutation.mutate(deleteDialog.itemToDelete.id)}
         isLoading={deleteMutation.isPending}
       />
 

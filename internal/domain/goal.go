@@ -45,6 +45,8 @@ type CreateGoalRequest struct {
 	Type            GoalType `json:"type" binding:"required"`
 	Description     string   `json:"description"`
 	AllowedProjects []string `json:"allowed_projects"`
+	GridSpan        int      `json:"gridSpan"`
+	ShowTotal       bool     `json:"showTotal"`
 }
 
 type UpdateGoalRequest struct {

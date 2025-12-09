@@ -213,6 +213,8 @@ export interface CreateGoalRequest {
   type: GoalType;
   description?: string;
   projectAccess?: string[];
+  gridSpan?: number;
+  showTotal?: boolean;
 }
 
 export interface UpdateGoalRequest {
