@@ -8,6 +8,10 @@ import {
   Ban,
   MoreHorizontal,
   ShieldOff,
+  User,
+  Mail,
+  Shield,
+  Activity,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -16,9 +20,15 @@ import { queryKeys } from '@/lib/query-keys';
 import { getInitials, toggleInArray } from '@/lib/utils';
 import { useAuth } from '@/providers/auth-provider';
 import { useFormDialog, useDeleteDialog, useTitle } from '@/hooks';
-import type { User, CreateUserRequest, UpdateUserRequest } from '@/types';
+import type { User as UserType, CreateUserRequest, UpdateUserRequest } from '@/types';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { LoadingButton } from '@/components/ui/loading-button';
 import {
   Dialog,
@@ -35,14 +45,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -59,8 +61,8 @@ export function UsersPage() {
   const { user: currentUser } = useAuth();
   const queryClient = useQueryClient();
 
-  const formDialog = useFormDialog<User>();
-  const deleteDialog = useDeleteDialog<User>();
+  const formDialog = useFormDialog<UserType>();
+  const deleteDialog = useDeleteDialog<UserType>();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -158,7 +160,7 @@ export function UsersPage() {
     });
   };
 
-  const handleEdit = (user: User) => {
+  const handleEdit = (user: UserType) => {
     setName(user.name);
     setCreateProjects(user.permissions.create_projects);
     setManageUsers(user.permissions.manage_users);
@@ -175,7 +177,7 @@ export function UsersPage() {
 
   if (usersLoading) {
     return (
-      <div className="space-y-4">
+      <div className="space-y-4 max-w-4xl">
         <Skeleton className="h-8 w-48" />
         <Skeleton className="h-64" />
       </div>
@@ -183,16 +185,10 @@ export function UsersPage() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 max-w-4xl">
       <PageHeader
         title="Users"
         description="Manage system users and permissions"
-        action={
-          <Button onClick={() => { resetForm(); formDialog.open(); }}>
-            <Plus className="mr-2 size-4" />
-            Add User
-          </Button>
-        }
       />
 
       {users.length === 0 ? (
@@ -209,99 +205,124 @@ export function UsersPage() {
         />
       ) : (
         <Card>
-          <CardContent className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>User</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Permissions</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="w-12"></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {users.map((user) => (
-                  <TableRow key={user.id}>
-                    <TableCell>
-                      <div className="flex items-center gap-3">
-                        <Avatar className="size-8">
-                          <AvatarImage src={user.avatar} />
-                          <AvatarFallback>{getInitials(user.name)}</AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <p className="font-medium">{user.name}</p>
-                          {user.is_root && (
-                            <Badge variant="secondary" className="text-xs">
-                              Root
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <Button variant="outline" size="sm" onClick={() => { resetForm(); formDialog.open(); }}>
+                <Plus className="mr-2 size-4" />
+                Add User
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="border rounded-lg overflow-hidden">
+              <table className="w-full text-sm">
+                <thead className="bg-muted/50">
+                  <tr>
+                    <th className="text-left font-medium p-3">
+                      <div className="flex items-center gap-1.5">
+                        <User className="size-4" />
+                        <span>User</span>
+                      </div>
+                    </th>
+                    <th className="text-left font-medium p-3">
+                      <div className="flex items-center gap-1.5">
+                        <Mail className="size-4" />
+                        <span>Email</span>
+                      </div>
+                    </th>
+                    <th className="text-left font-medium p-3">
+                      <div className="flex items-center gap-1.5">
+                        <Shield className="size-4" />
+                        <span>Permissions</span>
+                      </div>
+                    </th>
+                    <th className="text-left font-medium p-3 w-[100px]">
+                      <div className="flex items-center gap-1.5">
+                        <Activity className="size-4" />
+                        <span>Status</span>
+                      </div>
+                    </th>
+                    <th className="w-12 p-3"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {users.map((user) => (
+                    <tr key={user.id} className="border-t">
+                      <td className="p-3">
+                        <div className="flex items-center gap-3">
+                          <Avatar className="size-8">
+                            <AvatarImage src={user.avatar} />
+                            <AvatarFallback>{getInitials(user.name)}</AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <p className="font-medium">{user.name}</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="p-3 text-muted-foreground">{user.email}</td>
+                      <td className="p-3">
+                        <div className="flex gap-1 flex-wrap">
+                          {user.permissions.create_projects && (
+                            <Badge variant="outline">Create Projects</Badge>
+                          )}
+                          {user.permissions.manage_users && (
+                            <Badge variant="outline">Manage Users</Badge>
+                          )}
+                          {user.permissions.project_access?.length > 0 && (
+                            <Badge variant="outline">
+                              {user.permissions.project_access.length} projects
                             </Badge>
                           )}
                         </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>{user.email}</TableCell>
-                    <TableCell>
-                      <div className="flex gap-1 flex-wrap">
-                        {user.permissions.create_projects && (
-                          <Badge variant="outline">Create Projects</Badge>
+                      </td>
+                      <td className="p-3">
+                        {user.is_blocked ? (
+                          <Badge variant="destructive">Blocked</Badge>
+                        ) : (
+                          <Badge variant="default">Active</Badge>
                         )}
-                        {user.permissions.manage_users && (
-                          <Badge variant="outline">Manage Users</Badge>
-                        )}
-                        {user.permissions.project_access?.length > 0 && (
-                          <Badge variant="outline">
-                            {user.permissions.project_access.length} projects
-                          </Badge>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      {user.is_blocked ? (
-                        <Badge variant="destructive">Blocked</Badge>
-                      ) : (
-                        <Badge variant="default">Active</Badge>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {!user.is_root && user.id !== currentUser?.id && (
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="size-8">
-                              <MoreHorizontal className="size-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => handleEdit(user)}>
-                              <Edit className="mr-2 size-4" />
-                              Edit
-                            </DropdownMenuItem>
-                            {user.is_blocked ? (
-                              <DropdownMenuItem onClick={() => unblockMutation.mutate(user.id)}>
-                                <ShieldOff className="mr-2 size-4" />
-                                Unblock
+                      </td>
+                      <td className="p-3">
+                        {!user.is_root && user.id !== currentUser?.id && (
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon" className="size-8">
+                                <MoreHorizontal className="size-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => handleEdit(user)}>
+                                <Edit className="mr-2 size-4" />
+                                Edit
                               </DropdownMenuItem>
-                            ) : (
-                              <DropdownMenuItem onClick={() => blockMutation.mutate(user.id)}>
-                                <Ban className="mr-2 size-4" />
-                                Block
+                              {user.is_blocked ? (
+                                <DropdownMenuItem onClick={() => unblockMutation.mutate(user.id)}>
+                                  <ShieldOff className="mr-2 size-4" />
+                                  Unblock
+                                </DropdownMenuItem>
+                              ) : (
+                                <DropdownMenuItem onClick={() => blockMutation.mutate(user.id)}>
+                                  <Ban className="mr-2 size-4" />
+                                  Block
+                                </DropdownMenuItem>
+                              )}
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                className="text-destructive"
+                                onClick={() => deleteDialog.open(user)}
+                              >
+                                <Trash2 className="mr-2 size-4" />
+                                Delete
                               </DropdownMenuItem>
-                            )}
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem
-                              className="text-destructive"
-                              onClick={() => deleteDialog.open(user)}
-                            >
-                              <Trash2 className="mr-2 size-4" />
-                              Delete
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </CardContent>
         </Card>
       )}
