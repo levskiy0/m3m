@@ -10,7 +10,7 @@ import (
 	"github.com/go-telegram/bot"
 	"github.com/go-telegram/bot/models"
 
-	"m3m/pkg/plugin"
+	"github.com/levskiy0/m3m/pkg/plugin"
 )
 
 // Context reply methods
