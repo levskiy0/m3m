@@ -36,21 +36,14 @@ WORKDIR /app
 # Create directories
 RUN mkdir -p /app/data/storage /app/data/logs /app/data/mongodb /app/plugins
 
-# Copy binary and entrypoint
+# Copy binary, config, and entrypoint
 COPY --from=builder /build/m3m /app/m3m
+COPY --from=builder /build/docker-config.yaml /app/config.yaml
 COPY --from=builder /build/docker-entrypoint.sh /app/docker-entrypoint.sh
 RUN chmod +x /app/docker-entrypoint.sh
 
-# Environment
-ENV M3M_SERVER_HOST=0.0.0.0
-ENV M3M_SERVER_PORT=8080
-ENV M3M_MONGODB_URI=mongodb://127.0.0.1:27017
-ENV M3M_MONGODB_DATABASE=m3m
-ENV M3M_STORAGE_PATH=/app/data/storage
-ENV M3M_LOGGING_PATH=/app/data/logs
-ENV M3M_PLUGINS_PATH=/app/plugins
-ENV M3M_JWT_SECRET=change-me-in-production
-ENV M3M_JWT_EXPIRATION=168h
+# M3M_JWT_SECRET must be provided at runtime via -e or docker-compose
+# Other settings are in /app/config.yaml and can be overridden with M3M_* env vars
 
 EXPOSE 8080
 
