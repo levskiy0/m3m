@@ -48,6 +48,11 @@ func (s *GoalService) CreateGlobal(ctx context.Context, req *domain.CreateGoalRe
 }
 
 func (s *GoalService) CreateForProject(ctx context.Context, projectID primitive.ObjectID, req *domain.CreateGoalRequest) (*domain.Goal, error) {
+	gridSpan := req.GridSpan
+	if gridSpan == 0 {
+		gridSpan = 1
+	}
+
 	goal := &domain.Goal{
 		Name:            req.Name,
 		Slug:            fmt.Sprintf("%s-%s", projectID.Hex()[:8], req.Slug),
@@ -56,6 +61,8 @@ func (s *GoalService) CreateForProject(ctx context.Context, projectID primitive.
 		Description:     req.Description,
 		ProjectRef:      &projectID,
 		AllowedProjects: []primitive.ObjectID{projectID},
+		GridSpan:        gridSpan,
+		ShowTotal:       req.ShowTotal,
 	}
 
 	if err := s.goalRepo.Create(ctx, goal); err != nil {
