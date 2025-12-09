@@ -156,6 +156,14 @@ docker exec m3m /app/m3m new-admin admin@example.com yourpassword
 
 Open http://localhost:8080 and login.
 
+**Stop and remove:**
+
+```bash
+docker stop m3m      # Stop container
+docker start m3m     # Start again
+docker rm m3m        # Remove container (data preserved in volume)
+```
+
 **Environment Variables:**
 
 | Variable | Default | Description |
