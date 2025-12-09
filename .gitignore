@@ -1,14 +1,17 @@
 .idea
 .DS_Store
-test/*.**
+.claude
+
 bin/
 build/
-internal/app/dist/
-plugins/*.so
-logs
+logs/
+
 issue.md
+
+test/*.**
+plugins/*.so
+storage/
 
 web/ui/dist
 web/ui/node_modules
 web/ui/.env
-/storage/
