@@ -1120,7 +1120,7 @@ func TestJS_Scenario_HTTPAggregator(t *testing.T) {
 	h := NewJSTestHelper(t)
 
 	// Register HTTP module
-	httpModule := modules.NewHTTPModule(30 * time.Second)
+	httpModule := modules.NewHTTPModule(30*time.Second, nil, "")
 	h.VM.Set("$http", map[string]interface{}{
 		"get":    httpModule.Get,
 		"post":   httpModule.Post,

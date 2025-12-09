@@ -89,7 +89,7 @@ func (h *JSTestHelper) registerModules(vm *goja.Runtime) {
 	modules.NewUtilsModule().Register(vm)
 	modules.NewValidatorModule().Register(vm)
 	modules.NewDelayedModule(5).Register(vm)
-	modules.NewHTTPModule(30 * time.Second).Register(vm)
+	modules.NewHTTPModule(30*time.Second, nil, "").Register(vm)
 
 	// Env (mock) - use self-registration
 	modules.NewEnvModule(map[string]interface{}{

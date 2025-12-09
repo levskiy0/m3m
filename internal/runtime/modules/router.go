@@ -5,6 +5,7 @@ import (
 	"regexp"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/dop251/goja"
 	"github.com/levskiy0/m3m/pkg/schema"
@@ -85,14 +86,15 @@ type CORSConfig struct {
 }
 
 type RouterModule struct {
-	routes      map[string][]routeHandler
-	middlewares []middlewareHandler
-	corsConfig  *CORSConfig
-	mu          sync.RWMutex
-	vm          *goja.Runtime
-	hitCount    int64
-	hitsByPath  map[string]int64
-	hitsMu      sync.RWMutex
+	routes         map[string][]routeHandler
+	middlewares    []middlewareHandler
+	corsConfig     *CORSConfig
+	mu             sync.RWMutex
+	vm             *goja.Runtime
+	hitCount       int64
+	hitsByPath     map[string]int64
+	hitsMu         sync.RWMutex
+	handlerTimeout time.Duration // timeout for route handlers (0 = no timeout)
 }
 
 func NewRouterModule() *RouterModule {
