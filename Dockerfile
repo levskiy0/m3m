@@ -1,5 +1,5 @@
 # Build stage
-FROM golang:1.23-alpine AS builder
+FROM golang:1.24-alpine AS builder
 
 RUN apk add --no-cache git make nodejs npm
 
@@ -10,7 +10,7 @@ RUN go mod download
 
 COPY . .
 
-RUN cd web/ui && npm ci && npm run build
+RUN cd web/ui && npm install && npm run build
 
 ARG VERSION=dev
 RUN CGO_ENABLED=0 GOOS=linux go build \
@@ -18,12 +18,14 @@ RUN CGO_ENABLED=0 GOOS=linux go build \
     -o m3m ./cmd/m3m
 
 # Runtime stage - all-in-one with MongoDB
-FROM debian:bookworm-slim
+FROM ubuntu:22.04
 
-# Install MongoDB
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Install MongoDB 7.0
 RUN apt-get update && apt-get install -y gnupg curl wget ca-certificates \
     && curl -fsSL https://www.mongodb.org/static/pgp/server-7.0.asc | gpg --dearmor -o /usr/share/keyrings/mongodb-server-7.0.gpg \
-    && echo "deb [ signed-by=/usr/share/keyrings/mongodb-server-7.0.gpg ] http://repo.mongodb.org/apt/debian bookworm/mongodb-org/7.0 main" > /etc/apt/sources.list.d/mongodb-org-7.0.list \
+    && echo "deb [ arch=amd64,arm64 signed-by=/usr/share/keyrings/mongodb-server-7.0.gpg ] https://repo.mongodb.org/apt/ubuntu jammy/mongodb-org/7.0 multiverse" > /etc/apt/sources.list.d/mongodb-org-7.0.list \
     && apt-get update \
     && apt-get install -y mongodb-org \
     && apt-get clean \
@@ -34,7 +36,7 @@ WORKDIR /app
 # Create directories
 RUN mkdir -p /app/data/storage /app/data/logs /app/data/mongodb /app/plugins
 
-# Copy binary
+# Copy binary and entrypoint
 COPY --from=builder /build/m3m /app/m3m
 COPY --from=builder /build/docker-entrypoint.sh /app/docker-entrypoint.sh
 RUN chmod +x /app/docker-entrypoint.sh
