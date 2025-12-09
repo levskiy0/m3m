@@ -23,7 +23,7 @@ RUN CGO_ENABLED=1 GOOS=linux go build \
 RUN mkdir -p /build/built-plugins && \
     touch /build/built-plugins/.keep && \
     for dir in plugins/*/; do \
-        if [ -f "$dir/main.go" ]; then \
+        if [ -f "$dir/plugin.go" ]; then \
             plugin_name=$(basename "$dir"); \
             echo "Building plugin: $plugin_name"; \
             cd "$dir" && go build -buildmode=plugin -o "/build/built-plugins/${plugin_name}.so" . && cd /build; \
