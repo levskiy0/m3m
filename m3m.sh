@@ -120,6 +120,8 @@ cmd_update() {
 }
 
 cmd_rebuild() {
+    local version=$(cat "$M3M_VERSION_FILE" 2>/dev/null || echo "dev")
+
     log "Rebuilding M3M with plugins..."
 
     [ -d "$M3M_BASE/src" ] || error "M3M not installed. Run './m3m.sh install' first."
@@ -130,9 +132,9 @@ cmd_rebuild() {
         cp -r "$M3M_BASE/plugins"/* "$M3M_BASE/src/plugins/" 2>/dev/null || true
     fi
 
-    log "Building Docker image..."
+    log "Building Docker image ($version)..."
     cd "$M3M_BASE/src"
-    docker build -t "$M3M_IMAGE" .
+    docker build --build-arg VERSION="$version" -t "$M3M_IMAGE" .
 
     # Restart if running
     if docker ps -q -f name="$M3M_CONTAINER" | grep -q .; then
