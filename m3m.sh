@@ -9,6 +9,7 @@ M3M_REPO="https://github.com/levskiy0/m3m.git"
 M3M_IMAGE="m3m:local"
 M3M_CONTAINER="m3m"
 M3M_CONFIG="$M3M_BASE/config"
+M3M_VERSION_FILE="$M3M_BASE/version"
 
 # Colors
 RED='\033[0;31m'
@@ -32,10 +33,12 @@ load_config() {
 }
 
 cmd_install() {
+    local version="${1:-latest}"
+
     log "Installing M3M to $M3M_BASE..."
 
     if [ -d "$M3M_BASE/src" ]; then
-        warn "Already installed. Use 'm3m.sh update' to update."
+        warn "Already installed. Use './m3m.sh update' to update."
         return
     fi
 
@@ -45,8 +48,22 @@ cmd_install() {
     log "Cloning repository..."
     git clone "$M3M_REPO" "$M3M_BASE/src"
 
-    log "Building Docker image..."
     cd "$M3M_BASE/src"
+
+    # Checkout version
+    if [ "$version" = "latest" ]; then
+        # Get latest release tag
+        version=$(git describe --tags --abbrev=0 2>/dev/null || echo "main")
+    fi
+
+    if [ "$version" != "main" ]; then
+        log "Checking out version: $version"
+        git checkout "$version"
+    fi
+
+    echo "$version" > "$M3M_VERSION_FILE"
+
+    log "Building Docker image..."
     docker build -t "$M3M_IMAGE" .
 
     # Create default config
@@ -67,12 +84,37 @@ EOF
 }
 
 cmd_update() {
+    local version="${1:-latest}"
+
     log "Updating M3M..."
 
     [ -d "$M3M_BASE/src" ] || error "M3M not installed. Run './m3m.sh install' first."
 
     cd "$M3M_BASE/src"
-    git pull
+    git fetch --tags
+
+    # Determine target version
+    if [ "$version" = "latest" ]; then
+        version=$(git describe --tags --abbrev=0 2>/dev/null || echo "main")
+    fi
+
+    current_version=$(cat "$M3M_VERSION_FILE" 2>/dev/null || echo "unknown")
+
+    if [ "$version" = "$current_version" ]; then
+        log "Already on version $version"
+        return
+    fi
+
+    log "Updating from $current_version to $version..."
+
+    if [ "$version" = "main" ]; then
+        git checkout main
+        git pull
+    else
+        git checkout "$version"
+    fi
+
+    echo "$version" > "$M3M_VERSION_FILE"
 
     cmd_rebuild
 }
@@ -176,6 +218,24 @@ cmd_config() {
     fi
 }
 
+cmd_version() {
+    local current="unknown"
+    [ -f "$M3M_VERSION_FILE" ] && current=$(cat "$M3M_VERSION_FILE")
+
+    log "Installed version: $current"
+
+    if [ -d "$M3M_BASE/src" ]; then
+        cd "$M3M_BASE/src"
+        git fetch --tags 2>/dev/null
+        local latest=$(git describe --tags --abbrev=0 2>/dev/null || echo "none")
+        log "Latest release: $latest"
+
+        if [ "$current" != "$latest" ] && [ "$latest" != "none" ]; then
+            warn "Update available! Run './m3m.sh update' or './m3m.sh update $latest'"
+        fi
+    fi
+}
+
 cmd_uninstall() {
     warn "This will remove M3M and all data!"
     read -p "Are you sure? (y/N) " -n 1 -r
@@ -197,23 +257,31 @@ M3M - Mini Services Manager
 Usage: ./m3m.sh <command> [args]
 
 Commands:
-  install     Clone repo and build Docker image
-  update      Pull latest changes and rebuild
-  rebuild     Rebuild image (after adding plugins)
-  start       Start the container
-  stop        Stop the container
-  restart     Restart the container
-  logs        Show container logs
-  status      Show container status
-  admin       Create admin: ./m3m.sh admin <email> <password>
-  config      Show or edit config: ./m3m.sh config [KEY=VALUE]
-  uninstall   Remove M3M (keeps data)
+  install [version]   Install M3M (default: latest release, or 'main' for dev)
+  update [version]    Update to version (default: latest release)
+  rebuild             Rebuild image (after adding plugins)
+  start               Start the container
+  stop                Stop the container
+  restart             Restart the container
+  logs                Show container logs
+  status              Show container status
+  version             Show installed and latest versions
+  admin <email> <pw>  Create admin user
+  config [KEY=VALUE]  Show or edit config
+  uninstall           Remove M3M (keeps data)
 
-Directory structure (in script location):
-  ./data/       Persistent data (mounted to container)
-  ./plugins/    Plugin sources (copy here, then 'rebuild')
-  ./config      Configuration file
-  ./src/        Repository clone (not mounted)
+Examples:
+  ./m3m.sh install              # Install latest release
+  ./m3m.sh install v1.0.0       # Install specific version
+  ./m3m.sh install main         # Install development version
+  ./m3m.sh update               # Update to latest release
+  ./m3m.sh update v1.1.0        # Update to specific version
+
+Directory structure (.m3m/):
+  data/       Persistent data (mounted to container)
+  plugins/    Plugin sources (copy here, then 'rebuild')
+  config      Configuration file
+  src/        Repository clone
 
 Config variables:
   M3M_PORT           Server port (default: 8080)
@@ -225,14 +293,15 @@ EOF
 
 # Main
 case "${1:-help}" in
-    install)   cmd_install ;;
-    update)    cmd_update ;;
+    install)   cmd_install "$2" ;;
+    update)    cmd_update "$2" ;;
     rebuild)   cmd_rebuild ;;
     start)     cmd_start ;;
     stop)      cmd_stop ;;
     restart)   cmd_restart ;;
     logs)      cmd_logs ;;
     status)    cmd_status ;;
+    version)   cmd_version ;;
     admin)     cmd_admin "$2" "$3" ;;
     config)    cmd_config "$2" ;;
     uninstall) cmd_uninstall ;;
