@@ -16,7 +16,7 @@ ARG VERSION=dev
 
 # Build main binary
 RUN CGO_ENABLED=1 GOOS=linux go build \
-    -ldflags "-X m3m/internal/app.Version=${VERSION}" \
+    -ldflags "-X github.com/levskiy0/m3m/internal/app.Version=${VERSION}" \
     -o m3m ./cmd/m3m
 
 # Build plugins
@@ -30,13 +30,13 @@ RUN mkdir -p /build/built-plugins && \
         fi \
     done
 
-# Runtime stage - all-in-one with MongoDB
+# Runtime stage - all-in-one with MongoDB and Go for plugin building
 FROM ubuntu:22.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Install MongoDB 7.0
-RUN apt-get update && apt-get install -y gnupg curl wget ca-certificates \
+# Install MongoDB 7.0 and Go 1.24
+RUN apt-get update && apt-get install -y gnupg curl wget ca-certificates gcc libc6-dev \
     && curl -fsSL https://www.mongodb.org/static/pgp/server-7.0.asc | gpg --dearmor -o /usr/share/keyrings/mongodb-server-7.0.gpg \
     && echo "deb [ arch=amd64,arm64 signed-by=/usr/share/keyrings/mongodb-server-7.0.gpg ] https://repo.mongodb.org/apt/ubuntu jammy/mongodb-org/7.0 multiverse" > /etc/apt/sources.list.d/mongodb-org-7.0.list \
     && apt-get update \
@@ -44,16 +44,27 @@ RUN apt-get update && apt-get install -y gnupg curl wget ca-certificates \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
+# Install Go
+COPY --from=builder /usr/local/go /usr/local/go
+ENV PATH="/usr/local/go/bin:${PATH}"
+ENV GOPATH="/app/go"
+ENV GOCACHE="/app/go/cache"
+
 WORKDIR /app
 
 # Create directories
-RUN mkdir -p /app/data/storage /app/data/logs /app/data/mongodb /app/data/plugins
+RUN mkdir -p /app/data/storage /app/data/logs /app/data/mongodb /app/data/plugins /app/go/cache
 
-# Copy binary, config, and entrypoint
+# Copy binary, config, entrypoint, and source for plugin building
 COPY --from=builder /build/m3m /app/m3m
 COPY --from=builder /build/docker-config.yaml /app/config.yaml
 COPY --from=builder /build/docker-entrypoint.sh /app/docker-entrypoint.sh
 COPY --from=builder /build/built-plugins/ /app/plugins-src/
+
+# Copy source code for plugin building (go.mod, go.sum, pkg/)
+COPY --from=builder /build/go.mod /build/go.sum /app/src/
+COPY --from=builder /build/pkg/ /app/src/pkg/
+
 RUN chmod +x /app/docker-entrypoint.sh
 
 # M3M_JWT_SECRET must be provided at runtime via -e or docker-compose
