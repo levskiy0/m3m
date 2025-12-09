@@ -108,12 +108,17 @@ build-plugin:
 		exit 1; \
 	fi
 	@echo "Building plugin $(PLUGIN)..."
+	@mkdir -p $(BUILD_DIR)/plugins
 	cd plugins/$(PLUGIN) && $(GOBUILD) -buildmode=plugin -o ../$(PLUGIN).so
+	@cp plugins/$(PLUGIN).so $(BUILD_DIR)/plugins/
 
 # Build all plugins
 build-plugins:
 	@echo "Building all plugins..."
+	@mkdir -p $(BUILD_DIR)/plugins
 	cd plugins && $(MAKE) all
+	@cp plugins/*.so $(BUILD_DIR)/plugins/ 2>/dev/null || true
+	@echo "Plugins copied to $(BUILD_DIR)/plugins/"
 
 # Help
 help:
