@@ -162,8 +162,9 @@ cmd_start() {
     docker run -d \
         --name "$M3M_CONTAINER" \
         --restart unless-stopped \
-        -p "$M3M_PORT:8080" \
+        -p "$M3M_PORT:$M3M_PORT" \
         -v "$M3M_DATA:/app/data" \
+        -e "M3M_SERVER_PORT=$M3M_PORT" \
         -e "M3M_JWT_SECRET=$M3M_JWT_SECRET" \
         -e "M3M_SERVER_URI=$M3M_SERVER_URI" \
         "$M3M_IMAGE"
