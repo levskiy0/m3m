@@ -13,9 +13,18 @@ import (
 //go:embed all:ui/dist
 var staticFS embed.FS
 
-// GetFileSystem returns the filesystem for static files
+// GetFileSystem returns the filesystem for static files (root of dist)
 func GetFileSystem() (http.FileSystem, error) {
 	subFS, err := fs.Sub(staticFS, "ui/dist")
+	if err != nil {
+		return nil, err
+	}
+	return http.FS(subFS), nil
+}
+
+// GetAssetsFileSystem returns the filesystem for /assets route
+func GetAssetsFileSystem() (http.FileSystem, error) {
+	subFS, err := fs.Sub(staticFS, "ui/dist/assets")
 	if err != nil {
 		return nil, err
 	}

@@ -126,15 +126,15 @@ func registerUIRoutes(r *gin.Engine, cfg *config.Config, logger *slog.Logger) {
 		return
 	}
 
-	// Get static filesystem
-	staticFS, err := web.GetFileSystem()
+	// Get assets filesystem for /assets route
+	assetsFS, err := web.GetAssetsFileSystem()
 	if err != nil {
-		logger.Error("Failed to get static filesystem", "error", err)
+		logger.Error("Failed to get assets filesystem", "error", err)
 		return
 	}
 
 	// Serve static assets
-	r.StaticFS("/assets", staticFS)
+	r.StaticFS("/assets", assetsFS)
 
 	// SPA fallback - all non-API routes return index.html
 	r.NoRoute(func(c *gin.Context) {
