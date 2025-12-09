@@ -140,12 +140,25 @@ Runs comfortably on a **$5/mo VPS** with 512MB RAM alongside 20+ active services
 One command to run everything (MongoDB included in the image):
 
 ```bash
+# Create data directory
+mkdir -p ./data
+
+# Run container with local data mount
 docker run -d \
   --name m3m \
   -p 8080:8080 \
-  -v m3m-data:/app/data \
+  -v $(pwd)/data:/app/data \
   -e M3M_JWT_SECRET=your-secret-key \
   levskiy0/m3m:latest
+```
+
+This will create the following structure in `./data`:
+```
+data/
+├── storage/    # File storage for services
+├── plugins/    # Plugin .so files
+├── logs/       # Application logs
+└── mongodb/    # MongoDB database files
 ```
 
 Create admin user:
@@ -161,7 +174,7 @@ Open http://localhost:8080 and login.
 ```bash
 docker stop m3m      # Stop container
 docker start m3m     # Start again
-docker rm m3m        # Remove container (data preserved in volume)
+docker rm m3m        # Remove container (data preserved in ./data)
 ```
 
 **Environment Variables:**
@@ -175,7 +188,11 @@ docker rm m3m        # Remove container (data preserved in volume)
 
 **Volume:**
 
-- `/app/data` - All persistent data (storage, logs, MongoDB database)
+- `/app/data` - All persistent data (storage, logs, MongoDB database, plugins)
+
+**Plugins:**
+
+Plugins are automatically built and included in the Docker image. Place your `.so` plugin files in `./data/plugins/` directory.
 
 **Run specific version:**
 
