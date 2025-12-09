@@ -1,8 +1,8 @@
 <p align="left">
-  <img src="web/ui/public/favicon.svg" width="80" alt="M3M Logo" />
+  <img src="web/ui/public/logo.svg" width="180" alt="M3M Logo" />
 </p>
 
-<h1 align="left">M3M — Mini Services Manager</h1>
+<h1 align="left">Mini Services Manager</h1>
 
 <p align="left">
   <strong>Run JavaScript services with zero infrastructure overhead</strong>
