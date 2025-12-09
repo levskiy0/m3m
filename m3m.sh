@@ -63,8 +63,8 @@ cmd_install() {
 
     echo "$version" > "$M3M_VERSION_FILE"
 
-    log "Building Docker image..."
-    docker build -t "$M3M_IMAGE" .
+    log "Building Docker image ($version)..."
+    docker build --build-arg VERSION="$version" -t "$M3M_IMAGE" .
 
     # Create default config
     if [ ! -f "$M3M_CONFIG" ]; then
