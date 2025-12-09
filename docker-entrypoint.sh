@@ -9,8 +9,8 @@ mkdir -p "$MONGO_DATA_DIR" /app/data/logs /app/data/storage /app/data/plugins
 chmod -R 755 /app/data
 
 # Copy built-in plugins if not already present
-if [ -d "/app/plugins-src" ]; then
-    for plugin in /app/plugins-src/*.so; do
+if [ -d "/app/built-plugins" ]; then
+    for plugin in /app/built-plugins/*.so; do
         [ -f "$plugin" ] || continue
         plugin_name=$(basename "$plugin")
         if [ ! -f "/app/data/plugins/$plugin_name" ]; then

@@ -53,7 +53,7 @@ RUN mkdir -p /app/data/storage /app/data/logs /app/data/mongodb /app/data/plugin
 COPY --from=builder /build/m3m /app/m3m
 COPY --from=builder /build/docker-config.yaml /app/config.yaml
 COPY --from=builder /build/docker-entrypoint.sh /app/docker-entrypoint.sh
-COPY --from=builder /build/built-plugins/ /app/data/plugins/
+COPY --from=builder /build/built-plugins/ /app/built-plugins/
 
 RUN chmod +x /app/docker-entrypoint.sh
 
