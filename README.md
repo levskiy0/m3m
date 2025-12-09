@@ -149,6 +149,7 @@ docker run -d \
   -p 8080:8080 \
   -v $(pwd)/data:/app/data \
   -e M3M_JWT_SECRET=your-secret-key \
+  -e M3M_SERVER_IRI=http://localhost:8080 \
   levskiy0/m3m:latest
 ```
 
