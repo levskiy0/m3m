@@ -4,9 +4,9 @@ set -e
 MONGO_DATA_DIR="/app/data/mongodb"
 
 echo "Starting MongoDB..."
-mongod --dbpath "$MONGO_DATA_DIR" --bind_ip 127.0.0.1 --quiet &
+mongod --dbpath "$MONGO_DATA_DIR" --bind_ip 127.0.0.1 --fork --logpath /app/data/logs/mongodb.log
 
-# Wait for MongoDB to be ready
+# Wait for MongoDB
 echo "Waiting for MongoDB..."
 for i in {1..30}; do
     if mongosh --quiet --eval "db.adminCommand('ping')" >/dev/null 2>&1; then

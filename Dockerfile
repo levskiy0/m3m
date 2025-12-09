@@ -13,14 +13,21 @@ COPY . .
 RUN cd web/ui && npm ci && npm run build
 
 ARG VERSION=dev
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
+RUN CGO_ENABLED=0 GOOS=linux go build \
     -ldflags "-X m3m/internal/app.Version=${VERSION}" \
     -o m3m ./cmd/m3m
 
 # Runtime stage - all-in-one with MongoDB
-FROM alpine:3.20
+FROM debian:bookworm-slim
 
-RUN apk add --no-cache ca-certificates tzdata mongodb bash
+# Install MongoDB
+RUN apt-get update && apt-get install -y gnupg curl wget ca-certificates \
+    && curl -fsSL https://www.mongodb.org/static/pgp/server-7.0.asc | gpg --dearmor -o /usr/share/keyrings/mongodb-server-7.0.gpg \
+    && echo "deb [ signed-by=/usr/share/keyrings/mongodb-server-7.0.gpg ] http://repo.mongodb.org/apt/debian bookworm/mongodb-org/7.0 main" > /etc/apt/sources.list.d/mongodb-org-7.0.list \
+    && apt-get update \
+    && apt-get install -y mongodb-org \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
@@ -29,8 +36,6 @@ RUN mkdir -p /app/data/storage /app/data/logs /app/data/mongodb /app/plugins
 
 # Copy binary
 COPY --from=builder /build/m3m /app/m3m
-
-# Copy entrypoint script
 COPY --from=builder /build/docker-entrypoint.sh /app/docker-entrypoint.sh
 RUN chmod +x /app/docker-entrypoint.sh
 
@@ -49,7 +54,7 @@ EXPOSE 8080
 
 VOLUME ["/app/data"]
 
-HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=3s --start-period=15s --retries=3 \
     CMD wget -qO- http://localhost:8080/health || exit 1
 
 ENTRYPOINT ["/app/docker-entrypoint.sh"]
