@@ -141,7 +141,7 @@ export function ProjectsPage() {
     createMutation.mutate({ name, slug, color });
   };
 
-  const canCreateProjects = user?.permissions?.createProjects || user?.isRoot;
+  const canCreateProjects = user?.permissions?.create_projects || user?.is_root;
   const runningCount = projects.filter((p) => p.status === 'running').length;
   const stoppedCount = projects.filter((p) => p.status === 'stopped').length;
 
@@ -314,7 +314,7 @@ function ProjectCard({
     staleTime: 60000,
   });
 
-  const activeRelease = releases.find((r) => r.isActive);
+  const activeRelease = releases.find((r) => r.is_active);
   const publicUrl = `${config.apiURL}/r/${project.slug}`;
 
   return (

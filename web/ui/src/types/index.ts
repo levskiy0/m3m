@@ -4,29 +4,37 @@ export interface User {
   email: string;
   name: string;
   avatar?: string;
-  isRoot: boolean;
-  isBlocked: boolean;
+  is_root: boolean;
+  is_blocked: boolean;
   permissions: UserPermissions;
-  createdAt: string;
-  updatedAt: string;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface UserPermissions {
-  createProjects: boolean;
-  manageUsers: boolean;
-  projectAccess: string[];
+  create_projects: boolean;
+  manage_users: boolean;
+  project_access: string[];
 }
 
 export interface CreateUserRequest {
   email: string;
   password: string;
   name: string;
-  permissions: UserPermissions;
+  permissions: {
+    create_projects: boolean;
+    manage_users: boolean;
+    project_access: string[];
+  };
 }
 
 export interface UpdateUserRequest {
   name?: string;
-  permissions?: UserPermissions;
+  permissions?: {
+    create_projects: boolean;
+    manage_users: boolean;
+    project_access: string[];
+  };
 }
 
 export interface UpdateMeRequest {
@@ -72,24 +80,24 @@ export interface UpdateProjectRequest {
 // Pipeline types
 export interface Branch {
   id: string;
-  projectID: string;
+  project_id: string;
   name: string;
   code: string;
-  parentBranch?: string;
-  createdFromRelease?: string;
-  createdAt: string;
-  updatedAt: string;
+  parent_branch?: string;
+  created_from_release?: string;
+  created_at: string;
+  updated_at: string;
 }
 
 // Lightweight version without code for list operations
 export interface BranchSummary {
   id: string;
-  projectID: string;
+  project_id: string;
   name: string;
-  parentBranch?: string;
-  createdFromRelease?: string;
-  createdAt: string;
-  updatedAt: string;
+  parent_branch?: string;
+  created_from_release?: string;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface CreateBranchRequest {
@@ -108,24 +116,24 @@ export interface ResetBranchRequest {
 
 export interface Release {
   id: string;
-  projectID: string;
+  project_id: string;
   version: string;
   code: string;
   comment?: string;
   tag?: ReleaseTag;
-  isActive: boolean;
-  createdAt: string;
+  is_active: boolean;
+  created_at: string;
 }
 
 // Lightweight version without code for list operations
 export interface ReleaseSummary {
   id: string;
-  projectID: string;
+  project_id: string;
   version: string;
   comment?: string;
   tag?: ReleaseTag;
-  isActive: boolean;
-  createdAt: string;
+  is_active: boolean;
+  created_at: string;
 }
 
 export type ReleaseTag = 'stable' | 'hot-fix' | 'night-build' | 'develop';

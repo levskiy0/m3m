@@ -147,7 +147,7 @@ export function AppSidebar() {
   // Check if Data Storage section is active
   const isDataStorageActive = location.pathname.startsWith(`/projects/${selectedProjectId}/models`);
 
-  const isAdmin = user?.permissions?.manageUsers || user?.isRoot;
+  const isAdmin = user?.permissions?.manage_users || user?.is_root;
 
   const handleProjectSelect = (id: string) => {
     localStorage.setItem(LAST_PROJECT_KEY, id);

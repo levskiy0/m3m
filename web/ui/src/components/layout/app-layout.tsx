@@ -166,7 +166,7 @@ export function AppLayout() {
             </a>
           </div>
         </header>
-        <main className="flex flex-1 flex-col gap-4 p-4 pt-0">
+        <main className="relative flex flex-1 flex-col gap-4 p-4 pt-0">
           <Outlet/>
         </main>
       </SidebarInset>

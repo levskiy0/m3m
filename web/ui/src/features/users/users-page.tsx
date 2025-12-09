@@ -154,22 +154,22 @@ export function UsersPage() {
       email,
       password,
       name,
-      permissions: { createProjects, manageUsers, projectAccess },
+      permissions: { create_projects: createProjects, manage_users: manageUsers, project_access: projectAccess },
     });
   };
 
   const handleEdit = (user: User) => {
     setName(user.name);
-    setCreateProjects(user.permissions.createProjects);
-    setManageUsers(user.permissions.manageUsers);
-    setProjectAccess(user.permissions.projectAccess || []);
+    setCreateProjects(user.permissions.create_projects);
+    setManageUsers(user.permissions.manage_users);
+    setProjectAccess(user.permissions.project_access || []);
     formDialog.openEdit(user);
   };
 
   const handleUpdate = () => {
     updateMutation.mutate({
       name,
-      permissions: { createProjects, manageUsers, projectAccess },
+      permissions: { create_projects: createProjects, manage_users: manageUsers, project_access: projectAccess },
     });
   };
 
@@ -231,7 +231,7 @@ export function UsersPage() {
                         </Avatar>
                         <div>
                           <p className="font-medium">{user.name}</p>
-                          {user.isRoot && (
+                          {user.is_root && (
                             <Badge variant="secondary" className="text-xs">
                               Root
                             </Badge>
@@ -242,28 +242,28 @@ export function UsersPage() {
                     <TableCell>{user.email}</TableCell>
                     <TableCell>
                       <div className="flex gap-1 flex-wrap">
-                        {user.permissions.createProjects && (
+                        {user.permissions.create_projects && (
                           <Badge variant="outline">Create Projects</Badge>
                         )}
-                        {user.permissions.manageUsers && (
+                        {user.permissions.manage_users && (
                           <Badge variant="outline">Manage Users</Badge>
                         )}
-                        {user.permissions.projectAccess?.length > 0 && (
+                        {user.permissions.project_access?.length > 0 && (
                           <Badge variant="outline">
-                            {user.permissions.projectAccess.length} projects
+                            {user.permissions.project_access.length} projects
                           </Badge>
                         )}
                       </div>
                     </TableCell>
                     <TableCell>
-                      {user.isBlocked ? (
+                      {user.is_blocked ? (
                         <Badge variant="destructive">Blocked</Badge>
                       ) : (
                         <Badge variant="default">Active</Badge>
                       )}
                     </TableCell>
                     <TableCell>
-                      {!user.isRoot && user.id !== currentUser?.id && (
+                      {!user.is_root && user.id !== currentUser?.id && (
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button variant="ghost" size="icon" className="size-8">
@@ -275,7 +275,7 @@ export function UsersPage() {
                               <Edit className="mr-2 size-4" />
                               Edit
                             </DropdownMenuItem>
-                            {user.isBlocked ? (
+                            {user.is_blocked ? (
                               <DropdownMenuItem onClick={() => unblockMutation.mutate(user.id)}>
                                 <ShieldOff className="mr-2 size-4" />
                                 Unblock

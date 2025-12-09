@@ -69,7 +69,7 @@ export function ProjectSettings() {
   const { data: users = [] } = useQuery({
     queryKey: ['users'],
     queryFn: usersApi.list,
-    enabled: user?.permissions?.manageUsers || user?.isRoot,
+    enabled: user?.permissions?.manage_users || user?.is_root,
   });
 
   // Initialize form when project loads
@@ -192,7 +192,7 @@ export function ProjectSettings() {
     return <div>Project not found</div>;
   }
 
-  const isOwner = project.owner_id === user?.id || user?.isRoot;
+  const isOwner = project.owner_id === user?.id || user?.is_root;
   const availableUsers = users.filter(
     (u) => u.id !== project.owner_id && !project.members.includes(u.id)
   );

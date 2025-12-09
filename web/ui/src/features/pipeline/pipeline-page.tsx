@@ -588,7 +588,7 @@ export function PipelinePage() {
                             </p>
                           )}
                           <p className="text-xs text-muted-foreground mt-1">
-                            {new Date(release.createdAt).toLocaleString()}
+                            {new Date(release.created_at).toLocaleString()}
                           </p>
                         </div>
                         <div className="flex items-center gap-1">

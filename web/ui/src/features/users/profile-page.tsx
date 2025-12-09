@@ -268,19 +268,19 @@ export function ProfilePage() {
           <div className="space-y-2 text-sm">
             <div className="flex justify-between">
               <span className="text-muted-foreground">Account Type</span>
-              <span>{user.isRoot ? 'Root Administrator' : 'User'}</span>
+              <span>{user.is_root ? 'Root Administrator' : 'User'}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Can Create Projects</span>
-              <span>{user.permissions.createProjects || user.isRoot ? 'Yes' : 'No'}</span>
+              <span>{user.permissions.create_projects || user.is_root ? 'Yes' : 'No'}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Can Manage Users</span>
-              <span>{user.permissions.manageUsers || user.isRoot ? 'Yes' : 'No'}</span>
+              <span>{user.permissions.manage_users || user.is_root ? 'Yes' : 'No'}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Member Since</span>
-              <span>{new Date(user.createdAt).toLocaleDateString()}</span>
+              <span>{new Date(user.created_at).toLocaleDateString()}</span>
             </div>
           </div>
         </CardContent>
