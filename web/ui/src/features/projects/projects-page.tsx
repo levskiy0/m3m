@@ -172,14 +172,6 @@ export function ProjectsPage() {
       <PageHeader
         title="Projects"
         description="Manage your mini-services and workers"
-        action={
-          canCreateProjects && (
-            <Button onClick={() => setCreateOpen(true)}>
-              <Plus className="mr-2 size-4" />
-              New Project
-            </Button>
-          )
-        }
       >
         {projects.length > 0 && (
           <div className="flex items-center gap-3 text-sm text-muted-foreground">
