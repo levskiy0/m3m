@@ -16,12 +16,12 @@
 
 services:
   m3m:
-    image: ghcr.io/levskiy0/m3m:latest
-    # For local build, uncomment below and comment out image:
+    image: levskiy0/m3m:${M3M_VERSION:-latest}
+    # For local build, comment out 'image' and uncomment below:
     # build:
     #   context: .
     #   args:
-    #     VERSION: ${M3M_VERSION:-latest}
+    #     VERSION: ${M3M_VERSION:-dev}
     container_name: m3m
     restart: unless-stopped
     ports:
