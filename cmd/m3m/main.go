@@ -120,7 +120,20 @@ Output .so file will be placed in /app/plugins/`,
 		fmt.Printf("Source: %s\n", srcDir)
 		fmt.Printf("Output: %s\n", outputFile)
 
+		// Run go mod tidy to resolve dependencies
+		fmt.Println("Resolving dependencies...")
+		tidyCmd := exec.Command("go", "mod", "tidy")
+		tidyCmd.Dir = srcDir
+		tidyCmd.Stdout = os.Stdout
+		tidyCmd.Stderr = os.Stderr
+
+		if err := tidyCmd.Run(); err != nil {
+			fmt.Printf("Error running go mod tidy: %v\n", err)
+			os.Exit(1)
+		}
+
 		// Run go build with plugin mode
+		fmt.Println("Compiling plugin...")
 		buildCmd := exec.Command("go", "build", "-buildmode=plugin", "-o", outputFile, ".")
 		buildCmd.Dir = srcDir
 		buildCmd.Stdout = os.Stdout
