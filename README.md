@@ -9,9 +9,9 @@
 </p>
 
 <p align="left">
-  <img alt="Go" src="https://img.shields.io/badge/Go-1.23-00ADD8?logo=go&logoColor=white" />
+  <img alt="Go" src="https://img.shields.io/badge/Go-1.24-00ADD8?logo=go&logoColor=white" />
   <img alt="License" src="https://img.shields.io/badge/License-MIT-blue" />
-  <img alt="Platform" src="https://img.shields.io/badge/Platform-Linux%20%7C%20Mac%20%7C%20Windows-lightgrey" />
+  <img alt="Platform" src="https://img.shields.io/badge/Platform-Linux%20%7C%20Mac-lightgrey" />
   <img alt="Status" src="https://img.shields.io/badge/Status-Development-orange" />
 </p>
 
@@ -135,80 +135,97 @@ Runs comfortably on a **$5/mo VPS** with 512MB RAM alongside 20+ active services
 
 ## Installation
 
-### Docker (Recommended)
-
-One command to run everything (MongoDB included in the image):
+### Quick Install (Recommended)
 
 ```bash
-# Create data directory
-mkdir -p ./data
-
-# Run container with local data mount
-docker run -d \
-  --name m3m \
-  -p 8080:8080 \
-  -v $(pwd)/data:/app/data \
-  -e M3M_JWT_SECRET=your-secret-key \
-  -e M3M_SERVER_URI=http://localhost:8080 \
-  levskiy0/m3m:latest
+curl -fsSL https://raw.githubusercontent.com/levskiy0/m3m/main/m3m.sh -o m3m.sh
+chmod +x m3m.sh
+./m3m.sh install
 ```
 
-This will create the following structure in `./data`:
-```
-data/
-├── storage/    # File storage for services
-├── plugins/    # Plugin .so files
-├── logs/       # Application logs
-└── mongodb/    # MongoDB database files
-```
+This will:
+- Clone the repository to `~/.m3m/src`
+- Build Docker image locally
+- Create config file at `~/.m3m/.env`
 
-Create admin user:
+**Important:** Edit `~/.m3m/.env` and set a secure `M3M_JWT_SECRET`.
+
+### Start & Setup
 
 ```bash
-docker exec m3m /app/m3m new-admin admin@example.com yourpassword
+# Start server
+./m3m.sh start
+
+# Create admin user
+./m3m.sh admin admin@example.com yourpassword
+
+# View logs
+./m3m.sh logs
 ```
 
 Open http://localhost:8080 and login.
 
-**Stop and remove:**
+### All Commands
 
 ```bash
-docker stop m3m      # Stop container
-docker start m3m     # Start again
-docker rm m3m        # Remove container (data preserved in ./data)
+./m3m.sh install     # Clone repo and build Docker image
+./m3m.sh start       # Start the container
+./m3m.sh stop        # Stop the container
+./m3m.sh restart     # Restart the container
+./m3m.sh logs        # Show container logs
+./m3m.sh status      # Show container status
+./m3m.sh admin       # Create admin: ./m3m.sh admin <email> <password>
+./m3m.sh update      # Pull latest changes and rebuild
+./m3m.sh rebuild     # Rebuild image (after adding plugins)
+./m3m.sh uninstall   # Remove M3M completely
 ```
 
-**Environment Variables:**
+### Directory Structure
+
+```
+~/.m3m/
+├── src/        # Repository clone
+├── data/       # Persistent data (mounted to container)
+│   ├── storage/    # File storage for services
+│   ├── plugins/    # Compiled plugins (.so files)
+│   ├── logs/       # Application logs
+│   └── mongodb/    # MongoDB database files
+├── plugins/    # Plugin sources (copy here, then rebuild)
+└── .env        # Environment config
+```
+
+### Adding Plugins
+
+```bash
+# Copy plugin source to plugins directory
+cp -r my-telegram-plugin ~/.m3m/plugins/
+
+# Rebuild image (plugins are compiled during build)
+./m3m.sh rebuild
+```
+
+### Environment Variables
+
+Edit `~/.m3m/.env`:
 
 | Variable | Default | Description |
 |----------|---------|-------------|
+| `M3M_JWT_SECRET` | - | **Required.** JWT signing secret |
+| `M3M_SERVER_URI` | `http://localhost:8080` | Public server URI |
 | `M3M_SERVER_PORT` | `8080` | Server port |
-| `M3M_JWT_SECRET` | `change-me-in-production` | JWT signing secret |
 | `M3M_JWT_EXPIRATION` | `168h` | JWT token expiration |
 | `M3M_LOGGING_LEVEL` | `info` | Log level (debug/info/warn/error) |
 
-**Volume:**
+---
 
-- `/app/data` - All persistent data (storage, logs, MongoDB database, plugins)
-
-**Plugins:**
-
-Plugins are automatically built and included in the Docker image. Place your `.so` plugin files in `./data/plugins/` directory.
-
-**Run specific version:**
-
-```bash
-docker run -d levskiy0/m3m:v1.0.0
-```
-
-### From Source
+## From Source (Manual)
 
 ```bash
 # Clone
 git clone https://github.com/levskiy0/m3m.git
 cd m3m
 
-# Build (requires Go 1.23+, Node.js 20+)
+# Build (requires Go 1.24+, Node.js 20+)
 make build
 
 # Create first admin user
