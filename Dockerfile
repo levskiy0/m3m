@@ -19,12 +19,12 @@ COPY web/ui/ ./
 RUN npm run build
 
 # -----------------------------------------------------------------------------
-# Stage 2: Build Backend
+# Stage 2: Build Backend and Plugins
 # -----------------------------------------------------------------------------
 FROM golang:1.24-alpine AS backend-builder
 
-# Install build dependencies
-RUN apk add --no-cache git make
+# Install build dependencies (gcc required for CGO/plugins)
+RUN apk add --no-cache git make gcc musl-dev
 
 WORKDIR /app
 
@@ -38,30 +38,30 @@ COPY . .
 # Copy built frontend from previous stage
 COPY --from=frontend-builder /app/web/ui/dist ./web/ui/dist
 
-# Build the binary
+# Build plugins and backend using Makefile
 ARG VERSION=dev
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
-    -ldflags "-X m3m/internal/app.Version=${VERSION}" \
-    -o /app/build/m3m ./cmd/m3m
+RUN make build-plugins && \
+    CGO_ENABLED=1 make build-backend VERSION=${VERSION}
 
 # -----------------------------------------------------------------------------
 # Stage 3: Final Runtime Image
 # -----------------------------------------------------------------------------
 FROM alpine:3.19
 
-# Install CA certificates for HTTPS requests
-RUN apk add --no-cache ca-certificates tzdata
+# Install CA certificates and libc for CGO binaries
+RUN apk add --no-cache ca-certificates tzdata libc6-compat
 
 # Create non-root user
 RUN addgroup -S m3m && adduser -S m3m -G m3m
 
 WORKDIR /app
 
-# Copy binary from builder
+# Copy binary and plugins from builder
 COPY --from=backend-builder /app/build/m3m /app/m3m
+COPY --from=backend-builder /app/build/plugins/*.so /app/plugins/
 
 # Create necessary directories
-RUN mkdir -p /app/storage /app/logs /app/plugins /app/data && \
+RUN mkdir -p /app/storage /app/logs /app/data && \
     chown -R m3m:m3m /app
 
 # Copy default config (will be overridden by volume mount in production)
