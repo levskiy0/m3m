@@ -8,9 +8,9 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
 
-	"m3m/internal/config"
-	"m3m/internal/domain"
-	"m3m/internal/repository"
+	"github.com/levskiy0/m3m/internal/config"
+	"github.com/levskiy0/m3m/internal/domain"
+	"github.com/levskiy0/m3m/internal/repository"
 )
 
 var (

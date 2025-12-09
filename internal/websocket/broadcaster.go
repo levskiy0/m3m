@@ -9,9 +9,9 @@ import (
 
 	"go.mongodb.org/mongo-driver/bson/primitive"
 
-	"m3m/internal/domain"
-	"m3m/internal/runtime"
-	"m3m/internal/service"
+	"github.com/levskiy0/m3m/internal/domain"
+	"github.com/levskiy0/m3m/internal/runtime"
+	"github.com/levskiy0/m3m/internal/service"
 )
 
 // GoalStatsResponse represents aggregated goal statistics (same as handler)

@@ -10,9 +10,9 @@ import (
 
 	"github.com/dop251/goja"
 
-	"m3m/internal/config"
-	pkgplugin "m3m/pkg/plugin"
-	"m3m/pkg/schema"
+	"github.com/levskiy0/m3m/internal/config"
+	pkgplugin "github.com/levskiy0/m3m/pkg/plugin"
+	"github.com/levskiy0/m3m/pkg/schema"
 )
 
 // Plugin is an alias to pkg/plugin.Plugin for backward compatibility

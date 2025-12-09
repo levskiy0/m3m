@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"strings"
 
-	"m3m/internal/config"
+	"github.com/levskiy0/m3m/internal/config"
 )
 
 //go:embed all:ui/dist

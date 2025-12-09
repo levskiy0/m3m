@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"m3m/internal/runtime/modules"
+	"github.com/levskiy0/m3m/internal/runtime/modules"
 
 	"github.com/dop251/goja"
 )

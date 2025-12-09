@@ -10,7 +10,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 
-	"m3m/internal/domain"
+	"github.com/levskiy0/m3m/internal/domain"
 )
 
 var (

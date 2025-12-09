@@ -7,7 +7,7 @@ import (
 
 	"github.com/dop251/goja"
 	"github.com/go-playground/validator/v10"
-	"m3m/pkg/schema"
+	"github.com/levskiy0/m3m/pkg/schema"
 )
 
 // ValidatorModule provides data validation utilities using go-playground/validator

@@ -11,10 +11,10 @@ import (
 	"github.com/dop251/goja"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 
-	"m3m/internal/config"
-	"m3m/internal/plugin"
-	"m3m/internal/runtime/modules"
-	"m3m/internal/service"
+	"github.com/levskiy0/m3m/internal/config"
+	"github.com/levskiy0/m3m/internal/plugin"
+	"github.com/levskiy0/m3m/internal/runtime/modules"
+	"github.com/levskiy0/m3m/internal/service"
 )
 
 // ProjectRuntime represents a running project instance

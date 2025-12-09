@@ -17,7 +17,7 @@ import (
 	"github.com/google/uuid"
 	"golang.org/x/image/draw"
 
-	"m3m/internal/config"
+	"github.com/levskiy0/m3m/internal/config"
 )
 
 var (

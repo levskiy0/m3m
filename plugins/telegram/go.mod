@@ -2,13 +2,11 @@ module telegram
 
 go 1.24.0
 
-toolchain go1.24.9
-
 require (
 	github.com/dop251/goja v0.0.0-20241024094426-79f3a7efcdbd
 	github.com/go-telegram/bot v1.11.1
+	github.com/levskiy0/m3m v0.0.0
 	github.com/spf13/cast v1.7.0
-	m3m v0.0.0
 )
 
 require (
@@ -18,4 +16,4 @@ require (
 	golang.org/x/text v0.31.0 // indirect
 )
 
-replace m3m => ../..
+replace github.com/levskiy0/m3m => ../..

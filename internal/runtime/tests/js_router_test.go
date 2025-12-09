@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"m3m/internal/runtime/modules"
+	"github.com/levskiy0/m3m/internal/runtime/modules"
 )
 
 func TestJS_Router_BasicRoutes(t *testing.T) {

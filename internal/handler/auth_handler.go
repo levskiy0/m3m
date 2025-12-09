@@ -5,9 +5,9 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"m3m/internal/domain"
-	"m3m/internal/middleware"
-	"m3m/internal/service"
+	"github.com/levskiy0/m3m/internal/domain"
+	"github.com/levskiy0/m3m/internal/middleware"
+	"github.com/levskiy0/m3m/internal/service"
 )
 
 type AuthHandler struct {

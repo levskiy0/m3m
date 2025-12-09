@@ -7,9 +7,9 @@ import (
 	"github.com/dop251/goja"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 
-	"m3m/internal/domain"
-	"m3m/internal/service"
-	"m3m/pkg/schema"
+	"github.com/levskiy0/m3m/internal/domain"
+	"github.com/levskiy0/m3m/internal/service"
+	"github.com/levskiy0/m3m/pkg/schema"
 )
 
 // GoalInfo represents goal information returned to JS

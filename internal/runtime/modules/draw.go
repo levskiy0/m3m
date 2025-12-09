@@ -12,8 +12,8 @@ import (
 	"github.com/dop251/goja"
 	"github.com/fogleman/gg"
 
-	"m3m/internal/service"
-	"m3m/pkg/schema"
+	"github.com/levskiy0/m3m/internal/service"
+	"github.com/levskiy0/m3m/pkg/schema"
 )
 
 // Canvas represents a drawing canvas in JS

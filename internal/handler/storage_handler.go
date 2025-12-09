@@ -10,8 +10,8 @@ import (
 	"github.com/gin-gonic/gin"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 
-	"m3m/internal/middleware"
-	"m3m/internal/service"
+	"github.com/levskiy0/m3m/internal/middleware"
+	"github.com/levskiy0/m3m/internal/service"
 )
 
 type StorageHandler struct {

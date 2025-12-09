@@ -11,16 +11,16 @@ import (
 	"github.com/gin-gonic/gin"
 	"go.uber.org/fx"
 
-	"m3m/internal/config"
-	"m3m/internal/domain"
-	"m3m/internal/handler"
-	"m3m/internal/middleware"
-	"m3m/internal/plugin"
-	"m3m/internal/repository"
-	"m3m/internal/runtime"
-	"m3m/internal/service"
-	"m3m/internal/websocket"
-	"m3m/web"
+	"github.com/levskiy0/m3m/internal/config"
+	"github.com/levskiy0/m3m/internal/domain"
+	"github.com/levskiy0/m3m/internal/handler"
+	"github.com/levskiy0/m3m/internal/middleware"
+	"github.com/levskiy0/m3m/internal/plugin"
+	"github.com/levskiy0/m3m/internal/repository"
+	"github.com/levskiy0/m3m/internal/runtime"
+	"github.com/levskiy0/m3m/internal/service"
+	"github.com/levskiy0/m3m/internal/websocket"
+	"github.com/levskiy0/m3m/web"
 )
 
 func NewLogger(cfg *config.Config) *slog.Logger {

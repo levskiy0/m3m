@@ -7,7 +7,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 
-	"m3m/internal/config"
+	"github.com/levskiy0/m3m/internal/config"
 )
 
 type MongoDB struct {

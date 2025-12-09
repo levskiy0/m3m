@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/dop251/goja"
-	"m3m/pkg/schema"
+	"github.com/levskiy0/m3m/pkg/schema"
 )
 
 // LogCallback is called when new log is written

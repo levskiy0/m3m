@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/dop251/goja"
-	"m3m/pkg/schema"
+	"github.com/levskiy0/m3m/pkg/schema"
 )
 
 // ServiceModule manages the lifecycle of a service

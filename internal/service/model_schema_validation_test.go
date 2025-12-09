@@ -3,7 +3,7 @@ package service
 import (
 	"testing"
 
-	"m3m/internal/domain"
+	"github.com/levskiy0/m3m/internal/domain"
 )
 
 func TestModelSchemaValidator_ValidateModel(t *testing.T) {

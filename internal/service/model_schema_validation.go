@@ -5,7 +5,7 @@ import (
 	"regexp"
 	"strings"
 
-	"m3m/internal/domain"
+	"github.com/levskiy0/m3m/internal/domain"
 )
 
 // ModelSchemaValidator validates model schema definitions

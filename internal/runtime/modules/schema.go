@@ -1,7 +1,7 @@
 package modules
 
 import (
-	"m3m/pkg/schema"
+	"github.com/levskiy0/m3m/pkg/schema"
 )
 
 // JSModule interface for self-registering modules

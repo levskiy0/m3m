@@ -1,7 +1,7 @@
 package main
 
 import (
-	"m3m/pkg/schema"
+	"github.com/levskiy0/m3m/pkg/schema"
 )
 
 // GetSchema returns the schema for TypeScript generation

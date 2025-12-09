@@ -3,10 +3,10 @@ package modules
 import (
 	"encoding/base64"
 
-	"m3m/internal/service"
+	"github.com/levskiy0/m3m/internal/service"
 
 	"github.com/dop251/goja"
-	"m3m/pkg/schema"
+	"github.com/levskiy0/m3m/pkg/schema"
 )
 
 type StorageModule struct {

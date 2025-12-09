@@ -7,10 +7,10 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"m3m/internal/app"
-	"m3m/internal/config"
-	"m3m/internal/repository"
-	"m3m/internal/service"
+	"github.com/levskiy0/m3m/internal/app"
+	"github.com/levskiy0/m3m/internal/config"
+	"github.com/levskiy0/m3m/internal/repository"
+	"github.com/levskiy0/m3m/internal/service"
 )
 
 var configFile string

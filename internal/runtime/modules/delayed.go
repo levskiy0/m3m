@@ -2,7 +2,7 @@ package modules
 
 import (
 	"github.com/dop251/goja"
-	"m3m/pkg/schema"
+	"github.com/levskiy0/m3m/pkg/schema"
 )
 
 type DelayedModule struct {

@@ -9,7 +9,7 @@ import (
 
 	"github.com/dop251/goja"
 	"github.com/google/uuid"
-	"m3m/pkg/schema"
+	"github.com/levskiy0/m3m/pkg/schema"
 )
 
 type UtilsModule struct{}

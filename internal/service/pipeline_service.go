@@ -8,8 +8,8 @@ import (
 
 	"go.mongodb.org/mongo-driver/bson/primitive"
 
-	"m3m/internal/domain"
-	"m3m/internal/repository"
+	"github.com/levskiy0/m3m/internal/domain"
+	"github.com/levskiy0/m3m/internal/repository"
 )
 
 type PipelineService struct {

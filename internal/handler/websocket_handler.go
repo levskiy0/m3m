@@ -8,9 +8,9 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/gorilla/websocket"
 
-	"m3m/internal/config"
-	"m3m/internal/middleware"
-	ws "m3m/internal/websocket"
+	"github.com/levskiy0/m3m/internal/config"
+	"github.com/levskiy0/m3m/internal/middleware"
+	ws "github.com/levskiy0/m3m/internal/websocket"
 )
 
 var upgrader = websocket.Upgrader{

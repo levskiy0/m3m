@@ -11,8 +11,8 @@ import (
 	"time"
 
 	"github.com/dop251/goja"
+	"github.com/levskiy0/m3m/pkg/schema"
 	"github.com/robfig/cron/v3"
-	"m3m/pkg/schema"
 )
 
 // JobStatus represents the status of a scheduled job
