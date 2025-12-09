@@ -137,65 +137,10 @@ Runs comfortably on a **$5/mo VPS** with 512MB RAM alongside 20+ active services
 
 ### Docker (Recommended)
 
-The fastest way to get started. Requires Docker and Docker Compose.
+The fastest way to get started. One command:
 
 ```bash
-# Quick start with Docker Compose
-curl -O https://raw.githubusercontent.com/levskiy0/m3m/main/docker-compose.yml
 
-# Start M3M with MongoDB
-docker compose up -d
-
-# Create admin user
-docker compose exec m3m /app/m3m new-admin admin@example.com yourpassword
-
-# Open http://localhost:3000 in your browser
-```
-
-**Using a specific version:**
-
-```bash
-# Edit docker-compose.yml and change the image tag:
-# image: ghcr.io/levskiy0/m3m:v1.0.0
-
-# Or use environment variable
-M3M_VERSION=v1.0.0 docker compose up -d
-```
-
-**Environment variables:**
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `M3M_PORT` | `3000` | Host port to expose |
-| `M3M_URI` | `http://localhost:3000` | Public URL |
-| `M3M_JWT_SECRET` | `change-me-in-production` | JWT signing secret |
-| `M3M_DB_NAME` | `m3m` | MongoDB database name |
-
-**Production example:**
-
-```bash
-M3M_PORT=8080 \
-M3M_URI=https://m3m.example.com \
-M3M_JWT_SECRET=$(openssl rand -hex 32) \
-docker compose up -d
-```
-
-### Build Docker Image Locally
-
-```bash
-# Clone repository
-git clone https://github.com/levskiy0/m3m.git
-cd m3m
-
-# Build image
-docker build -t m3m:local .
-
-# Or with specific version tag
-docker build --build-arg VERSION=v1.0.0 -t m3m:v1.0.0 .
-
-# Run with local build (edit docker-compose.yml)
-# Uncomment the 'build:' section and comment out 'image:'
-docker compose up -d
 ```
 
 ### From Source
