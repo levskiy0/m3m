@@ -15,7 +15,7 @@ var staticFS embed.FS
 
 // GetFileSystem returns the filesystem for static files
 func GetFileSystem() (http.FileSystem, error) {
-	subFS, err := fs.Sub(staticFS, "dist")
+	subFS, err := fs.Sub(staticFS, "ui/dist")
 	if err != nil {
 		return nil, err
 	}
@@ -24,7 +24,7 @@ func GetFileSystem() (http.FileSystem, error) {
 
 // GetIndexHTML returns index.html with injected config
 func GetIndexHTML(cfg *config.Config) ([]byte, error) {
-	indexBytes, err := staticFS.ReadFile("dist/index.html")
+	indexBytes, err := staticFS.ReadFile("ui/dist/index.html")
 	if err != nil {
 		return nil, err
 	}
@@ -51,6 +51,6 @@ window.__APP_CONFIG__ = {
 
 // HasUI checks if the embedded UI files exist
 func HasUI() bool {
-	_, err := staticFS.ReadFile("dist/index.html")
+	_, err := staticFS.ReadFile("ui/dist/index.html")
 	return err == nil
 }
