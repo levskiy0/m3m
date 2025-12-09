@@ -1,6 +1,7 @@
 package config
 
 import (
+	"strings"
 	"time"
 
 	"github.com/spf13/viper"
@@ -55,6 +56,10 @@ func Load(path string) (*Config, error) {
 	viper.SetConfigFile(path)
 	viper.SetConfigType("yaml")
 
+	viper.SetEnvPrefix("M3M")
+	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
+	viper.AutomaticEnv()
+
 	viper.SetDefault("server.host", "0.0.0.0")
 	viper.SetDefault("server.port", 3000)
 	viper.SetDefault("server.uri", "http://127.0.0.1:3000")
@@ -69,7 +74,11 @@ func Load(path string) (*Config, error) {
 	viper.SetDefault("logging.path", "./logs")
 
 	if err := viper.ReadInConfig(); err != nil {
-		return nil, err
+		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
+			if path != "" {
+				return nil, err
+			}
+		}
 	}
 
 	var cfg Config
