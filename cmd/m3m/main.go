@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"os/exec"
-	"path/filepath"
 
 	"github.com/spf13/cobra"
 
@@ -82,84 +80,12 @@ var versionCmd = &cobra.Command{
 	},
 }
 
-var pluginBuildCmd = &cobra.Command{
-	Use:   "plugin-build [plugin-name]",
-	Short: "Build a plugin from /app/data/plugins/{plugin-name}",
-	Long: `Build a Go plugin from source located in /app/data/plugins/{plugin-name}.
-The plugin must have a plugin.go file with NewPlugin() function.
-Output .so file will be placed in /app/plugins/`,
-	Args: cobra.ExactArgs(1),
-	Run: func(cmd *cobra.Command, args []string) {
-		pluginName := args[0]
-
-		// Paths for Docker environment
-		srcDir := filepath.Join("/app/data/plugins", pluginName)
-		outputDir := "/app/plugins"
-		outputFile := filepath.Join(outputDir, pluginName+".so")
-
-		// Check if source directory exists
-		if _, err := os.Stat(srcDir); os.IsNotExist(err) {
-			fmt.Printf("Error: plugin source directory not found: %s\n", srcDir)
-			os.Exit(1)
-		}
-
-		// Check if plugin.go exists
-		pluginFile := filepath.Join(srcDir, "plugin.go")
-		if _, err := os.Stat(pluginFile); os.IsNotExist(err) {
-			fmt.Printf("Error: plugin.go not found in %s\n", srcDir)
-			os.Exit(1)
-		}
-
-		// Ensure output directory exists
-		if err := os.MkdirAll(outputDir, 0755); err != nil {
-			fmt.Printf("Error creating output directory: %v\n", err)
-			os.Exit(1)
-		}
-
-		fmt.Printf("Building plugin: %s\n", pluginName)
-		fmt.Printf("Source: %s\n", srcDir)
-		fmt.Printf("Output: %s\n", outputFile)
-
-		// Run go mod tidy to resolve dependencies
-		fmt.Println("Resolving dependencies...")
-		tidyCmd := exec.Command("go", "mod", "tidy")
-		tidyCmd.Dir = srcDir
-		tidyCmd.Stdout = os.Stdout
-		tidyCmd.Stderr = os.Stderr
-
-		if err := tidyCmd.Run(); err != nil {
-			fmt.Printf("Error running go mod tidy: %v\n", err)
-			os.Exit(1)
-		}
-
-		// Run go build with plugin mode
-		fmt.Println("Compiling plugin...")
-		buildCmd := exec.Command("go", "build", "-buildmode=plugin", "-o", outputFile, ".")
-		buildCmd.Dir = srcDir
-		buildCmd.Stdout = os.Stdout
-		buildCmd.Stderr = os.Stderr
-		buildCmd.Env = append(os.Environ(),
-			"CGO_ENABLED=1",
-			"GOOS=linux",
-		)
-
-		if err := buildCmd.Run(); err != nil {
-			fmt.Printf("Error building plugin: %v\n", err)
-			os.Exit(1)
-		}
-
-		fmt.Printf("Plugin %s built successfully!\n", pluginName)
-		fmt.Printf("Restart the server to load the new plugin.\n")
-	},
-}
-
 func init() {
 	rootCmd.PersistentFlags().StringVarP(&configFile, "config", "c", "config.yaml", "config file path")
 
 	rootCmd.AddCommand(serveCmd)
 	rootCmd.AddCommand(newAdminCmd)
 	rootCmd.AddCommand(versionCmd)
-	rootCmd.AddCommand(pluginBuildCmd)
 }
 
 func main() {
