@@ -122,6 +122,8 @@ export function AppSidebar() {
     ? [
         { title: 'Overview', url: `/projects/${selectedProjectId}`, icon: Box },
         { title: 'Pipeline', url: `/projects/${selectedProjectId}/pipeline`, icon: Code },
+        { title: 'Environment', url: `/projects/${selectedProjectId}/environment`, icon: Variable },
+        { title: 'Goals', url: `/projects/${selectedProjectId}/goals`, icon: Target },
       ]
     : [];
 
@@ -131,15 +133,8 @@ export function AppSidebar() {
       ]
     : [];
 
-  const metricsNavItems: NavItem[] = currentProject
-    ? [
-        { title: 'Goals', url: `/projects/${selectedProjectId}/goals`, icon: Target },
-      ]
-    : [];
-
   const settingsNavItems: NavItem[] = currentProject
     ? [
-        { title: 'Environment', url: `/projects/${selectedProjectId}/environment`, icon: Variable },
         { title: 'Settings', url: `/projects/${selectedProjectId}/settings`, icon: Settings2 },
       ]
     : [];
@@ -320,29 +315,6 @@ export function AppSidebar() {
 
               {/* File Storage */}
               {storageNavItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton
-                    asChild
-                    isActive={location.pathname === item.url}
-                    tooltip={item.title}
-                  >
-                    <Link to={item.url}>
-                      <item.icon />
-                      <span>{item.title}</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroup>
-        )}
-
-        {/* Metrics Section */}
-        {currentProject && metricsNavItems.length > 0 && (
-          <SidebarGroup>
-            <SidebarGroupLabel>Metrics</SidebarGroupLabel>
-            <SidebarMenu>
-              {metricsNavItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton
                     asChild
