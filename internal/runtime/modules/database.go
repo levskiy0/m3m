@@ -9,12 +9,14 @@ import (
 
 	"github.com/levskiy0/m3m/internal/domain"
 	"github.com/levskiy0/m3m/internal/service"
+	"github.com/levskiy0/m3m/pkg/jsutil"
 	"github.com/levskiy0/m3m/pkg/schema"
 )
 
 type DatabaseModule struct {
 	modelService *service.ModelService
 	projectID    primitive.ObjectID
+	vm           *goja.Runtime
 }
 
 func NewDatabaseModule(modelService *service.ModelService, projectID primitive.ObjectID) *DatabaseModule {
@@ -31,7 +33,8 @@ func (d *DatabaseModule) Name() string {
 
 // Register registers the module into the JavaScript VM
 func (d *DatabaseModule) Register(vm interface{}) {
-	vm.(*goja.Runtime).Set(d.Name(), map[string]interface{}{
+	d.vm = vm.(*goja.Runtime)
+	d.vm.Set(d.Name(), map[string]interface{}{
 		"collection": d.Collection,
 	})
 }
@@ -41,6 +44,12 @@ type CollectionWrapper struct {
 	projectID    primitive.ObjectID
 	modelSlug    string
 	modelID      primitive.ObjectID
+	vm           *goja.Runtime
+}
+
+// throwError throws a JavaScript error that can be caught with try-catch
+func (c *CollectionWrapper) throwError(msg string) {
+	jsutil.ThrowJSError(c.vm, msg)
 }
 
 func (d *DatabaseModule) Collection(name string) *CollectionWrapper {
@@ -51,6 +60,7 @@ func (d *DatabaseModule) Collection(name string) *CollectionWrapper {
 			modelService: d.modelService,
 			projectID:    d.projectID,
 			modelSlug:    name,
+			vm:           d.vm,
 		}
 	}
 
@@ -59,6 +69,7 @@ func (d *DatabaseModule) Collection(name string) *CollectionWrapper {
 		projectID:    d.projectID,
 		modelSlug:    name,
 		modelID:      model.ID,
+		vm:           d.vm,
 	}
 }
 
@@ -165,13 +176,13 @@ func (c *CollectionWrapper) FindOne(filter map[string]interface{}) map[string]in
 
 func (c *CollectionWrapper) Insert(data map[string]interface{}) map[string]interface{} {
 	if c.modelID.IsZero() {
-		return nil
+		c.throwError("collection '" + c.modelSlug + "' not found")
 	}
 
 	ctx := context.Background()
 	result, err := c.modelService.CreateData(ctx, c.modelID, data)
 	if err != nil {
-		return nil
+		c.throwError(err.Error())
 	}
 
 	return result
@@ -179,32 +190,38 @@ func (c *CollectionWrapper) Insert(data map[string]interface{}) map[string]inter
 
 func (c *CollectionWrapper) Update(id string, data map[string]interface{}) bool {
 	if c.modelID.IsZero() {
-		return false
+		c.throwError("collection '" + c.modelSlug + "' not found")
 	}
 
 	dataID, err := primitive.ObjectIDFromHex(id)
 	if err != nil {
-		return false
+		c.throwError("invalid id: " + err.Error())
 	}
 
 	ctx := context.Background()
 	err = c.modelService.UpdateData(ctx, c.modelID, dataID, data)
-	return err == nil
+	if err != nil {
+		c.throwError(err.Error())
+	}
+	return true
 }
 
 func (c *CollectionWrapper) Delete(id string) bool {
 	if c.modelID.IsZero() {
-		return false
+		c.throwError("collection '" + c.modelSlug + "' not found")
 	}
 
 	dataID, err := primitive.ObjectIDFromHex(id)
 	if err != nil {
-		return false
+		c.throwError("invalid id: " + err.Error())
 	}
 
 	ctx := context.Background()
 	err = c.modelService.DeleteData(ctx, c.modelID, dataID)
-	return err == nil
+	if err != nil {
+		c.throwError(err.Error())
+	}
+	return true
 }
 
 func (c *CollectionWrapper) Count(filter map[string]interface{}) int64 {
@@ -267,7 +284,7 @@ func (c *CollectionWrapper) Count(filter map[string]interface{}) int64 {
 // Upsert inserts a document or updates it if one matches the filter
 func (c *CollectionWrapper) Upsert(filter map[string]interface{}, data map[string]interface{}) map[string]interface{} {
 	if c.modelID.IsZero() {
-		return nil
+		c.throwError("collection '" + c.modelSlug + "' not found")
 	}
 
 	ctx := context.Background()
@@ -275,7 +292,7 @@ func (c *CollectionWrapper) Upsert(filter map[string]interface{}, data map[strin
 
 	result, _, err := c.modelService.UpsertData(ctx, c.modelID, mongoFilter, data)
 	if err != nil {
-		return nil
+		c.throwError(err.Error())
 	}
 
 	return result
@@ -284,7 +301,7 @@ func (c *CollectionWrapper) Upsert(filter map[string]interface{}, data map[strin
 // FindOneAndUpdate finds a document, updates it atomically and returns the result
 func (c *CollectionWrapper) FindOneAndUpdate(filter map[string]interface{}, update map[string]interface{}, options map[string]interface{}) map[string]interface{} {
 	if c.modelID.IsZero() {
-		return nil
+		c.throwError("collection '" + c.modelSlug + "' not found")
 	}
 
 	ctx := context.Background()
@@ -299,7 +316,7 @@ func (c *CollectionWrapper) FindOneAndUpdate(filter map[string]interface{}, upda
 
 	result, err := c.modelService.FindOneAndUpdateData(ctx, c.modelID, mongoFilter, update, returnNew)
 	if err != nil {
-		return nil
+		c.throwError(err.Error())
 	}
 
 	return result
