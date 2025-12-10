@@ -1,7 +1,8 @@
 import { config } from '@/lib/config';
 import { getToken } from '@/api/client';
+import type { ActionRuntimeState } from '@/types';
 
-export type EventType = 'monitor' | 'log' | 'running' | 'goals';
+export type EventType = 'monitor' | 'log' | 'running' | 'goals' | 'actions';
 
 export interface WSEvent {
   projectId: string;
@@ -16,6 +17,7 @@ export interface WSEventHandlers {
   onLog?: (projectId: string, data: { hasNewLogs: boolean }) => void;
   onRunning?: (projectId: string, data: { running: boolean }) => void;
   onGoals?: (projectId: string, data: unknown) => void;
+  onActions?: (projectId: string, data: ActionRuntimeState[]) => void;
   onConnect?: () => void;
   onDisconnect?: () => void;
   onError?: (error: Event) => void;
@@ -143,6 +145,9 @@ class WebSocketClient {
             break;
           case 'goals':
             this.handlers.onGoals?.(event.projectId, event.event.data);
+            break;
+          case 'actions':
+            this.handlers.onActions?.(event.projectId, event.event.data as ActionRuntimeState[]);
             break;
         }
       }

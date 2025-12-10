@@ -2,7 +2,7 @@ import { useEffect, useCallback, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { wsClient, type WSEventHandlers } from '@/lib/websocket';
 import { queryKeys } from '@/lib/query-keys';
-import type { RuntimeStats } from '@/types';
+import type { RuntimeStats, ActionRuntimeState } from '@/types';
 
 interface UseWebSocketOptions {
   projectId?: string;
@@ -11,6 +11,7 @@ interface UseWebSocketOptions {
   onLog?: () => void;
   onRunning?: (running: boolean) => void;
   onGoals?: (data: unknown) => void;
+  onActions?: (data: ActionRuntimeState[]) => void;
 }
 
 export function useWebSocket(options: UseWebSocketOptions = {}) {
@@ -21,30 +22,37 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
     onLog,
     onRunning,
     onGoals,
+    onActions,
   } = options;
 
   const queryClient = useQueryClient();
   const handlersRef = useRef<WSEventHandlers>({});
 
   // Update handlers when callbacks change
+  // Only set handlers that are actually provided to avoid overwriting other hooks' handlers
   useEffect(() => {
-    handlersRef.current = {
-      onMonitor: (pid, data) => {
+    const handlers: WSEventHandlers = {};
+
+    if (onMonitor) {
+      handlers.onMonitor = (pid, data) => {
         if (projectId && pid === projectId) {
-          // Update query cache with new monitor data
-          queryClient.setQueryData(
-            queryKeys.projects.status(projectId),
-            data
-          );
-          onMonitor?.(data as RuntimeStats);
+          // Update monitor query cache
+          queryClient.setQueryData(['monitor', projectId], data);
+          onMonitor(data as RuntimeStats);
         }
-      },
-      onLog: (pid, data) => {
+      };
+    }
+
+    if (onLog) {
+      handlers.onLog = (pid, data) => {
         if (projectId && pid === projectId && data.hasNewLogs) {
-          onLog?.();
+          onLog();
         }
-      },
-      onRunning: (pid, data) => {
+      };
+    }
+
+    if (onRunning) {
+      handlers.onRunning = (pid, data) => {
         if (projectId && pid === projectId) {
           const newStatus = data.running ? 'running' : 'stopped';
 
@@ -76,18 +84,30 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
             queryKey: queryKeys.projects.detail(projectId),
           });
 
-          onRunning?.(data.running);
+          onRunning(data.running);
         }
-      },
-      onGoals: (pid, data) => {
-        if (projectId && pid === projectId) {
-          onGoals?.(data);
-        }
-      },
-    };
+      };
+    }
 
-    wsClient.setHandlers(handlersRef.current);
-  }, [projectId, queryClient, onMonitor, onLog, onRunning, onGoals]);
+    if (onGoals) {
+      handlers.onGoals = (pid, data) => {
+        if (projectId && pid === projectId) {
+          onGoals(data);
+        }
+      };
+    }
+
+    if (onActions) {
+      handlers.onActions = (pid, data) => {
+        if (projectId && pid === projectId) {
+          onActions(data);
+        }
+      };
+    }
+
+    handlersRef.current = handlers;
+    wsClient.setHandlers(handlers);
+  }, [projectId, queryClient, onMonitor, onLog, onRunning, onGoals, onActions]);
 
   // Connect and subscribe
   useEffect(() => {

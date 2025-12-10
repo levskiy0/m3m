@@ -73,6 +73,7 @@ func RegisterRoutes(
 	widgetHandler *handler.WidgetHandler,
 	wsHandler *handler.WebSocketHandler,
 	templateHandler *handler.TemplateHandler,
+	actionHandler *handler.ActionHandler,
 ) {
 	// Health check
 	r.GET("/health", func(c *gin.Context) {
@@ -105,6 +106,7 @@ func RegisterRoutes(
 	widgetHandler.Register(api, authMiddleware)
 	wsHandler.Register(api, authMiddleware)
 	templateHandler.Register(api, authMiddleware)
+	actionHandler.Register(api, authMiddleware)
 
 	// Public routes (at root level, not under /api)
 	runtimeHandler.RegisterPublicRoutes(r)
@@ -290,6 +292,7 @@ func StartWebSocket(
 
 			broadcaster.SetRuntimeManager(runtimeManager)
 			runtimeManager.SetLogBroadcaster(broadcaster)
+			runtimeManager.SetActionBroadcaster(broadcaster)
 			broadcaster.Start(ctx)
 
 			logger.Info("WebSocket hub and broadcaster started")
@@ -323,6 +326,7 @@ func New(configPath string) *fx.App {
 			repository.NewEnvironmentRepository,
 			repository.NewModelRepository,
 			repository.NewWidgetRepository,
+			repository.NewActionRepository,
 
 			// Services
 			service.NewAuthService,
@@ -334,6 +338,7 @@ func New(configPath string) *fx.App {
 			service.NewStorageService,
 			service.NewModelService,
 			service.NewWidgetService,
+			service.NewActionService,
 
 			// Runtime
 			runtime.NewManager,
@@ -359,6 +364,7 @@ func New(configPath string) *fx.App {
 			handler.NewWidgetHandler,
 			handler.NewWebSocketHandler,
 			handler.NewTemplateHandler,
+			handler.NewActionHandler,
 		),
 		fx.Invoke(RegisterRoutes, StartServer, AutoStartRuntimes, StartWebSocket),
 	)

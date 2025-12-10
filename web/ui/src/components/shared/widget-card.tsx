@@ -1,4 +1,4 @@
-import { forwardRef } from 'react';
+import { forwardRef, useState, useEffect } from 'react';
 import {
   Target,
   Trash2,
@@ -26,6 +26,26 @@ import { Sparkline } from '@/components/shared/sparkline';
 import { cn } from '@/lib/utils';
 import { formatBytes } from '@/lib/format';
 import type { Goal, GoalStats, Widget, WidgetType, RuntimeStats } from '@/types';
+
+// Format duration from seconds to human readable string
+function formatUptime(seconds: number): string {
+  if (seconds < 60) {
+    return `${seconds}s`;
+  }
+  if (seconds < 3600) {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return secs > 0 ? `${mins}m ${secs}s` : `${mins}m`;
+  }
+  if (seconds < 86400) {
+    const hours = Math.floor(seconds / 3600);
+    const mins = Math.floor((seconds % 3600) / 60);
+    return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
+  }
+  const days = Math.floor(seconds / 86400);
+  const hours = Math.floor((seconds % 86400) / 3600);
+  return hours > 0 ? `${days}d ${hours}h` : `${days}d`;
+}
 
 interface WidgetCardProps {
   widget: Widget;
@@ -345,6 +365,28 @@ const MonitoringWidgetCard = forwardRef<HTMLDivElement, {
   dragHandleProps?: React.HTMLAttributes<HTMLButtonElement>;
   style?: React.CSSProperties;
 }>(({ widget, runtimeStats, isRunning, config, Icon, onEdit, onDelete, dragHandleProps, style }, ref) => {
+  // Calculate uptime locally from started_at to avoid needing frequent WS updates
+  const [computedUptime, setComputedUptime] = useState<string>('--');
+
+  useEffect(() => {
+    if (widget.type !== 'uptime' || !isRunning || !runtimeStats?.started_at) {
+      setComputedUptime('--');
+      return;
+    }
+
+    const updateUptime = () => {
+      const startedAt = new Date(runtimeStats.started_at).getTime();
+      const now = Date.now();
+      const seconds = Math.floor((now - startedAt) / 1000);
+      setComputedUptime(formatUptime(seconds));
+    };
+
+    updateUptime();
+    const interval = setInterval(updateUptime, 1000);
+
+    return () => clearInterval(interval);
+  }, [widget.type, isRunning, runtimeStats?.started_at]);
+
   const getValue = (): string => {
     // Storage and Database don't require runtime to be running
     if (widget.type === 'storage') {
@@ -365,7 +407,7 @@ const MonitoringWidgetCard = forwardRef<HTMLDivElement, {
       case 'cpu':
         return runtimeStats.cpu_percent != null ? `${runtimeStats.cpu_percent.toFixed(1)}%` : '--';
       case 'uptime':
-        return runtimeStats.uptime_formatted ?? '--';
+        return computedUptime;
       case 'jobs':
         return runtimeStats.scheduled_jobs?.toString() ?? '--';
       default:

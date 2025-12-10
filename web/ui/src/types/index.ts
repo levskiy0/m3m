@@ -470,6 +470,34 @@ export interface LogEntry {
   message: string;
 }
 
+// Action types
+export type ActionState = 'enabled' | 'disabled' | 'loading';
+
+export interface Action {
+  id: string;
+  project_id: string;
+  name: string;
+  slug: string;
+  order: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ActionRuntimeState {
+  slug: string;
+  state: ActionState;
+}
+
+export interface CreateActionRequest {
+  name: string;
+  slug: string;
+}
+
+export interface UpdateActionRequest {
+  name?: string;
+  order?: number;
+}
+
 // Auth types
 export interface LoginRequest {
   email: string;

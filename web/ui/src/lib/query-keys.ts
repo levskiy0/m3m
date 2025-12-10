@@ -64,4 +64,10 @@ export const queryKeys = {
   widgets: {
     all: (projectId: string) => ['widgets', projectId] as const,
   },
+
+  // Actions
+  actions: {
+    all: (projectId: string) => ['actions', projectId] as const,
+    states: (projectId: string) => ['action-states', projectId] as const,
+  },
 } as const;

@@ -24,6 +24,7 @@ func GetAllSchemas() []schema.ModuleSchema {
 		GetImageSchema(),
 		GetDrawSchema(),
 		GetMailSchema(),
+		GetActionsSchema(),
 	}
 }
 

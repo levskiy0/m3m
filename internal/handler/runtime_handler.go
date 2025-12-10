@@ -3,6 +3,7 @@ package handler
 import (
 	"bufio"
 	"context"
+	"errors"
 	"io"
 	"net/http"
 	"os"
@@ -16,6 +17,7 @@ import (
 	"github.com/levskiy0/m3m/internal/domain"
 	"github.com/levskiy0/m3m/internal/middleware"
 	"github.com/levskiy0/m3m/internal/plugin"
+	"github.com/levskiy0/m3m/internal/repository"
 	"github.com/levskiy0/m3m/internal/runtime"
 	"github.com/levskiy0/m3m/internal/runtime/modules"
 	"github.com/levskiy0/m3m/internal/service"
@@ -27,6 +29,7 @@ type RuntimeHandler struct {
 	projectService  *service.ProjectService
 	pipelineService *service.PipelineService
 	storageService  *service.StorageService
+	actionService   *service.ActionService
 	pluginLoader    *plugin.Loader
 	broadcaster     *websocket.Broadcaster
 }
@@ -36,6 +39,7 @@ func NewRuntimeHandler(
 	projectService *service.ProjectService,
 	pipelineService *service.PipelineService,
 	storageService *service.StorageService,
+	actionService *service.ActionService,
 	pluginLoader *plugin.Loader,
 	broadcaster *websocket.Broadcaster,
 ) *RuntimeHandler {
@@ -44,6 +48,7 @@ func NewRuntimeHandler(
 		projectService:  projectService,
 		pipelineService: pipelineService,
 		storageService:  storageService,
+		actionService:   actionService,
 		pluginLoader:    pluginLoader,
 		broadcaster:     broadcaster,
 	}
@@ -505,6 +510,13 @@ func (h *RuntimeHandler) HandleRoute(c *gin.Context) {
 		return
 	}
 
+	// Handle action trigger: POST /actions/:actionSlug
+	if c.Request.Method == "POST" && strings.HasPrefix(route, "/actions/") {
+		actionSlug := strings.TrimPrefix(route, "/actions/")
+		h.handleActionTrigger(c, project.ID, actionSlug)
+		return
+	}
+
 	// Build request context
 	body, _ := io.ReadAll(c.Request.Body)
 	headers := make(map[string]string)
@@ -680,4 +692,26 @@ func (h *RuntimeHandler) State(c *gin.Context) {
 		Status:  statusData,
 		Monitor: monitorData,
 	})
+}
+
+// handleActionTrigger handles POST /r/:projectSlug/actions/:actionSlug
+func (h *RuntimeHandler) handleActionTrigger(c *gin.Context, projectID primitive.ObjectID, actionSlug string) {
+	// Verify action exists in database
+	_, err := h.actionService.GetBySlug(c.Request.Context(), projectID, actionSlug)
+	if err != nil {
+		if errors.Is(err, repository.ErrActionNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "action not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Trigger the action in runtime
+	if err := h.runtimeManager.TriggerAction(projectID, actionSlug); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "action triggered successfully"})
 }

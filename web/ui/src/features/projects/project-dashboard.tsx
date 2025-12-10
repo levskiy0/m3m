@@ -38,12 +38,13 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
-import { projectsApi, pipelineApi, goalsApi, widgetsApi } from '@/api';
+import { projectsApi, pipelineApi, goalsApi, widgetsApi, actionsApi } from '@/api';
 import { config } from '@/lib/config';
 import { queryKeys } from '@/lib/query-keys';
 import { cn } from '@/lib/utils';
-import { useProjectRuntime, useTitle } from '@/hooks';
-import type { LogEntry, GoalStats, WidgetVariant, WidgetType, CreateWidgetRequest, UpdateWidgetRequest, Widget, Goal, RuntimeStats } from '@/types';
+import { useProjectRuntime, useTitle, useWebSocket } from '@/hooks';
+import type { LogEntry, GoalStats, WidgetVariant, WidgetType, CreateWidgetRequest, UpdateWidgetRequest, Widget, Goal, RuntimeStats, ActionRuntimeState, ActionState } from '@/types';
+import { ActionsDropdown } from '@/components/shared/actions-dropdown';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -151,6 +152,28 @@ export function ProjectDashboard() {
     queryKey: queryKeys.widgets.all(projectId!),
     queryFn: () => widgetsApi.list(projectId!),
     enabled: !!projectId,
+  });
+
+  // Actions
+  const { data: actions = [] } = useQuery({
+    queryKey: queryKeys.actions.all(projectId!),
+    queryFn: () => actionsApi.list(projectId!),
+    enabled: !!projectId,
+  });
+
+  const [actionStates, setActionStates] = useState<Map<string, ActionState>>(new Map());
+
+  // WebSocket for action states (only when running)
+  useWebSocket({
+    projectId,
+    enabled: !!projectId && isRunning,
+    onActions: (data: ActionRuntimeState[]) => {
+      const newStates = new Map<string, ActionState>();
+      data.forEach((item) => {
+        newStates.set(item.slug, item.state);
+      });
+      setActionStates(newStates);
+    },
   });
 
   // Widget Dialog state
@@ -362,6 +385,13 @@ export function ProjectDashboard() {
                 <Square className="size-4" />
                 Stop
               </Button>
+              {actions.length > 0 && project?.slug && (
+                <ActionsDropdown
+                  projectSlug={project.slug}
+                  actions={actions}
+                  actionStates={actionStates}
+                />
+              )}
             </>
           ) : (
             <DropdownMenu>
