@@ -361,6 +361,44 @@ func TestJS_Router_ResponseHelper(t *testing.T) {
 	}
 }
 
+func TestJS_Router_PlainObjectResponse(t *testing.T) {
+	h := NewJSTestHelper(t)
+	routerModule := h.SetupRouter()
+
+	h.MustRun(t, `
+		$router.get("/plain", function(ctx) {
+			return {
+				date: "2025-01-01",
+				items: ["a", "b", "c"],
+				count: 42
+			};
+		});
+	`)
+
+	ctx := &modules.RequestContext{Method: "GET", Path: "/plain"}
+	resp, err := routerModule.Handle("GET", "/plain", ctx)
+	if err != nil {
+		t.Fatalf("Handle failed: %v", err)
+	}
+	if resp.Status != 200 {
+		t.Errorf("Expected status 200, got %d", resp.Status)
+	}
+	body, ok := resp.Body.(map[string]interface{})
+	if !ok {
+		t.Fatalf("Expected body to be map, got %T", resp.Body)
+	}
+	if body["date"] != "2025-01-01" {
+		t.Errorf("Expected date='2025-01-01', got %v", body["date"])
+	}
+	if body["count"] != int64(42) && body["count"] != float64(42) {
+		t.Errorf("Expected count=42, got %v", body["count"])
+	}
+	items, ok := body["items"].([]interface{})
+	if !ok || len(items) != 3 {
+		t.Errorf("Expected items array with 3 elements, got %v", body["items"])
+	}
+}
+
 func TestJS_Router_AllMethods(t *testing.T) {
 	h := NewJSTestHelper(t)
 	routerModule := h.SetupRouter()
