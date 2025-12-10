@@ -36,40 +36,40 @@ func (e *EncodingModule) Base64Encode(data string) string {
 	return base64.StdEncoding.EncodeToString([]byte(data))
 }
 
-func (e *EncodingModule) Base64Decode(data string) string {
+func (e *EncodingModule) Base64Decode(data string) (string, error) {
 	decoded, err := base64.StdEncoding.DecodeString(data)
 	if err != nil {
-		return ""
+		return "", err
 	}
-	return string(decoded)
+	return string(decoded), nil
 }
 
-func (e *EncodingModule) JSONParse(data string) interface{} {
+func (e *EncodingModule) JSONParse(data string) (interface{}, error) {
 	var result interface{}
 	if err := json.Unmarshal([]byte(data), &result); err != nil {
-		return nil
+		return nil, err
 	}
-	return result
+	return result, nil
 }
 
-func (e *EncodingModule) JSONStringify(data interface{}) string {
+func (e *EncodingModule) JSONStringify(data interface{}) (string, error) {
 	result, err := json.Marshal(data)
 	if err != nil {
-		return ""
+		return "", err
 	}
-	return string(result)
+	return string(result), nil
 }
 
 func (e *EncodingModule) URLEncode(data string) string {
 	return url.QueryEscape(data)
 }
 
-func (e *EncodingModule) URLDecode(data string) string {
+func (e *EncodingModule) URLDecode(data string) (string, error) {
 	decoded, err := url.QueryUnescape(data)
 	if err != nil {
-		return ""
+		return "", err
 	}
-	return decoded
+	return decoded, nil
 }
 
 // GetSchema implements JSSchemaProvider

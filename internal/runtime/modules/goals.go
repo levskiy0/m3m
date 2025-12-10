@@ -2,6 +2,7 @@ package modules
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/dop251/goja"
@@ -57,9 +58,9 @@ func (g *GoalsModule) Register(vm interface{}) {
 }
 
 // Increment increments a goal counter by the specified value (default 1)
-func (g *GoalsModule) Increment(slug string, value ...int64) bool {
+func (g *GoalsModule) Increment(slug string, value ...int64) (bool, error) {
 	if g.goalService == nil {
-		return false
+		return false, fmt.Errorf("goal service not available")
 	}
 
 	v := int64(1)
@@ -69,19 +70,22 @@ func (g *GoalsModule) Increment(slug string, value ...int64) bool {
 
 	ctx := context.Background()
 	err := g.goalService.Increment(ctx, slug, g.projectID, v)
-	return err == nil
+	if err != nil {
+		return false, err
+	}
+	return true, nil
 }
 
 // GetValue returns the current value of a goal (total for counter, today's value for daily_counter)
-func (g *GoalsModule) GetValue(slug string) int64 {
+func (g *GoalsModule) GetValue(slug string) (int64, error) {
 	if g.goalService == nil {
-		return 0
+		return 0, fmt.Errorf("goal service not available")
 	}
 
 	ctx := context.Background()
 	goal, err := g.goalService.GetBySlug(ctx, slug)
 	if err != nil {
-		return 0
+		return 0, err
 	}
 
 	// Determine the date to query
@@ -101,17 +105,20 @@ func (g *GoalsModule) GetValue(slug string) int64 {
 	}
 
 	stats, err := g.goalService.GetStats(ctx, query)
-	if err != nil || len(stats) == 0 {
-		return 0
+	if err != nil {
+		return 0, err
+	}
+	if len(stats) == 0 {
+		return 0, nil
 	}
 
-	return stats[0].Value
+	return stats[0].Value, nil
 }
 
 // GetStats returns statistics for a goal over a period of days
-func (g *GoalsModule) GetStats(slug string, days int) []GoalStatInfo {
+func (g *GoalsModule) GetStats(slug string, days int) ([]GoalStatInfo, error) {
 	if g.goalService == nil {
-		return []GoalStatInfo{}
+		return nil, fmt.Errorf("goal service not available")
 	}
 
 	if days <= 0 {
@@ -121,7 +128,7 @@ func (g *GoalsModule) GetStats(slug string, days int) []GoalStatInfo {
 	ctx := context.Background()
 	goal, err := g.goalService.GetBySlug(ctx, slug)
 	if err != nil {
-		return []GoalStatInfo{}
+		return nil, err
 	}
 
 	// Calculate date range
@@ -137,7 +144,7 @@ func (g *GoalsModule) GetStats(slug string, days int) []GoalStatInfo {
 
 	stats, err := g.goalService.GetStats(ctx, query)
 	if err != nil {
-		return []GoalStatInfo{}
+		return nil, err
 	}
 
 	result := make([]GoalStatInfo, 0, len(stats))
@@ -148,7 +155,7 @@ func (g *GoalsModule) GetStats(slug string, days int) []GoalStatInfo {
 		})
 	}
 
-	return result
+	return result, nil
 }
 
 // List returns all goals accessible by this project

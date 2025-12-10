@@ -3,9 +3,8 @@ package modules
 import (
 	"encoding/base64"
 
-	"github.com/levskiy0/m3m/internal/service"
-
 	"github.com/dop251/goja"
+	"github.com/levskiy0/m3m/internal/service"
 	"github.com/levskiy0/m3m/pkg/schema"
 )
 
@@ -72,65 +71,74 @@ func (s *StorageModule) Register(vm interface{}) {
 	})
 }
 
-func (s *StorageModule) Read(path string) string {
+func (s *StorageModule) Read(path string) (string, error) {
 	data, err := s.storage.Read(s.projectID, path)
 	if err != nil {
-		return ""
+		return "", err
 	}
-	return string(data)
+	return string(data), nil
 }
 
-func (s *StorageModule) ReadBase64(path string) string {
+func (s *StorageModule) ReadBase64(path string) (string, error) {
 	data, err := s.storage.Read(s.projectID, path)
 	if err != nil {
-		return ""
+		return "", err
 	}
-	return base64.StdEncoding.EncodeToString(data)
+	return base64.StdEncoding.EncodeToString(data), nil
 }
 
-func (s *StorageModule) Write(path string, content string) bool {
+func (s *StorageModule) Write(path string, content string) (bool, error) {
 	err := s.storage.Write(s.projectID, path, []byte(content))
-	return err == nil
+	if err != nil {
+		return false, err
+	}
+	return true, nil
 }
 
 func (s *StorageModule) Exists(path string) bool {
 	return s.storage.Exists(s.projectID, path)
 }
 
-func (s *StorageModule) Delete(path string) bool {
+func (s *StorageModule) Delete(path string) (bool, error) {
 	err := s.storage.Delete(s.projectID, path)
-	return err == nil
+	if err != nil {
+		return false, err
+	}
+	return true, nil
 }
 
-func (s *StorageModule) List(path string) []string {
+func (s *StorageModule) List(path string) ([]string, error) {
 	files, err := s.storage.List(s.projectID, path)
 	if err != nil {
-		return []string{}
+		return nil, err
 	}
 
 	result := make([]string, len(files))
 	for i, f := range files {
 		result[i] = f.Name
 	}
-	return result
+	return result, nil
 }
 
-func (s *StorageModule) MkDir(path string) bool {
+func (s *StorageModule) MkDir(path string) (bool, error) {
 	err := s.storage.MkDir(s.projectID, path)
-	return err == nil
+	if err != nil {
+		return false, err
+	}
+	return true, nil
 }
 
 // Tmp methods - wrap main methods with "tmp/" prefix
 
-func (s *StorageModule) TmpRead(path string) string {
+func (s *StorageModule) TmpRead(path string) (string, error) {
 	return s.Read("tmp/" + path)
 }
 
-func (s *StorageModule) TmpReadBase64(path string) string {
+func (s *StorageModule) TmpReadBase64(path string) (string, error) {
 	return s.ReadBase64("tmp/" + path)
 }
 
-func (s *StorageModule) TmpWrite(path string, content string) bool {
+func (s *StorageModule) TmpWrite(path string, content string) (bool, error) {
 	return s.Write("tmp/"+path, content)
 }
 
@@ -138,45 +146,48 @@ func (s *StorageModule) TmpExists(path string) bool {
 	return s.Exists("tmp/" + path)
 }
 
-func (s *StorageModule) TmpDelete(path string) bool {
+func (s *StorageModule) TmpDelete(path string) (bool, error) {
 	return s.Delete("tmp/" + path)
 }
 
-func (s *StorageModule) TmpList(path string) []string {
+func (s *StorageModule) TmpList(path string) ([]string, error) {
 	return s.List("tmp/" + path)
 }
 
-func (s *StorageModule) TmpMkDir(path string) bool {
+func (s *StorageModule) TmpMkDir(path string) (bool, error) {
 	return s.MkDir("tmp/" + path)
 }
 
-func (s *StorageModule) GetPath(path string) string {
+func (s *StorageModule) GetPath(path string) (string, error) {
 	fullPath, err := s.storage.GetPath(s.projectID, path)
 	if err != nil {
-		return ""
+		return "", err
 	}
-	return fullPath
+	return fullPath, nil
 }
 
-func (s *StorageModule) TmpGetPath(path string) string {
+func (s *StorageModule) TmpGetPath(path string) (string, error) {
 	return s.GetPath("tmp/" + path)
 }
 
 // New methods
 
-func (s *StorageModule) Append(path string, content string) bool {
+func (s *StorageModule) Append(path string, content string) (bool, error) {
 	err := s.storage.Append(s.projectID, path, []byte(content))
-	return err == nil
+	if err != nil {
+		return false, err
+	}
+	return true, nil
 }
 
-func (s *StorageModule) TmpAppend(path string, content string) bool {
+func (s *StorageModule) TmpAppend(path string, content string) (bool, error) {
 	return s.Append("tmp/"+path, content)
 }
 
-func (s *StorageModule) Stat(path string) map[string]interface{} {
+func (s *StorageModule) Stat(path string) (map[string]interface{}, error) {
 	info, err := s.storage.Stat(s.projectID, path)
 	if err != nil {
-		return nil
+		return nil, err
 	}
 	return map[string]interface{}{
 		"name":      info.Name,
@@ -186,73 +197,82 @@ func (s *StorageModule) Stat(path string) map[string]interface{} {
 		"mimeType":  info.MimeType,
 		"updatedAt": info.UpdatedAt.Unix(),
 		"url":       info.URL,
-	}
+	}, nil
 }
 
-func (s *StorageModule) TmpStat(path string) map[string]interface{} {
+func (s *StorageModule) TmpStat(path string) (map[string]interface{}, error) {
 	return s.Stat("tmp/" + path)
 }
 
-func (s *StorageModule) Size(path string) int64 {
+func (s *StorageModule) Size(path string) (int64, error) {
 	info, err := s.storage.Stat(s.projectID, path)
 	if err != nil {
-		return -1
+		return -1, err
 	}
-	return info.Size
+	return info.Size, nil
 }
 
-func (s *StorageModule) TmpSize(path string) int64 {
+func (s *StorageModule) TmpSize(path string) (int64, error) {
 	return s.Size("tmp/" + path)
 }
 
-func (s *StorageModule) MimeType(path string) string {
+func (s *StorageModule) MimeType(path string) (string, error) {
 	info, err := s.storage.Stat(s.projectID, path)
 	if err != nil {
-		return ""
+		return "", err
 	}
-	return info.MimeType
+	return info.MimeType, nil
 }
 
-func (s *StorageModule) TmpMimeType(path string) string {
+func (s *StorageModule) TmpMimeType(path string) (string, error) {
 	return s.MimeType("tmp/" + path)
 }
 
-func (s *StorageModule) Copy(src string, dst string) bool {
+func (s *StorageModule) Copy(src string, dst string) (bool, error) {
 	err := s.storage.Copy(s.projectID, src, dst)
-	return err == nil
+	if err != nil {
+		return false, err
+	}
+	return true, nil
 }
 
-func (s *StorageModule) TmpCopy(src string, dst string) bool {
+func (s *StorageModule) TmpCopy(src string, dst string) (bool, error) {
 	return s.Copy("tmp/"+src, "tmp/"+dst)
 }
 
-func (s *StorageModule) Move(src string, dst string) bool {
+func (s *StorageModule) Move(src string, dst string) (bool, error) {
 	err := s.storage.Move(s.projectID, src, dst)
-	return err == nil
+	if err != nil {
+		return false, err
+	}
+	return true, nil
 }
 
-func (s *StorageModule) TmpMove(src string, dst string) bool {
+func (s *StorageModule) TmpMove(src string, dst string) (bool, error) {
 	return s.Move("tmp/"+src, "tmp/"+dst)
 }
 
-func (s *StorageModule) Rename(oldPath string, newPath string) bool {
+func (s *StorageModule) Rename(oldPath string, newPath string) (bool, error) {
 	err := s.storage.Rename(s.projectID, oldPath, newPath)
-	return err == nil
+	if err != nil {
+		return false, err
+	}
+	return true, nil
 }
 
-func (s *StorageModule) TmpRename(oldPath string, newPath string) bool {
+func (s *StorageModule) TmpRename(oldPath string, newPath string) (bool, error) {
 	return s.Rename("tmp/"+oldPath, "tmp/"+newPath)
 }
 
-func (s *StorageModule) Glob(pattern string) []string {
+func (s *StorageModule) Glob(pattern string) ([]string, error) {
 	matches, err := s.storage.Glob(s.projectID, pattern)
 	if err != nil {
-		return []string{}
+		return nil, err
 	}
-	return matches
+	return matches, nil
 }
 
-func (s *StorageModule) TmpGlob(pattern string) []string {
+func (s *StorageModule) TmpGlob(pattern string) ([]string, error) {
 	return s.Glob("tmp/" + pattern)
 }
 
@@ -264,12 +284,15 @@ func (s *StorageModule) TmpGetUrl(path string) string {
 	return s.GetUrl("tmp/" + path)
 }
 
-func (s *StorageModule) Zip(srcPaths []string, dstPath string) bool {
+func (s *StorageModule) Zip(srcPaths []string, dstPath string) (bool, error) {
 	err := s.storage.Zip(s.projectID, srcPaths, dstPath)
-	return err == nil
+	if err != nil {
+		return false, err
+	}
+	return true, nil
 }
 
-func (s *StorageModule) TmpZip(srcPaths []string, dstPath string) bool {
+func (s *StorageModule) TmpZip(srcPaths []string, dstPath string) (bool, error) {
 	// Prefix all src paths with tmp/
 	tmpSrcPaths := make([]string, len(srcPaths))
 	for i, p := range srcPaths {
@@ -278,12 +301,15 @@ func (s *StorageModule) TmpZip(srcPaths []string, dstPath string) bool {
 	return s.Zip(tmpSrcPaths, "tmp/"+dstPath)
 }
 
-func (s *StorageModule) Unzip(srcPath string, dstPath string) bool {
+func (s *StorageModule) Unzip(srcPath string, dstPath string) (bool, error) {
 	err := s.storage.Unzip(s.projectID, srcPath, dstPath)
-	return err == nil
+	if err != nil {
+		return false, err
+	}
+	return true, nil
 }
 
-func (s *StorageModule) TmpUnzip(srcPath string, dstPath string) bool {
+func (s *StorageModule) TmpUnzip(srcPath string, dstPath string) (bool, error) {
 	return s.Unzip("tmp/"+srcPath, "tmp/"+dstPath)
 }
 

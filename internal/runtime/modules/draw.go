@@ -3,6 +3,7 @@ package modules
 import (
 	"bytes"
 	"encoding/base64"
+	"fmt"
 	"image"
 	"image/color"
 	"image/jpeg"
@@ -73,19 +74,19 @@ func (d *DrawModule) CreateCanvas(width, height int) *Canvas {
 }
 
 // LoadImage loads an image from storage and creates a canvas from it
-func (d *DrawModule) LoadImage(path string) *Canvas {
+func (d *DrawModule) LoadImage(path string) (*Canvas, error) {
 	if d.storage == nil {
-		return nil
+		return nil, fmt.Errorf("storage service not available")
 	}
 
 	data, err := d.storage.Read(d.projectID, path)
 	if err != nil {
-		return nil
+		return nil, err
 	}
 
 	img, _, err := image.Decode(bytes.NewReader(data))
 	if err != nil {
-		return nil
+		return nil, err
 	}
 
 	bounds := img.Bounds()
@@ -97,7 +98,7 @@ func (d *DrawModule) LoadImage(path string) *Canvas {
 		height:    bounds.Dy(),
 		projectID: d.projectID,
 		storage:   d.storage,
-	}
+	}, nil
 }
 
 // SetColor sets the drawing color (hex string like "#FF0000" or "red")
@@ -233,9 +234,9 @@ func (c *Canvas) FillPolygon(points [][]float64) {
 }
 
 // Save saves the canvas to storage
-func (c *Canvas) Save(path string) bool {
+func (c *Canvas) Save(path string) (bool, error) {
 	if c.storage == nil {
-		return false
+		return false, fmt.Errorf("storage service not available")
 	}
 
 	var buf bytes.Buffer
@@ -250,10 +251,13 @@ func (c *Canvas) Save(path string) bool {
 	}
 
 	if err != nil {
-		return false
+		return false, err
 	}
 
-	return c.storage.Write(c.projectID, path, buf.Bytes()) == nil
+	if err := c.storage.Write(c.projectID, path, buf.Bytes()); err != nil {
+		return false, err
+	}
+	return true, nil
 }
 
 // ToBase64 returns the canvas as a base64 data URI

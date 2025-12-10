@@ -2,6 +2,7 @@ package modules
 
 import (
 	"bytes"
+	"fmt"
 	"image"
 	"image/jpeg"
 	"image/png"
@@ -52,15 +53,15 @@ func (m *ImageModule) Register(vm interface{}) {
 }
 
 // Info returns information about an image (width, height, format)
-func (m *ImageModule) Info(path string) *ImageInfo {
+func (m *ImageModule) Info(path string) (*ImageInfo, error) {
 	data, err := m.storage.Read(m.projectID, path)
 	if err != nil {
-		return nil
+		return nil, err
 	}
 
 	img, format, err := image.Decode(bytes.NewReader(data))
 	if err != nil {
-		return nil
+		return nil, err
 	}
 
 	bounds := img.Bounds()
@@ -68,19 +69,19 @@ func (m *ImageModule) Info(path string) *ImageInfo {
 		Width:  bounds.Dx(),
 		Height: bounds.Dy(),
 		Format: format,
-	}
+	}, nil
 }
 
 // Resize resizes an image to the specified dimensions and saves to destination
-func (m *ImageModule) Resize(src, dst string, width, height int) bool {
+func (m *ImageModule) Resize(src, dst string, width, height int) (bool, error) {
 	data, err := m.storage.Read(m.projectID, src)
 	if err != nil {
-		return false
+		return false, err
 	}
 
 	img, format, err := image.Decode(bytes.NewReader(data))
 	if err != nil {
-		return false
+		return false, err
 	}
 
 	// Create resized image
@@ -90,18 +91,21 @@ func (m *ImageModule) Resize(src, dst string, width, height int) bool {
 	// Encode to bytes
 	var buf bytes.Buffer
 	if err := m.encodeImage(&buf, resized, format, dst); err != nil {
-		return false
+		return false, err
 	}
 
 	// Write to storage
-	return m.storage.Write(m.projectID, dst, buf.Bytes()) == nil
+	if err := m.storage.Write(m.projectID, dst, buf.Bytes()); err != nil {
+		return false, err
+	}
+	return true, nil
 }
 
 // ResizeKeepRatio resizes an image keeping aspect ratio (fit within bounds)
-func (m *ImageModule) ResizeKeepRatio(src, dst string, maxWidth, maxHeight int) bool {
-	info := m.Info(src)
-	if info == nil {
-		return false
+func (m *ImageModule) ResizeKeepRatio(src, dst string, maxWidth, maxHeight int) (bool, error) {
+	info, err := m.Info(src)
+	if err != nil {
+		return false, err
 	}
 
 	// Calculate new dimensions keeping aspect ratio
@@ -118,21 +122,21 @@ func (m *ImageModule) ResizeKeepRatio(src, dst string, maxWidth, maxHeight int) 
 }
 
 // Crop crops an image to the specified region
-func (m *ImageModule) Crop(src, dst string, x, y, width, height int) bool {
+func (m *ImageModule) Crop(src, dst string, x, y, width, height int) (bool, error) {
 	data, err := m.storage.Read(m.projectID, src)
 	if err != nil {
-		return false
+		return false, err
 	}
 
 	img, format, err := image.Decode(bytes.NewReader(data))
 	if err != nil {
-		return false
+		return false, err
 	}
 
 	bounds := img.Bounds()
 	// Validate crop bounds
 	if x < 0 || y < 0 || x+width > bounds.Dx() || y+height > bounds.Dy() {
-		return false
+		return false, fmt.Errorf("crop bounds out of range")
 	}
 
 	// Create cropped image
@@ -143,23 +147,26 @@ func (m *ImageModule) Crop(src, dst string, x, y, width, height int) bool {
 	// Encode to bytes
 	var buf bytes.Buffer
 	if err := m.encodeImage(&buf, cropped, format, dst); err != nil {
-		return false
+		return false, err
 	}
 
 	// Write to storage
-	return m.storage.Write(m.projectID, dst, buf.Bytes()) == nil
+	if err := m.storage.Write(m.projectID, dst, buf.Bytes()); err != nil {
+		return false, err
+	}
+	return true, nil
 }
 
 // Thumbnail creates a square thumbnail
-func (m *ImageModule) Thumbnail(src, dst string, size int) bool {
+func (m *ImageModule) Thumbnail(src, dst string, size int) (bool, error) {
 	data, err := m.storage.Read(m.projectID, src)
 	if err != nil {
-		return false
+		return false, err
 	}
 
 	img, format, err := image.Decode(bytes.NewReader(data))
 	if err != nil {
-		return false
+		return false, err
 	}
 
 	bounds := img.Bounds()
@@ -186,11 +193,14 @@ func (m *ImageModule) Thumbnail(src, dst string, size int) bool {
 	// Encode to bytes
 	var buf bytes.Buffer
 	if err := m.encodeImage(&buf, thumb, format, dst); err != nil {
-		return false
+		return false, err
 	}
 
 	// Write to storage
-	return m.storage.Write(m.projectID, dst, buf.Bytes()) == nil
+	if err := m.storage.Write(m.projectID, dst, buf.Bytes()); err != nil {
+		return false, err
+	}
+	return true, nil
 }
 
 // encodeImage encodes an image to the appropriate format
@@ -215,16 +225,16 @@ func (m *ImageModule) encodeImage(buf *bytes.Buffer, img image.Image, originalFo
 }
 
 // ReadAsBase64 reads an image and returns it as base64 data URI
-func (m *ImageModule) ReadAsBase64(path string) string {
+func (m *ImageModule) ReadAsBase64(path string) (string, error) {
 	data, err := m.storage.Read(m.projectID, path)
 	if err != nil {
-		return ""
+		return "", err
 	}
 
 	// Detect format
 	_, format, err := image.DecodeConfig(bytes.NewReader(data))
 	if err != nil {
-		return ""
+		return "", err
 	}
 
 	// Determine MIME type
@@ -240,7 +250,7 @@ func (m *ImageModule) ReadAsBase64(path string) string {
 
 	// Encode to base64
 	encoded := m.base64Encode(data)
-	return "data:" + mimeType + ";base64," + encoded
+	return "data:" + mimeType + ";base64," + encoded, nil
 }
 
 func (m *ImageModule) base64Encode(data []byte) string {
