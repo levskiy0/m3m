@@ -587,7 +587,7 @@ export function PipelinePage() {
                       <div
                         key={release.id}
                         className={cn(
-                          'flex items-center justify-between p-3 rounded-lg border',
+                          'flex items-center justify-between p-3 rounded-lg bg-background border',
                           isReleaseRunning && 'border-green-500/50 bg-green-500/5'
                         )}
                       >
