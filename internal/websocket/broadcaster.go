@@ -91,9 +91,9 @@ func (b *Broadcaster) Stop() {
 	b.logger.Info("WebSocket broadcaster stopped")
 }
 
-// monitorLoop broadcasts monitor data to subscribers every second
+// monitorLoop broadcasts monitor data to subscribers every 10 seconds
 func (b *Broadcaster) monitorLoop(ctx context.Context) {
-	ticker := time.NewTicker(1 * time.Second)
+	ticker := time.NewTicker(10 * time.Second)
 	defer ticker.Stop()
 
 	for {
