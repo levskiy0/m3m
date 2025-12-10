@@ -102,6 +102,64 @@ function isMethodField(field: ParamSchema): boolean {
   return field.type.includes('=>') || field.type.includes('(');
 }
 
+// Parse rawTypes string into separate interface blocks
+interface ParsedInterface {
+  name: string;
+  body: string;
+}
+
+function parseRawTypes(rawTypes: string): ParsedInterface[] {
+  const interfaces: ParsedInterface[] = [];
+  const regex = /interface\s+(\w+)\s*\{/g;
+  let match;
+  const positions: { name: string; start: number }[] = [];
+
+  while ((match = regex.exec(rawTypes)) !== null) {
+    positions.push({ name: match[1], start: match.index });
+  }
+
+  for (let i = 0; i < positions.length; i++) {
+    const start = positions[i].start;
+    const end = i < positions.length - 1 ? positions[i + 1].start : rawTypes.length;
+    const body = rawTypes.slice(start, end).trim();
+    interfaces.push({ name: positions[i].name, body });
+  }
+
+  return interfaces;
+}
+
+function RawTypeCard({ iface }: { iface: ParsedInterface }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(iface.body);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <div id={`rawtype-${iface.name}`} className="border rounded-lg p-4 scroll-mt-20">
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <Braces className="h-4 w-4 text-primary" />
+          <h3 className="font-semibold font-mono text-lg">{iface.name}</h3>
+        </div>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-7 w-7"
+          onClick={handleCopy}
+        >
+          {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+        </Button>
+      </div>
+      <pre className="bg-muted/50 rounded-lg p-3 text-sm font-mono overflow-x-auto whitespace-pre">
+        <code>{iface.body}</code>
+      </pre>
+    </div>
+  );
+}
+
 function TypeCard({ type }: { type: TypeSchema }) {
   const methodFields = type.fields.filter(isMethodField);
   const dataFields = type.fields.filter((f) => !isMethodField(f));
@@ -178,13 +236,17 @@ function TableOfContents({
   types,
   methods,
   nested,
+  rawTypes,
   moduleName,
 }: {
   types?: TypeSchema[];
   methods: MethodSchema[];
   nested?: { name: string; methods: MethodSchema[] }[];
+  rawTypes?: string;
   moduleName: string;
 }) {
+  const parsedRawTypes = rawTypes ? parseRawTypes(rawTypes) : [];
+
   return (
     <div className="border rounded-lg p-4 bg-muted/30">
       <div className="flex items-center gap-2 mb-3">
@@ -200,6 +262,22 @@ function TableOfContents({
                 <a
                   key={t.name}
                   href={`#type-${t.name}`}
+                  className="block text-foreground hover:text-primary transition-colors font-mono"
+                >
+                  {t.name}
+                </a>
+              ))}
+            </div>
+          </div>
+        )}
+        {parsedRawTypes.length > 0 && (
+          <div>
+            <div className="text-muted-foreground text-xs uppercase mb-1">Type Definitions</div>
+            <div className="space-y-0.5">
+              {parsedRawTypes.map((t) => (
+                <a
+                  key={t.name}
+                  href={`#rawtype-${t.name}`}
                   className="block text-foreground hover:text-primary transition-colors font-mono"
                 >
                   {t.name}
@@ -290,6 +368,7 @@ export function ModulePage() {
         types={module.types}
         methods={module.methods}
         nested={module.nested}
+        rawTypes={module.rawTypes}
         moduleName={module.name}
       />
 
@@ -300,6 +379,18 @@ export function ModulePage() {
           <div className="space-y-4">
             {module.types.map((type) => (
               <TypeCard key={type.name} type={type} />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Raw Types (TypeScript definitions) */}
+      {module.rawTypes && (
+        <section>
+          <h2 className="text-xl font-semibold mb-4">Type Definitions</h2>
+          <div className="space-y-4">
+            {parseRawTypes(module.rawTypes).map((iface) => (
+              <RawTypeCard key={iface.name} iface={iface} />
             ))}
           </div>
         </section>
