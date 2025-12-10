@@ -252,16 +252,25 @@ make build
 
 ### Configuration
 
-Default config file: `config.yaml`
+Default config file: `config.yaml` (auto-created on first run)
 
 ```yaml
 server:
   host: "0.0.0.0"
   port: 8080
-  uri: "http://localhost:8080"
+  uri: "http://127.0.0.1:8080"
 
+database:
+  driver: "sqlite"  # "mongodb" or "sqlite"
+
+# MongoDB - external server required
 mongodb:
   uri: "mongodb://localhost:27017"
+  database: "m3m"
+
+# SQLite - embedded, no external dependencies (default)
+sqlite:
+  path: "./data"
   database: "m3m"
 
 jwt:
@@ -271,9 +280,19 @@ jwt:
 storage:
   path: "./storage"
 
-logs:
+logging:
+  level: "info"
   path: "./logs"
 ```
+
+#### Database Drivers
+
+| Driver | Config | Requirements |
+|--------|--------|--------------|
+| `sqlite` | `driver: "sqlite"` | **None** — embedded in binary |
+| `mongodb` | `driver: "mongodb"` | External MongoDB server |
+
+**SQLite mode** uses embedded [FerretDB](https://www.ferretdb.com/) with SQLite backend. All MongoDB query syntax (`$eq`, `$gt`, `$in`, etc.) works identically in both modes — switch anytime without code changes.
 
 ---
 

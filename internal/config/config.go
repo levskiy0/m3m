@@ -1,6 +1,10 @@
 package config
 
 import (
+	"crypto/rand"
+	"encoding/hex"
+	"fmt"
+	"os"
 	"strings"
 	"time"
 
@@ -63,7 +67,68 @@ type LoggingConfig struct {
 	Path  string `mapstructure:"path"`
 }
 
+// generateJWTSecret generates a random 32-byte hex string for JWT signing
+func generateJWTSecret() string {
+	bytes := make([]byte, 32)
+	if _, err := rand.Read(bytes); err != nil {
+		// Fallback to a less secure but still random string
+		return fmt.Sprintf("m3m-secret-%d", time.Now().UnixNano())
+	}
+	return hex.EncodeToString(bytes)
+}
+
+// createDefaultConfig creates a default config.yaml file
+func createDefaultConfig(path string) error {
+	jwtSecret := generateJWTSecret()
+
+	content := fmt.Sprintf(`server:
+  host: "0.0.0.0"
+  port: 3000
+  uri: "http://127.0.0.1:3000"
+
+database:
+  driver: "sqlite"  # "mongodb" or "sqlite"
+
+mongodb:
+  uri: "mongodb://localhost:27017"
+  database: "m3m"
+
+sqlite:
+  path: "./data"
+  database: "m3m"
+
+jwt:
+  secret: "%s"
+  expiration: 168h
+
+storage:
+  path: "./storage"
+
+runtime:
+  worker_pool_size: 10
+  timeout: 30s
+
+plugins:
+  path: "./plugins"
+
+logging:
+  level: "info"
+  path: "./logs"
+`, jwtSecret)
+
+	return os.WriteFile(path, []byte(content), 0644)
+}
+
 func Load(path string) (*Config, error) {
+	// Check if config file exists, create default if not
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		fmt.Printf("Config file not found, creating default: %s\n", path)
+		if err := createDefaultConfig(path); err != nil {
+			return nil, fmt.Errorf("failed to create default config: %w", err)
+		}
+		fmt.Println("Default config created with SQLite database (no external dependencies)")
+	}
+
 	viper.SetConfigFile(path)
 	viper.SetConfigType("yaml")
 
@@ -74,7 +139,7 @@ func Load(path string) (*Config, error) {
 	viper.SetDefault("server.host", "0.0.0.0")
 	viper.SetDefault("server.port", 3000)
 	viper.SetDefault("server.uri", "http://127.0.0.1:3000")
-	viper.SetDefault("database.driver", "mongodb")
+	viper.SetDefault("database.driver", "sqlite")
 	viper.SetDefault("mongodb.uri", "mongodb://localhost:27017")
 	viper.SetDefault("mongodb.database", "m3m")
 	viper.SetDefault("sqlite.path", "./data")
