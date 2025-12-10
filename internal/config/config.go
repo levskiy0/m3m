@@ -8,19 +8,30 @@ import (
 )
 
 type Config struct {
-	Server  ServerConfig  `mapstructure:"server"`
-	MongoDB MongoDBConfig `mapstructure:"mongodb"`
-	JWT     JWTConfig     `mapstructure:"jwt"`
-	Storage StorageConfig `mapstructure:"storage"`
-	Runtime RuntimeConfig `mapstructure:"runtime"`
-	Plugins PluginsConfig `mapstructure:"plugins"`
-	Logging LoggingConfig `mapstructure:"logging"`
+	Server   ServerConfig   `mapstructure:"server"`
+	Database DatabaseConfig `mapstructure:"database"`
+	MongoDB  MongoDBConfig  `mapstructure:"mongodb"`
+	FerretDB FerretDBConfig `mapstructure:"ferretdb"`
+	JWT      JWTConfig      `mapstructure:"jwt"`
+	Storage  StorageConfig  `mapstructure:"storage"`
+	Runtime  RuntimeConfig  `mapstructure:"runtime"`
+	Plugins  PluginsConfig  `mapstructure:"plugins"`
+	Logging  LoggingConfig  `mapstructure:"logging"`
 }
 
 type ServerConfig struct {
 	Host string `mapstructure:"host"`
 	Port int    `mapstructure:"port"`
 	URI  string `mapstructure:"uri"`
+}
+
+type DatabaseConfig struct {
+	Driver string `mapstructure:"driver"` // "mongodb" or "ferretdb"
+}
+
+type FerretDBConfig struct {
+	URI      string `mapstructure:"uri"`
+	Database string `mapstructure:"database"`
 }
 
 type MongoDBConfig struct {
@@ -63,8 +74,11 @@ func Load(path string) (*Config, error) {
 	viper.SetDefault("server.host", "0.0.0.0")
 	viper.SetDefault("server.port", 3000)
 	viper.SetDefault("server.uri", "http://127.0.0.1:3000")
+	viper.SetDefault("database.driver", "mongodb")
 	viper.SetDefault("mongodb.uri", "mongodb://localhost:27017")
 	viper.SetDefault("mongodb.database", "m3m")
+	viper.SetDefault("ferretdb.uri", "mongodb://localhost:27018")
+	viper.SetDefault("ferretdb.database", "m3m")
 	viper.SetDefault("jwt.expiration", "168h")
 	viper.SetDefault("storage.path", "./storage")
 	viper.SetDefault("runtime.worker_pool_size", 10)

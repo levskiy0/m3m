@@ -19,7 +19,18 @@ func NewMongoDB(cfg *config.Config) (*MongoDB, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	clientOptions := options.Client().ApplyURI(cfg.MongoDB.URI)
+	// Select URI and database based on driver configuration
+	var uri, dbName string
+	switch cfg.Database.Driver {
+	case "ferretdb":
+		uri = cfg.FerretDB.URI
+		dbName = cfg.FerretDB.Database
+	default: // "mongodb" or empty
+		uri = cfg.MongoDB.URI
+		dbName = cfg.MongoDB.Database
+	}
+
+	clientOptions := options.Client().ApplyURI(uri)
 	client, err := mongo.Connect(ctx, clientOptions)
 	if err != nil {
 		return nil, err
@@ -29,7 +40,7 @@ func NewMongoDB(cfg *config.Config) (*MongoDB, error) {
 		return nil, err
 	}
 
-	database := client.Database(cfg.MongoDB.Database)
+	database := client.Database(dbName)
 
 	return &MongoDB{
 		Client:   client,
