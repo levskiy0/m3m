@@ -23,7 +23,7 @@ func GetAllSchemas() []schema.ModuleSchema {
 		GetServiceSchema(),
 		GetImageSchema(),
 		GetDrawSchema(),
-		GetSMTPSchema(),
+		GetMailSchema(),
 	}
 }
 

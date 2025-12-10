@@ -513,8 +513,8 @@ func (m *Manager) registerModules(
 	envModule := modules.NewEnvModule(envGetter)
 	envModule.Register(vm)
 
-	smtpModule := modules.NewSMTPModule(envModule)
-	smtpModule.Register(vm)
+	mailModule := modules.NewMailModule(envModule)
+	mailModule.Register(vm)
 
 	// Storage-dependent modules
 	storageModule := modules.NewStorageModule(m.storageService, projectIDStr)
