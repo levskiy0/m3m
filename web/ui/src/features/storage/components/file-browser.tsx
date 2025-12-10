@@ -276,11 +276,8 @@ export function FileBrowser({
 
           lastResult = result;
 
-          setUploadingFiles((prev) =>
-            prev.map((u) =>
-              u.id === uploadId ? { ...u, status: 'completed', progress: 100 } : u
-            )
-          );
+          // Remove completed file from list immediately
+          setUploadingFiles((prev) => prev.filter((u) => u.id !== uploadId));
         } catch (error) {
           setUploadingFiles((prev) =>
             prev.map((u) =>
@@ -304,12 +301,10 @@ export function FileBrowser({
         onSelect(lastResult);
       }
 
-      // Auto-remove completed uploads after delay
+      // Clear any remaining errors after short delay
       setTimeout(() => {
-        setUploadingFiles((prev) =>
-          prev.filter((u) => u.status === 'uploading')
-        );
-      }, 3000);
+        setUploadingFiles([]);
+      }, 2000);
     },
     [projectId, currentPath, queryClient, mode, onSelect]
   );
@@ -699,18 +694,18 @@ export function FileBrowser({
         <div className="border-t bg-muted/30">
           <div className="px-4 py-2 text-sm font-medium border-b flex items-center justify-between">
             <span>
-              Uploading {uploadingFiles.filter((f) => f.status === 'uploading').length} file(s)
+              {uploadingFiles.some((f) => f.status === 'uploading')
+                ? `Uploading ${uploadingFiles.filter((f) => f.status === 'uploading').length} file(s)`
+                : `${uploadingFiles.filter((f) => f.status === 'error').length} upload(s) failed`}
             </span>
-            {uploadingFiles.every((f) => f.status !== 'uploading') && (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-6 px-2"
-                onClick={() => setUploadingFiles([])}
-              >
-                <X className="size-3" />
-              </Button>
-            )}
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 px-2"
+              onClick={() => setUploadingFiles([])}
+            >
+              <X className="size-3" />
+            </Button>
           </div>
           <div className="max-h-32 overflow-auto">
             {uploadingFiles.map((upload) => (
