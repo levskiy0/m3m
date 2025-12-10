@@ -21,6 +21,36 @@
 
 ---
 
+## Table of Contents
+
+- [Why M3M?](#why-m3m)
+  - [The Problem: Infrastructure Overkill](#the-problem-infrastructure-overkill)
+  - [The Solution: Unified Runtime](#the-solution-unified-runtime)
+  - [The Philosophy](#the-philosophy)
+- [Example](#example)
+- [Service Lifecycle](#service-lifecycle)
+  - [Boot Phase](#1-boot-phase)
+  - [Start Phase](#2-start-phase)
+  - [Shutdown Phase](#3-shutdown-phase)
+- [Performance](#performance)
+- [Installation](#installation)
+  - [Quick Install](#quick-install-recommended-docker--mongodb)
+  - [Start & Setup](#start--setup)
+  - [All Commands](#all-commands)
+  - [Directory Structure](#directory-structure)
+  - [Adding Plugins](#adding-plugins)
+  - [Configuration](#configuration)
+- [From Source (Manual)](#from-source-manual)
+  - [Standalone Binary](#standalone-binary)
+  - [Configuration](#configuration-1)
+  - [Database Drivers](#database-drivers)
+- [CLI Commands](#cli-commands)
+- [Accessing Services](#accessing-services)
+- [Development](#development)
+- [License](#license)
+
+---
+
 ## Why M3M?
 
 ### The Problem: Infrastructure Overkill

@@ -19,6 +19,9 @@ import {
   Check,
   X,
   FileCode,
+  Loader2,
+  CheckCircle,
+  XCircle,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -28,6 +31,7 @@ import { formatBytes } from '@/lib/format';
 import { cn, isImageFile } from '@/lib/utils';
 import type { StorageItem } from '@/types';
 import { Button } from '@/components/ui/button';
+import { Progress } from '@/components/ui/progress';
 import {
   Dialog,
   DialogContent,
@@ -47,6 +51,15 @@ import { Input } from '@/components/ui/input';
 import { Field, FieldLabel } from '@/components/ui/field';
 import { ConfirmDialog } from '@/components/shared/confirm-dialog';
 import { FileIcon } from './file-icon';
+
+interface UploadingFile {
+  id: string;
+  name: string;
+  size: number;
+  progress: number;
+  status: 'uploading' | 'completed' | 'error';
+  error?: string;
+}
 
 export interface FileBrowserProps {
   projectId: string;
@@ -90,6 +103,9 @@ export function FileBrowser({
   // Drag & drop
   const [isDragging, setIsDragging] = useState(false);
   const dragCounter = useRef(0);
+
+  // Upload progress tracking
+  const [uploadingFiles, setUploadingFiles] = useState<UploadingFile[]>([]);
 
   // Move dialog
   const [moveDialogOpen, setMoveDialogOpen] = useState(false);
@@ -158,20 +174,6 @@ export function FileBrowser({
     },
   });
 
-  const uploadMutation = useMutation({
-    mutationFn: (file: File) => storageApi.upload(projectId, currentPath, file),
-    onSuccess: (result) => {
-      queryClient.invalidateQueries({ queryKey: ['storage', projectId] });
-      toast.success('File uploaded');
-      if (mode === 'select' && onSelect) {
-        onSelect(result);
-      }
-    },
-    onError: (err) => {
-      toast.error(err instanceof Error ? err.message : 'Upload failed');
-    },
-  });
-
   const renameMutation = useMutation({
     mutationFn: () =>
       storageApi.rename(projectId, { path: selectedItem!.path, newName }),
@@ -237,15 +239,90 @@ export function FileBrowser({
     },
   });
 
+  const uploadFiles = useCallback(
+    async (files: File[]) => {
+      if (files.length === 0) return;
+
+      // Create upload entries
+      const newUploads: UploadingFile[] = files.map((file) => ({
+        id: `${Date.now()}-${file.name}`,
+        name: file.name,
+        size: file.size,
+        progress: 0,
+        status: 'uploading' as const,
+      }));
+
+      setUploadingFiles((prev) => [...prev, ...newUploads]);
+
+      let lastResult: StorageItem | null = null;
+
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const uploadId = newUploads[i].id;
+
+        try {
+          const result = await storageApi.upload(
+            projectId,
+            currentPath,
+            file,
+            (progress) => {
+              setUploadingFiles((prev) =>
+                prev.map((u) =>
+                  u.id === uploadId ? { ...u, progress } : u
+                )
+              );
+            }
+          );
+
+          lastResult = result;
+
+          setUploadingFiles((prev) =>
+            prev.map((u) =>
+              u.id === uploadId ? { ...u, status: 'completed', progress: 100 } : u
+            )
+          );
+        } catch (error) {
+          setUploadingFiles((prev) =>
+            prev.map((u) =>
+              u.id === uploadId
+                ? {
+                    ...u,
+                    status: 'error',
+                    error: error instanceof Error ? error.message : 'Upload failed',
+                  }
+                : u
+            )
+          );
+        }
+      }
+
+      // Refresh file list after all uploads
+      queryClient.invalidateQueries({ queryKey: ['storage', projectId] });
+
+      // For select mode with single file
+      if (mode === 'select' && onSelect && files.length === 1 && lastResult) {
+        onSelect(lastResult);
+      }
+
+      // Auto-remove completed uploads after delay
+      setTimeout(() => {
+        setUploadingFiles((prev) =>
+          prev.filter((u) => u.status === 'uploading')
+        );
+      }, 3000);
+    },
+    [projectId, currentPath, queryClient, mode, onSelect]
+  );
+
   const handleFileUpload = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0];
-      if (file) {
-        uploadMutation.mutate(file);
+      const files = Array.from(e.target.files || []);
+      if (files.length > 0) {
+        uploadFiles(files);
       }
       e.target.value = '';
     },
-    [uploadMutation]
+    [uploadFiles]
   );
 
   const handleItemClick = (item: StorageItem) => {
@@ -329,29 +406,18 @@ export function FileBrowser({
   }, []);
 
   const handleDrop = useCallback(
-    async (e: React.DragEvent) => {
+    (e: React.DragEvent) => {
       e.preventDefault();
       e.stopPropagation();
       dragCounter.current = 0;
       setIsDragging(false);
 
       const files = Array.from(e.dataTransfer.files);
-      if (files.length === 0) return;
-
-      for (const file of files) {
-        try {
-          const result = await storageApi.upload(projectId, currentPath, file);
-          if (mode === 'select' && onSelect && files.length === 1) {
-            onSelect(result);
-          }
-        } catch {
-          toast.error(`Failed to upload ${file.name}`);
-        }
+      if (files.length > 0) {
+        uploadFiles(files);
       }
-      queryClient.invalidateQueries({ queryKey: ['storage', projectId] });
-      toast.success(`Uploaded ${files.length} file(s)`);
     },
-    [projectId, currentPath, queryClient, mode, onSelect]
+    [uploadFiles]
   );
 
   const handleDownload = (item: StorageItem) => {
@@ -445,14 +511,13 @@ export function FileBrowser({
           )}
           {showUpload && (
             <>
-              <LoadingButton
+              <Button
                 variant="outline"
                 onClick={() => fileInputRef.current?.click()}
-                loading={uploadMutation.isPending}
               >
                 <Upload className="mr-2 size-4" />
                 Upload
-              </LoadingButton>
+              </Button>
               <input
                 ref={fileInputRef}
                 type="file"
@@ -628,6 +693,60 @@ export function FileBrowser({
           </div>
         )}
       </div>
+
+      {/* Upload Progress Panel */}
+      {uploadingFiles.length > 0 && (
+        <div className="border-t bg-muted/30">
+          <div className="px-4 py-2 text-sm font-medium border-b flex items-center justify-between">
+            <span>
+              Uploading {uploadingFiles.filter((f) => f.status === 'uploading').length} file(s)
+            </span>
+            {uploadingFiles.every((f) => f.status !== 'uploading') && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 px-2"
+                onClick={() => setUploadingFiles([])}
+              >
+                <X className="size-3" />
+              </Button>
+            )}
+          </div>
+          <div className="max-h-32 overflow-auto">
+            {uploadingFiles.map((upload) => (
+              <div
+                key={upload.id}
+                className="flex items-center gap-3 px-4 py-2 text-sm"
+              >
+                {upload.status === 'uploading' && (
+                  <Loader2 className="size-4 animate-spin text-primary shrink-0" />
+                )}
+                {upload.status === 'completed' && (
+                  <CheckCircle className="size-4 text-green-500 shrink-0" />
+                )}
+                {upload.status === 'error' && (
+                  <XCircle className="size-4 text-destructive shrink-0" />
+                )}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="truncate">{upload.name}</span>
+                    <span className="text-xs text-muted-foreground shrink-0">
+                      {upload.status === 'uploading'
+                        ? `${upload.progress}%`
+                        : upload.status === 'error'
+                          ? upload.error
+                          : formatBytes(upload.size)}
+                    </span>
+                  </div>
+                  {upload.status === 'uploading' && (
+                    <Progress value={upload.progress} className="h-1 mt-1" />
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Selection toolbar - bottom (browse mode only) */}
       {mode === 'browse' && selectedPaths.size > 0 && (
