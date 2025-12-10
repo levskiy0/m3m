@@ -8,6 +8,7 @@ import (
 
 	"go.mongodb.org/mongo-driver/bson/primitive"
 
+	"github.com/levskiy0/m3m/internal/constants"
 	"github.com/levskiy0/m3m/internal/domain"
 	"github.com/levskiy0/m3m/internal/repository"
 )
@@ -38,7 +39,7 @@ func (s *PipelineService) CreateBranch(ctx context.Context, projectID primitive.
 		}
 		code = parent.Code
 	} else {
-		code = s.getDefaultCode()
+		code = constants.DefaultServiceCode
 	}
 
 	branch := &domain.Branch{
@@ -280,26 +281,6 @@ func (s *PipelineService) getNextVersion(ctx context.Context, projectID primitiv
 	}
 
 	return fmt.Sprintf("%d.%d", major, minor), nil
-}
-
-func (s *PipelineService) getDefaultCode() string {
-	return `// M3M Service
-// Write your service code here
-
-$service.boot(() => {
-	// Example: Simple HTTP endpoint
-	$router.get('/health', function(ctx) {
-		return ctx.response(200, { status: 'ok' });
-	});
-	
-	// Example: Scheduled task
-	$schedule.daily(function() {
-		$logger.info('Daily task executed');
-	});
-})
-
-$logger.info('Service started');
-`
 }
 
 // EnsureDevelopBranch creates develop branch if it doesn't exist

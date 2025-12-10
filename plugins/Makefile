@@ -14,7 +14,7 @@ all:
 	@for dir in $(PLUGIN_DIRS); do \
 		name=$$(basename $$dir); \
 		echo "  Building $$name..."; \
-		cd $$dir && $(GOBUILD) -buildmode=plugin -o ../$$name.so && cd ..; \
+		(cd $$dir && $(GOBUILD) -buildmode=plugin -o ../$$name.so); \
 	done
 	@echo "Done! Built plugins:"
 	@ls -la *.so 2>/dev/null || echo "  No .so files found"
@@ -51,7 +51,7 @@ tidy:
 	@for dir in $(PLUGIN_DIRS); do \
 		name=$$(basename $$dir); \
 		echo "  Tidying $$name..."; \
-		cd $$dir && go mod tidy && cd ..; \
+		(cd $$dir && go mod tidy); \
 	done
 	@echo "Done!"
 

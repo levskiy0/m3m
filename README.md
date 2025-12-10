@@ -21,6 +21,36 @@
 
 ---
 
+## Table of Contents
+
+- [Why M3M?](#why-m3m)
+  - [The Problem: Infrastructure Overkill](#the-problem-infrastructure-overkill)
+  - [The Solution: Unified Runtime](#the-solution-unified-runtime)
+  - [The Philosophy](#the-philosophy)
+- [Example](#example)
+- [Service Lifecycle](#service-lifecycle)
+  - [Boot Phase](#1-boot-phase)
+  - [Start Phase](#2-start-phase)
+  - [Shutdown Phase](#3-shutdown-phase)
+- [Performance](#performance)
+- [Installation](#installation)
+  - [Quick Install](#quick-install-recommended-docker--mongodb)
+  - [Start & Setup](#start--setup)
+  - [All Commands](#all-commands)
+  - [Directory Structure](#directory-structure)
+  - [Adding Plugins](#adding-plugins)
+  - [Configuration](#configuration)
+- [From Source (Manual)](#from-source-manual)
+  - [Standalone Binary](#standalone-binary)
+  - [Configuration](#configuration-1)
+  - [Database Drivers](#database-drivers)
+- [CLI Commands](#cli-commands)
+- [Accessing Services](#accessing-services)
+- [Development](#development)
+- [License](#license)
+
+---
+
 ## Why M3M?
 
 ### The Problem: Infrastructure Overkill
@@ -135,7 +165,7 @@ Runs comfortably on a **$5/mo VPS** with 512MB RAM alongside 20+ active services
 
 ## Installation
 
-### Quick Install (Recommended)
+### Quick Install (Recommended: Docker + MongoDB)
 
 ```bash
 # Download script
@@ -250,18 +280,43 @@ make build
 ./build/m3m serve
 ```
 
+### Standalone Binary
+
+You can also just download the binary and run — **zero configuration required**:
+
+```bash
+# Download binary from releases
+./m3m new-admin admin@example.com yourpassword
+./m3m serve
+```
+
+On first run, M3M automatically creates `config.yaml` with:
+- **SQLite database** (embedded, no external server needed)
+- **Random JWT secret** (secure by default)
+
+> **Note:** Docker installation via `m3m.sh` is recommended for production as it includes automatic updates, backup management, and proper process supervision.
+
 ### Configuration
 
-Default config file: `config.yaml`
+Default config file: `config.yaml` (auto-created on first run)
 
 ```yaml
 server:
   host: "0.0.0.0"
   port: 8080
-  uri: "http://localhost:8080"
+  uri: "http://127.0.0.1:8080"
 
+database:
+  driver: "sqlite"  # "mongodb" or "sqlite"
+
+# MongoDB - external server required
 mongodb:
   uri: "mongodb://localhost:27017"
+  database: "m3m"
+
+# SQLite - embedded, no external dependencies (default)
+sqlite:
+  path: "./data"
   database: "m3m"
 
 jwt:
@@ -271,9 +326,19 @@ jwt:
 storage:
   path: "./storage"
 
-logs:
+logging:
+  level: "info"
   path: "./logs"
 ```
+
+#### Database Drivers
+
+| Driver | Config | Requirements |
+|--------|--------|--------------|
+| `sqlite` | `driver: "sqlite"` | **None** — embedded in binary |
+| `mongodb` | `driver: "mongodb"` | External MongoDB server |
+
+**SQLite mode** uses embedded [FerretDB](https://www.ferretdb.com/) with SQLite backend. All MongoDB query syntax (`$eq`, `$gt`, `$in`, etc.) works identically in both modes — switch anytime without code changes.
 
 ---
 

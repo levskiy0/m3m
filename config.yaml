@@ -3,8 +3,15 @@ server:
   port: 3000
   uri: "http://127.0.0.1:3000"
 
+database:
+  driver: "sqlite"  # "mongodb" or "sqlite"
+
 mongodb:
   uri: "mongodb://localhost:27017"
+  database: "m3m"
+
+sqlite:
+  path: "./data" # SQLite data directory (embedded, no external server)
   database: "m3m"
 
 jwt:

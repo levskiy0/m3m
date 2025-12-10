@@ -24,31 +24,52 @@ export const storageApi = {
     return api.post(`/api/projects/${projectId}/storage/mkdir`, { path: fullPath });
   },
 
-  upload: async (projectId: string, path: string, file: File): Promise<StorageItem> => {
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('path', path);
+  upload: async (
+    projectId: string,
+    path: string,
+    file: File,
+    onProgress?: (progress: number) => void
+  ): Promise<StorageItem> => {
+    return new Promise((resolve, reject) => {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('path', path);
 
-    const token = localStorage.getItem('m3m_token');
-    const headers: HeadersInit = {};
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
-    }
+      const xhr = new XMLHttpRequest();
 
-    const response = await fetch(
-      `${api['baseURL']}/api/projects/${projectId}/storage/upload`,
-      {
-        method: 'POST',
-        headers,
-        body: formData,
+      xhr.upload.addEventListener('progress', (event) => {
+        if (event.lengthComputable && onProgress) {
+          const progress = Math.round((event.loaded / event.total) * 100);
+          onProgress(progress);
+        }
+      });
+
+      xhr.addEventListener('load', () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          try {
+            const result = JSON.parse(xhr.responseText);
+            resolve(result);
+          } catch {
+            reject(new Error('Invalid response'));
+          }
+        } else {
+          reject(new Error('Upload failed'));
+        }
+      });
+
+      xhr.addEventListener('error', () => {
+        reject(new Error('Upload failed'));
+      });
+
+      xhr.open('POST', `${api['baseURL']}/api/projects/${projectId}/storage/upload`);
+
+      const token = localStorage.getItem('m3m_token');
+      if (token) {
+        xhr.setRequestHeader('Authorization', `Bearer ${token}`);
       }
-    );
 
-    if (!response.ok) {
-      throw new Error('Upload failed');
-    }
-
-    return response.json();
+      xhr.send(formData);
+    });
   },
 
   download: async (projectId: string, path: string): Promise<Blob> => {

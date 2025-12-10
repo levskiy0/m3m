@@ -1,7 +1,7 @@
 import { useRef, useEffect } from 'react';
 import Editor from '@monaco-editor/react';
 import type { OnMount, Monaco } from '@monaco-editor/react';
-import type { editor } from 'monaco-editor';
+import type { editor, IDisposable } from 'monaco-editor';
 
 interface KeyBinding {
   key: string;
@@ -32,6 +32,7 @@ export function CodeEditor({
   const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
   const monacoRef = useRef<Monaco | null>(null);
   const keyBindingsRef = useRef(keyBindings);
+  const typeLibRef = useRef<IDisposable | null>(null);
 
   // Update ref in effect to avoid updating during render
   useEffect(() => {
@@ -60,7 +61,8 @@ export function CodeEditor({
 
     // Add type definitions if provided
     if (typeDefinitions) {
-      monaco.languages.typescript.javascriptDefaults.addExtraLib(
+      typeLibRef.current?.dispose();
+      typeLibRef.current = monaco.languages.typescript.javascriptDefaults.addExtraLib(
         typeDefinitions,
         'ts:runtime.d.ts'
       );
@@ -94,7 +96,8 @@ export function CodeEditor({
   useEffect(() => {
     // Update type definitions when they change
     if (monacoRef.current && typeDefinitions) {
-      monacoRef.current.languages.typescript.javascriptDefaults.addExtraLib(
+      typeLibRef.current?.dispose();
+      typeLibRef.current = monacoRef.current.languages.typescript.javascriptDefaults.addExtraLib(
         typeDefinitions,
         'ts:runtime.d.ts'
       );
