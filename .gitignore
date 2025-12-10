@@ -7,6 +7,7 @@ build/
 logs/
 
 issue.md
+dev.sh
 
 test/
 plugins/*.so
