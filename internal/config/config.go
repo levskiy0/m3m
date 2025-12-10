@@ -11,7 +11,7 @@ type Config struct {
 	Server   ServerConfig   `mapstructure:"server"`
 	Database DatabaseConfig `mapstructure:"database"`
 	MongoDB  MongoDBConfig  `mapstructure:"mongodb"`
-	FerretDB FerretDBConfig `mapstructure:"ferretdb"`
+	SQLite   SQLiteConfig   `mapstructure:"sqlite"`
 	JWT      JWTConfig      `mapstructure:"jwt"`
 	Storage  StorageConfig  `mapstructure:"storage"`
 	Runtime  RuntimeConfig  `mapstructure:"runtime"`
@@ -26,12 +26,12 @@ type ServerConfig struct {
 }
 
 type DatabaseConfig struct {
-	Driver string `mapstructure:"driver"` // "mongodb" or "ferretdb"
+	Driver string `mapstructure:"driver"` // "mongodb" or "sqlite"
 }
 
-type FerretDBConfig struct {
-	URI      string `mapstructure:"uri"`
-	Database string `mapstructure:"database"`
+type SQLiteConfig struct {
+	Path     string `mapstructure:"path"`     // Path to SQLite data directory
+	Database string `mapstructure:"database"` // Database name
 }
 
 type MongoDBConfig struct {
@@ -77,8 +77,8 @@ func Load(path string) (*Config, error) {
 	viper.SetDefault("database.driver", "mongodb")
 	viper.SetDefault("mongodb.uri", "mongodb://localhost:27017")
 	viper.SetDefault("mongodb.database", "m3m")
-	viper.SetDefault("ferretdb.uri", "mongodb://localhost:27018")
-	viper.SetDefault("ferretdb.database", "m3m")
+	viper.SetDefault("sqlite.path", "./data")
+	viper.SetDefault("sqlite.database", "m3m")
 	viper.SetDefault("jwt.expiration", "168h")
 	viper.SetDefault("storage.path", "./storage")
 	viper.SetDefault("runtime.worker_pool_size", 10)

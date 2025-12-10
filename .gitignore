@@ -5,6 +5,7 @@
 bin/
 build/
 logs/
+data/
 
 issue.md
 dev.sh

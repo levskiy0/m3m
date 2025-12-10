@@ -4,14 +4,14 @@ server:
   uri: "http://127.0.0.1:3000"
 
 database:
-  driver: "mongodb"  # "mongodb" or "ferretdb"
+  driver: "mongodb"  # "mongodb" or "sqlite"
 
 mongodb:
   uri: "mongodb://localhost:27017"
   database: "m3m"
 
-ferretdb:
-  uri: "mongodb://localhost:27018"  # FerretDB with SQLite backend
+sqlite:
+  path: "./data"     # SQLite data directory (embedded, no external server)
   database: "m3m"
 
 jwt:
