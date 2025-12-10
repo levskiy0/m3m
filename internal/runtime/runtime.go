@@ -116,9 +116,13 @@ func (m *Manager) Start(ctx context.Context, projectID primitive.ObjectID, code 
 	schedulerModule := modules.NewScheduleModule(m.logger)
 	serviceModule := modules.NewServiceModule(vm, m.config.Runtime.Timeout)
 
-	envMap, _ := m.envService.GetEnvMap(ctx, projectID)
+	// Create env getter for lazy loading (enables hot reload of env vars)
+	envGetter := func() map[string]interface{} {
+		envMap, _ := m.envService.GetEnvMap(context.Background(), projectID)
+		return envMap
+	}
 
-	if err := m.registerModules(vm, projectID, loggerModule, routerModule, schedulerModule, serviceModule, envMap); err != nil {
+	if err := m.registerModules(vm, projectID, loggerModule, routerModule, schedulerModule, serviceModule, envGetter); err != nil {
 		cancel()
 		return fmt.Errorf("failed to register modules: %w", err)
 	}
@@ -495,7 +499,7 @@ func (m *Manager) registerModules(
 	routerModule *modules.RouterModule,
 	schedulerModule *modules.ScheduleModule,
 	serviceModule *modules.ServiceModule,
-	envMap map[string]interface{},
+	envGetter func() map[string]interface{},
 ) error {
 	projectIDStr := projectID.Hex()
 
@@ -505,8 +509,8 @@ func (m *Manager) registerModules(
 	routerModule.Register(vm)
 	schedulerModule.Register(vm)
 
-	// Environment-dependent modules
-	envModule := modules.NewEnvModule(envMap)
+	// Environment-dependent modules (lazy loading for hot reload)
+	envModule := modules.NewEnvModule(envGetter)
 	envModule.Register(vm)
 
 	smtpModule := modules.NewSMTPModule(envModule)

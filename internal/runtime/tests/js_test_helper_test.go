@@ -91,8 +91,8 @@ func (h *JSTestHelper) registerModules(vm *goja.Runtime) {
 	modules.NewDelayedModule(5).Register(vm)
 	modules.NewHTTPModule(30*time.Second, nil, "").Register(vm)
 
-	// Env (mock) - use self-registration
-	modules.NewEnvModule(map[string]interface{}{
+	// Env (mock) - use getter function for lazy loading
+	envVars := map[string]interface{}{
 		"TEST_VAR":   "test_value",
 		"API_KEY":    "secret123",
 		"NUMBER_VAR": "42",
@@ -102,7 +102,8 @@ func (h *JSTestHelper) registerModules(vm *goja.Runtime) {
 		"JSON_VAR":   `{"key": "value"}`,
 		"DB_HOST":    "localhost",
 		"DB_PORT":    "5432",
-	}).Register(vm)
+	}
+	modules.NewEnvModule(func() map[string]interface{} { return envVars }).Register(vm)
 }
 
 // Run executes JS code and returns the result

@@ -347,26 +347,33 @@ export function PipelinePage() {
     }
   }, [hasChanges, saveMutation]);
 
-  const handleRunDebug = useCallback(async () => {
-    if (!currentBranch || startDebugMutation.isPending || (isRunning && !isDebugMode)) return;
+  const handleRunOrRestart = useCallback(async () => {
+    if (!currentBranch || saveMutation.isPending || startDebugMutation.isPending) return;
+    // Can't start if another release is running
+    if (isRunning && !isDebugMode) return;
 
-    if (runningBranch === currentBranch.name) {
-      // Stop if already running
-      stopDebugMutation.mutate();
-    } else {
-      // Save and run
-      if (hasChanges) {
-        await saveMutation.mutateAsync();
-      }
-      startDebugMutation.mutate(currentBranch.name);
+    if (hasChanges) {
+      await saveMutation.mutateAsync();
     }
+    if (runningBranch === currentBranch.name) {
+      // Restart: stop then start
+      await stopDebugMutation.mutateAsync();
+    }
+    startDebugMutation.mutate(currentBranch.name);
   }, [currentBranch, hasChanges, runningBranch, isRunning, isDebugMode, saveMutation, startDebugMutation, stopDebugMutation]);
+
+  const handleStop = useCallback(() => {
+    if (isDebugMode && !stopDebugMutation.isPending) {
+      stopDebugMutation.mutate();
+    }
+  }, [isDebugMode, stopDebugMutation]);
 
   // Key bindings for Monaco editor
   const keyBindings = useMemo(() => [
     { key: 'ctrl+s', label: 'Save', action: handleSave },
-    { key: 'ctrl+r', label: 'Run Debug', action: handleRunDebug },
-  ], [handleSave, handleRunDebug]);
+    { key: 'ctrl+,', label: 'Run / Restart', action: handleRunOrRestart },
+    { key: 'ctrl+.', label: 'Stop', action: handleStop },
+  ], [handleSave, handleRunOrRestart, handleStop]);
 
   if (isLoading) {
     return (
@@ -472,35 +479,43 @@ export function PipelinePage() {
                   )}
                 </div>
                 <div className="flex items-center gap-2">
-                  {/* Debug Run/Stop Button */}
+                  {/* Debug Run/Stop/Restart Buttons */}
                   {currentBranch && (
                     runningBranch === currentBranch.name ? (
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        onClick={() => stopDebugMutation.mutate()}
-                        disabled={stopDebugMutation.isPending}
-                      >
-                        <Square className="mr-2 size-4" />
-                        Stop Debug
-                        <Kbd className="ml-2">^R</Kbd>
-                      </Button>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={handleRunOrRestart}
+                          disabled={stopDebugMutation.isPending || startDebugMutation.isPending || saveMutation.isPending}
+                          className="border-amber-500/50 text-amber-600 hover:bg-amber-500/10"
+                        >
+                          <RotateCcw className="mr-2 size-4" />
+                          Restart
+                          <Kbd className="ml-2">^,</Kbd>
+                        </Button>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={handleStop}
+                          disabled={stopDebugMutation.isPending}
+                        >
+                          <Square className="mr-2 size-4" />
+                          Stop
+                          <Kbd className="ml-2">^.</Kbd>
+                        </Button>
+                      </div>
                     ) : (
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={async () => {
-                          if (hasChanges) {
-                            await saveMutation.mutateAsync();
-                          }
-                          startDebugMutation.mutate(currentBranch.name);
-                        }}
+                        onClick={handleRunOrRestart}
                         disabled={saveMutation.isPending || startDebugMutation.isPending || (isRunning && !isDebugMode)}
                         className="border-amber-500/50 text-amber-600 hover:bg-amber-500/10"
                       >
                         <Bug className="mr-2 size-4" />
                         Run Debug
-                        <Kbd className="ml-2">^R</Kbd>
+                        <Kbd className="ml-2">^,</Kbd>
                       </Button>
                     )
                   )}

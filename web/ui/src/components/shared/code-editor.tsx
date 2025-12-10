@@ -80,15 +80,27 @@ export function CodeEditor({
       },
     });
 
-    // Register Ctrl+R for run
+    // Register Ctrl+, for run/restart
     editor.addAction({
       id: 'custom-run',
-      label: 'Run Debug',
-      keybindings: [monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyR],
+      label: 'Run / Restart',
+      keybindings: [monaco.KeyMod.CtrlCmd | monaco.KeyCode.Comma],
       run: () => {
         const bindings = keyBindingsRef.current;
-        const runBinding = bindings?.find(b => b.key === 'ctrl+r');
+        const runBinding = bindings?.find(b => b.key === 'ctrl+,');
         runBinding?.action();
+      },
+    });
+
+    // Register Ctrl+. for stop
+    editor.addAction({
+      id: 'custom-stop',
+      label: 'Stop',
+      keybindings: [monaco.KeyMod.CtrlCmd | monaco.KeyCode.Period],
+      run: () => {
+        const bindings = keyBindingsRef.current;
+        const stopBinding = bindings?.find(b => b.key === 'ctrl+.');
+        stopBinding?.action();
       },
     });
   };

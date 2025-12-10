@@ -171,7 +171,10 @@ export function ModelsPage() {
                         <DropdownMenuSeparator />
                         <DropdownMenuItem
                           className="text-destructive"
-                          onClick={() => deleteDialog.open(model.id)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            deleteDialog.open(model.id);
+                          }}
                         >
                           <Trash2 className="mr-2 size-4" />
                           Delete

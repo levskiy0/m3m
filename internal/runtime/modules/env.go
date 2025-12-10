@@ -10,14 +10,16 @@ import (
 )
 
 type EnvModule struct {
-	vars map[string]interface{}
+	getVars func() map[string]interface{}
 }
 
-func NewEnvModule(vars map[string]interface{}) *EnvModule {
-	if vars == nil {
-		vars = make(map[string]interface{})
+// NewEnvModule creates a new env module with a getter function for lazy loading.
+// This allows env vars to be updated without restarting the runtime.
+func NewEnvModule(getVars func() map[string]interface{}) *EnvModule {
+	if getVars == nil {
+		getVars = func() map[string]interface{} { return make(map[string]interface{}) }
 	}
-	return &EnvModule{vars: vars}
+	return &EnvModule{getVars: getVars}
 }
 
 // Name returns the module name for JavaScript
@@ -41,19 +43,20 @@ func (e *EnvModule) Register(vm interface{}) {
 
 // Get returns the value for the given key, or nil if not found
 func (e *EnvModule) Get(key string) interface{} {
-	return e.vars[key]
+	return e.getVars()[key]
 }
 
 // Has returns true if the key exists in the environment
 func (e *EnvModule) Has(key string) bool {
-	_, ok := e.vars[key]
+	_, ok := e.getVars()[key]
 	return ok
 }
 
 // Keys returns all environment variable keys
 func (e *EnvModule) Keys() []string {
-	keys := make([]string, 0, len(e.vars))
-	for k := range e.vars {
+	vars := e.getVars()
+	keys := make([]string, 0, len(vars))
+	for k := range vars {
 		keys = append(keys, k)
 	}
 	return keys
@@ -61,7 +64,7 @@ func (e *EnvModule) Keys() []string {
 
 // GetString returns the value as a string, or defaultValue if not found or not a string
 func (e *EnvModule) GetString(key string, defaultValue string) string {
-	val, ok := e.vars[key]
+	val, ok := e.getVars()[key]
 	if !ok {
 		return defaultValue
 	}
@@ -74,7 +77,7 @@ func (e *EnvModule) GetString(key string, defaultValue string) string {
 
 // GetInt returns the value as an int, or defaultValue if not found or not convertible
 func (e *EnvModule) GetInt(key string, defaultValue int) int {
-	val, ok := e.vars[key]
+	val, ok := e.getVars()[key]
 	if !ok {
 		return defaultValue
 	}
@@ -99,7 +102,7 @@ func (e *EnvModule) GetInt(key string, defaultValue int) int {
 
 // GetFloat returns the value as a float64, or defaultValue if not found or not convertible
 func (e *EnvModule) GetFloat(key string, defaultValue float64) float64 {
-	val, ok := e.vars[key]
+	val, ok := e.getVars()[key]
 	if !ok {
 		return defaultValue
 	}
@@ -124,7 +127,7 @@ func (e *EnvModule) GetFloat(key string, defaultValue float64) float64 {
 
 // GetBool returns the value as a bool, or defaultValue if not found or not a bool
 func (e *EnvModule) GetBool(key string, defaultValue bool) bool {
-	val, ok := e.vars[key]
+	val, ok := e.getVars()[key]
 	if !ok {
 		return defaultValue
 	}
@@ -147,8 +150,9 @@ func (e *EnvModule) GetBool(key string, defaultValue bool) bool {
 
 // GetAll returns a copy of all environment variables
 func (e *EnvModule) GetAll() map[string]interface{} {
-	result := make(map[string]interface{}, len(e.vars))
-	for k, v := range e.vars {
+	vars := e.getVars()
+	result := make(map[string]interface{}, len(vars))
+	for k, v := range vars {
 		result[k] = v
 	}
 	return result
