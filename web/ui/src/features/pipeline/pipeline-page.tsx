@@ -429,7 +429,10 @@ export function PipelinePage() {
           </EditorTab>
         </EditorTabs>
 
-        <Card className="flex flex-col gap-0 rounded-t-none py-0 overflow-hidden" style={{ height: 'calc(100vh - 120px)' }}>
+        <Card
+            className={cn("flex flex-col gap-0 rounded-t-none py-0 overflow-hidden", activeTab === 'releases' ? 'max-w-4xl h-auto': '')}
+            style={{ height: ['editor', 'logs'].includes(activeTab) ? 'calc(100vh - 120px)' : 'auto' }}
+        >
           {/* Editor Content */}
           {activeTab === 'editor' && (
             <>
