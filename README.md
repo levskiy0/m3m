@@ -378,7 +378,27 @@ make init          # Initialize project
 make dev           # Run backend in dev mode
 make web-dev       # Run frontend dev server
 make test          # Run tests
+make docs          # Generate JavaScript API docs (CODE.md)
 ```
+
+---
+
+## Claude Code Integration
+
+M3M includes an MCP server for Claude Code. It provides access to the JavaScript runtime API documentation.
+
+```bash
+# Build MCP server
+make build-mcp
+
+# Add to Claude Code
+claude mcp add m3m-api ./build/m3m-mcp
+
+# Verify connection
+claude mcp list
+```
+
+Now Claude knows the M3M API and can help write services.
 
 ---
 

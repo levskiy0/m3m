@@ -179,6 +179,50 @@ Default config path: `config.yaml`. Key settings:
 - Storage/Plugins/Logs: paths
 - Runtime: worker_pool_size, timeout
 
+## Claude Code Integration
+
+### MCP Server
+
+M3M includes an MCP (Model Context Protocol) server that provides Claude with access to the JavaScript runtime API documentation.
+
+```bash
+# Build MCP server
+make build-mcp
+
+# Add to Claude Code (remembers the path)
+claude mcp add m3m-api ./build/m3m-mcp
+
+# Check connected servers
+claude mcp list
+```
+
+After connecting, Claude can use tools like `list_modules`, `get_module`, `search_api` to get M3M API documentation.
+
+### HTTP Mode (for web integration)
+
+```bash
+# Run MCP server with HTTP API
+./build/m3m-mcp --http :3100
+```
+
+REST endpoints:
+- `GET /api/modules` - List all modules
+- `GET /api/module/{name}` - Get module details
+- `GET /api/search?q={query}` - Search API
+- `GET /api/docs` - Full Markdown docs
+- `GET /api/docs?format=json` - JSON schemas
+- `GET /api/docs?format=ts` - TypeScript types
+
+### Generate Documentation
+
+```bash
+# Generate CODE.md with full JavaScript API reference
+make docs
+
+# Or directly
+./build/m3m docs CODE.md
+```
+
 ## Code Patterns
 
 - Repositories return domain types, services handle business logic

@@ -10,7 +10,9 @@ import (
 	"github.com/levskiy0/m3m/internal/app"
 	"github.com/levskiy0/m3m/internal/config"
 	"github.com/levskiy0/m3m/internal/repository"
+	"github.com/levskiy0/m3m/internal/runtime/modules"
 	"github.com/levskiy0/m3m/internal/service"
+	"github.com/levskiy0/m3m/pkg/schema"
 )
 
 var configFile string
@@ -80,12 +82,51 @@ var versionCmd = &cobra.Command{
 	},
 }
 
+var docsCmd = &cobra.Command{
+	Use:   "docs [output-file]",
+	Short: "Generate JavaScript API documentation",
+	Long:  `Generate Markdown documentation for the M3M JavaScript runtime API. Default output: CODE.md`,
+	Run: func(cmd *cobra.Command, args []string) {
+		outputFile := "CODE.md"
+		if len(args) > 0 {
+			outputFile = args[0]
+		}
+
+		format, _ := cmd.Flags().GetString("format")
+
+		// Get all module schemas
+		schemas := modules.GetAllSchemas()
+
+		var content string
+		switch format {
+		case "typescript", "ts":
+			content = schema.GenerateAllTypeScript(schemas)
+		case "markdown", "md":
+			content = schema.GenerateAllMarkdown(schemas)
+		default:
+			content = schema.GenerateAllMarkdown(schemas)
+		}
+
+		// Write to file
+		err := os.WriteFile(outputFile, []byte(content), 0644)
+		if err != nil {
+			fmt.Printf("Error writing file: %v\n", err)
+			os.Exit(1)
+		}
+
+		fmt.Printf("Documentation generated: %s\n", outputFile)
+	},
+}
+
 func init() {
 	rootCmd.PersistentFlags().StringVarP(&configFile, "config", "c", "config.yaml", "config file path")
+
+	docsCmd.Flags().StringP("format", "f", "markdown", "Output format: markdown, typescript")
 
 	rootCmd.AddCommand(serveCmd)
 	rootCmd.AddCommand(newAdminCmd)
 	rootCmd.AddCommand(versionCmd)
+	rootCmd.AddCommand(docsCmd)
 }
 
 func main() {
