@@ -2,6 +2,7 @@ package modules
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/dop251/goja"
 	"go.mongodb.org/mongo-driver/bson"
@@ -9,14 +10,12 @@ import (
 
 	"github.com/levskiy0/m3m/internal/domain"
 	"github.com/levskiy0/m3m/internal/service"
-	"github.com/levskiy0/m3m/pkg/jsutil"
 	"github.com/levskiy0/m3m/pkg/schema"
 )
 
 type DatabaseModule struct {
 	modelService *service.ModelService
 	projectID    primitive.ObjectID
-	vm           *goja.Runtime
 }
 
 func NewDatabaseModule(modelService *service.ModelService, projectID primitive.ObjectID) *DatabaseModule {
@@ -33,8 +32,7 @@ func (d *DatabaseModule) Name() string {
 
 // Register registers the module into the JavaScript VM
 func (d *DatabaseModule) Register(vm interface{}) {
-	d.vm = vm.(*goja.Runtime)
-	d.vm.Set(d.Name(), map[string]interface{}{
+	vm.(*goja.Runtime).Set(d.Name(), map[string]interface{}{
 		"collection": d.Collection,
 	})
 }
@@ -44,12 +42,6 @@ type CollectionWrapper struct {
 	projectID    primitive.ObjectID
 	modelSlug    string
 	modelID      primitive.ObjectID
-	vm           *goja.Runtime
-}
-
-// throwError throws a JavaScript error that can be caught with try-catch
-func (c *CollectionWrapper) throwError(msg string) {
-	jsutil.ThrowJSError(c.vm, msg)
 }
 
 func (d *DatabaseModule) Collection(name string) *CollectionWrapper {
@@ -60,7 +52,6 @@ func (d *DatabaseModule) Collection(name string) *CollectionWrapper {
 			modelService: d.modelService,
 			projectID:    d.projectID,
 			modelSlug:    name,
-			vm:           d.vm,
 		}
 	}
 
@@ -69,7 +60,6 @@ func (d *DatabaseModule) Collection(name string) *CollectionWrapper {
 		projectID:    d.projectID,
 		modelSlug:    name,
 		modelID:      model.ID,
-		vm:           d.vm,
 	}
 }
 
@@ -174,54 +164,54 @@ func (c *CollectionWrapper) FindOne(filter map[string]interface{}) map[string]in
 	return nil
 }
 
-func (c *CollectionWrapper) Insert(data map[string]interface{}) map[string]interface{} {
+func (c *CollectionWrapper) Insert(data map[string]interface{}) (map[string]interface{}, error) {
 	if c.modelID.IsZero() {
-		c.throwError("collection '" + c.modelSlug + "' not found")
+		return nil, fmt.Errorf("collection '%s' not found", c.modelSlug)
 	}
 
 	ctx := context.Background()
 	result, err := c.modelService.CreateData(ctx, c.modelID, data)
 	if err != nil {
-		c.throwError(err.Error())
+		return nil, err
 	}
 
-	return result
+	return result, nil
 }
 
-func (c *CollectionWrapper) Update(id string, data map[string]interface{}) bool {
+func (c *CollectionWrapper) Update(id string, data map[string]interface{}) (bool, error) {
 	if c.modelID.IsZero() {
-		c.throwError("collection '" + c.modelSlug + "' not found")
+		return false, fmt.Errorf("collection '%s' not found", c.modelSlug)
 	}
 
 	dataID, err := primitive.ObjectIDFromHex(id)
 	if err != nil {
-		c.throwError("invalid id: " + err.Error())
+		return false, fmt.Errorf("invalid id: %w", err)
 	}
 
 	ctx := context.Background()
 	err = c.modelService.UpdateData(ctx, c.modelID, dataID, data)
 	if err != nil {
-		c.throwError(err.Error())
+		return false, err
 	}
-	return true
+	return true, nil
 }
 
-func (c *CollectionWrapper) Delete(id string) bool {
+func (c *CollectionWrapper) Delete(id string) (bool, error) {
 	if c.modelID.IsZero() {
-		c.throwError("collection '" + c.modelSlug + "' not found")
+		return false, fmt.Errorf("collection '%s' not found", c.modelSlug)
 	}
 
 	dataID, err := primitive.ObjectIDFromHex(id)
 	if err != nil {
-		c.throwError("invalid id: " + err.Error())
+		return false, fmt.Errorf("invalid id: %w", err)
 	}
 
 	ctx := context.Background()
 	err = c.modelService.DeleteData(ctx, c.modelID, dataID)
 	if err != nil {
-		c.throwError(err.Error())
+		return false, err
 	}
-	return true
+	return true, nil
 }
 
 func (c *CollectionWrapper) Count(filter map[string]interface{}) int64 {
@@ -282,9 +272,9 @@ func (c *CollectionWrapper) Count(filter map[string]interface{}) int64 {
 }
 
 // Upsert inserts a document or updates it if one matches the filter
-func (c *CollectionWrapper) Upsert(filter map[string]interface{}, data map[string]interface{}) map[string]interface{} {
+func (c *CollectionWrapper) Upsert(filter map[string]interface{}, data map[string]interface{}) (map[string]interface{}, error) {
 	if c.modelID.IsZero() {
-		c.throwError("collection '" + c.modelSlug + "' not found")
+		return nil, fmt.Errorf("collection '%s' not found", c.modelSlug)
 	}
 
 	ctx := context.Background()
@@ -292,16 +282,16 @@ func (c *CollectionWrapper) Upsert(filter map[string]interface{}, data map[strin
 
 	result, _, err := c.modelService.UpsertData(ctx, c.modelID, mongoFilter, data)
 	if err != nil {
-		c.throwError(err.Error())
+		return nil, err
 	}
 
-	return result
+	return result, nil
 }
 
 // FindOneAndUpdate finds a document, updates it atomically and returns the result
-func (c *CollectionWrapper) FindOneAndUpdate(filter map[string]interface{}, update map[string]interface{}, options map[string]interface{}) map[string]interface{} {
+func (c *CollectionWrapper) FindOneAndUpdate(filter map[string]interface{}, update map[string]interface{}, options map[string]interface{}) (map[string]interface{}, error) {
 	if c.modelID.IsZero() {
-		c.throwError("collection '" + c.modelSlug + "' not found")
+		return nil, fmt.Errorf("collection '%s' not found", c.modelSlug)
 	}
 
 	ctx := context.Background()
@@ -316,10 +306,10 @@ func (c *CollectionWrapper) FindOneAndUpdate(filter map[string]interface{}, upda
 
 	result, err := c.modelService.FindOneAndUpdateData(ctx, c.modelID, mongoFilter, update, returnNew)
 	if err != nil {
-		c.throwError(err.Error())
+		return nil, err
 	}
 
-	return result
+	return result, nil
 }
 
 // convertFilterToBson converts a JavaScript filter object to MongoDB bson.M
