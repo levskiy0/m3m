@@ -588,26 +588,36 @@ func (r *RouterModule) parseHandlerResult(result goja.Value, respAccum *Response
 
 	// Try to convert map to ResponseData
 	if m, ok := exported.(map[string]interface{}); ok {
-		if status, ok := m["status"]; ok {
-			respAccum.Status = toInt(status)
-		}
-		if body, ok := m["body"]; ok {
-			respAccum.Body = body
-		}
-		if headers, ok := m["headers"].(map[string]interface{}); ok {
-			for k, v := range headers {
-				respAccum.Headers[k] = fmt.Sprintf("%v", v)
+		// Check if this looks like a ResponseData object (has status or body keys)
+		_, hasStatus := m["status"]
+		_, hasBody := m["body"]
+
+		if hasStatus || hasBody {
+			// This is a ResponseData-like object
+			if hasStatus {
+				respAccum.Status = toInt(m["status"])
 			}
-		}
-		// Check for special response types
-		if respType, ok := m["type"]; ok {
-			respAccum.Type = ResponseType(fmt.Sprintf("%v", respType))
-		}
-		if redirectURL, ok := m["redirectUrl"]; ok {
-			respAccum.RedirectURL = fmt.Sprintf("%v", redirectURL)
-		}
-		if filePath, ok := m["filePath"]; ok {
-			respAccum.FilePath = fmt.Sprintf("%v", filePath)
+			if hasBody {
+				respAccum.Body = m["body"]
+			}
+			if headers, ok := m["headers"].(map[string]interface{}); ok {
+				for k, v := range headers {
+					respAccum.Headers[k] = fmt.Sprintf("%v", v)
+				}
+			}
+			// Check for special response types
+			if respType, ok := m["type"]; ok {
+				respAccum.Type = ResponseType(fmt.Sprintf("%v", respType))
+			}
+			if redirectURL, ok := m["redirectUrl"]; ok {
+				respAccum.RedirectURL = fmt.Sprintf("%v", redirectURL)
+			}
+			if filePath, ok := m["filePath"]; ok {
+				respAccum.FilePath = fmt.Sprintf("%v", filePath)
+			}
+		} else {
+			// Plain object - use entire map as body
+			respAccum.Body = m
 		}
 		return respAccum, nil
 	}
