@@ -191,3 +191,138 @@ func GenerateAllTypeScript(schemas []ModuleSchema) string {
 
 	return sb.String()
 }
+
+// GenerateMarkdown generates Markdown documentation from schema
+func (s *ModuleSchema) GenerateMarkdown() string {
+	var sb strings.Builder
+
+	// Module header
+	sb.WriteString(fmt.Sprintf("## %s\n\n", s.Name))
+	if s.Description != "" {
+		sb.WriteString(fmt.Sprintf("%s\n\n", s.Description))
+	}
+
+	// Types section
+	if len(s.Types) > 0 {
+		sb.WriteString("### Types\n\n")
+		for _, t := range s.Types {
+			sb.WriteString(fmt.Sprintf("#### %s\n\n", t.Name))
+			if t.Description != "" {
+				sb.WriteString(fmt.Sprintf("%s\n\n", t.Description))
+			}
+			sb.WriteString("| Field | Type | Description |\n")
+			sb.WriteString("|-------|------|-------------|\n")
+			for _, f := range t.Fields {
+				optional := ""
+				if f.Optional {
+					optional = " *(optional)*"
+				}
+				sb.WriteString(fmt.Sprintf("| `%s` | `%s` | %s%s |\n", f.Name, f.Type, f.Description, optional))
+			}
+			sb.WriteString("\n")
+		}
+	}
+
+	// Methods section
+	if len(s.Methods) > 0 {
+		sb.WriteString("### Methods\n\n")
+		for _, m := range s.Methods {
+			// Build params signature
+			params := make([]string, 0, len(m.Params))
+			for _, p := range m.Params {
+				optional := ""
+				if p.Optional {
+					optional = "?"
+				}
+				params = append(params, fmt.Sprintf("%s%s: %s", p.Name, optional, p.Type))
+			}
+
+			returnType := "void"
+			if m.Returns != nil {
+				returnType = m.Returns.Type
+			}
+
+			sb.WriteString(fmt.Sprintf("#### `%s(%s): %s`\n\n", m.Name, strings.Join(params, ", "), returnType))
+			if m.Description != "" {
+				sb.WriteString(fmt.Sprintf("%s\n\n", m.Description))
+			}
+
+			// Parameters table
+			if len(m.Params) > 0 {
+				sb.WriteString("**Parameters:**\n\n")
+				sb.WriteString("| Name | Type | Description |\n")
+				sb.WriteString("|------|------|-------------|\n")
+				for _, p := range m.Params {
+					optional := ""
+					if p.Optional {
+						optional = " *(optional)*"
+					}
+					sb.WriteString(fmt.Sprintf("| `%s` | `%s` | %s%s |\n", p.Name, p.Type, p.Description, optional))
+				}
+				sb.WriteString("\n")
+			}
+		}
+	}
+
+	// Nested modules
+	for _, nested := range s.Nested {
+		sb.WriteString(fmt.Sprintf("### %s.%s\n\n", s.Name, nested.Name))
+		if nested.Description != "" {
+			sb.WriteString(fmt.Sprintf("%s\n\n", nested.Description))
+		}
+
+		for _, m := range nested.Methods {
+			params := make([]string, 0, len(m.Params))
+			for _, p := range m.Params {
+				optional := ""
+				if p.Optional {
+					optional = "?"
+				}
+				params = append(params, fmt.Sprintf("%s%s: %s", p.Name, optional, p.Type))
+			}
+
+			returnType := "void"
+			if m.Returns != nil {
+				returnType = m.Returns.Type
+			}
+
+			sb.WriteString(fmt.Sprintf("#### `%s(%s): %s`\n\n", m.Name, strings.Join(params, ", "), returnType))
+			if m.Description != "" {
+				sb.WriteString(fmt.Sprintf("%s\n\n", m.Description))
+			}
+		}
+	}
+
+	return sb.String()
+}
+
+// GenerateAllMarkdown generates Markdown documentation from multiple schemas
+func GenerateAllMarkdown(schemas []ModuleSchema) string {
+	var sb strings.Builder
+
+	sb.WriteString("# M3M JavaScript Runtime API\n\n")
+	sb.WriteString("Auto-generated documentation for M3M runtime modules.\n\n")
+	sb.WriteString("All modules are available globally with `$` prefix (e.g., `$router`, `$database`).\n\n")
+
+	// Table of contents
+	sb.WriteString("## Table of Contents\n\n")
+	for _, s := range schemas {
+		anchor := strings.ToLower(strings.ReplaceAll(s.Name, "$", ""))
+		sb.WriteString(fmt.Sprintf("- [%s](#%s) - %s\n", s.Name, anchor, truncateString(s.Description, 60)))
+	}
+	sb.WriteString("\n---\n\n")
+
+	for _, s := range schemas {
+		sb.WriteString(s.GenerateMarkdown())
+		sb.WriteString("\n---\n\n")
+	}
+
+	return sb.String()
+}
+
+func truncateString(s string, maxLen int) string {
+	if len(s) <= maxLen {
+		return s
+	}
+	return s[:maxLen-3] + "..."
+}

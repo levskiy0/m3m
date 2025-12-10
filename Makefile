@@ -135,6 +135,22 @@ docker-push:
 docker-release: docker-build docker-push
 	@echo "Released $(DOCKER_IMAGE):$(VERSION)"
 
+# Generate API documentation
+docs:
+	@echo "Generating JavaScript API documentation..."
+	$(GORUN) $(MAIN_PATH) docs CODE.md
+	@echo "Documentation generated: CODE.md"
+
+# Build MCP server for Claude Code integration
+build-mcp:
+	@echo "Building MCP server..."
+	@mkdir -p $(BUILD_DIR)
+	$(GOBUILD) -o $(BUILD_DIR)/m3m-mcp ./cmd/mcp
+	@echo "MCP server built: $(BUILD_DIR)/m3m-mcp"
+	@echo ""
+	@echo "To add to Claude Code:"
+	@echo "  claude mcp add m3m-api $(BUILD_DIR)/m3m-mcp"
+
 # Help
 help:
 	@echo "M3M Makefile commands:"
@@ -154,6 +170,8 @@ help:
 	@echo "  make build-plugin  - Build single plugin (PLUGIN=name)"
 	@echo "  make build-plugins - Build all plugins"
 	@echo "  make build-all     - Build for all platforms"
+	@echo "  make docs          - Generate JavaScript API docs"
+	@echo "  make build-mcp     - Build MCP server for Claude Code"
 	@echo "  make docker-build  - Build Docker image"
 	@echo "  make docker-push   - Push to Docker Hub"
 	@echo "  make docker-release - Build and push (VERSION=v1.0.0)"
