@@ -250,6 +250,22 @@ make build
 ./build/m3m serve
 ```
 
+### Standalone Binary
+
+You can also just download the binary and run — **zero configuration required**:
+
+```bash
+# Download binary from releases
+./m3m new-admin admin@example.com yourpassword
+./m3m serve
+```
+
+On first run, M3M automatically creates `config.yaml` with:
+- **SQLite database** (embedded, no external server needed)
+- **Random JWT secret** (secure by default)
+
+> **Note:** Docker installation via `m3m.sh` is recommended for production as it includes automatic updates, backup management, and proper process supervision.
+
 ### Configuration
 
 Default config file: `config.yaml` (auto-created on first run)
