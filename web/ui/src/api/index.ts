@@ -11,3 +11,4 @@ export { environmentApi } from './environment';
 export { runtimeApi } from './runtime';
 export { versionApi } from './version';
 export { templatesApi } from './templates';
+export { actionsApi } from './actions';

@@ -12,13 +12,15 @@ import {
   Bug,
   Code,
   ScrollText,
+  Zap,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
-import { pipelineApi, runtimeApi, projectsApi, templatesApi } from '@/api';
-import { useTitle } from '@/hooks';
+import { pipelineApi, runtimeApi, projectsApi, templatesApi, actionsApi } from '@/api';
+import { queryKeys } from '@/lib/query-keys';
+import { useTitle, useWebSocket } from '@/hooks';
 import { RELEASE_TAGS } from '@/features/pipeline/constants';
-import type { CreateBranchRequest, CreateReleaseRequest, LogEntry } from '@/types';
+import type { CreateBranchRequest, CreateReleaseRequest, LogEntry, ActionRuntimeState, ActionState } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { LogsViewer } from '@/components/shared/logs-viewer';
@@ -48,8 +50,10 @@ import { Kbd } from '@/components/ui/kbd';
 import { EditorTabs, EditorTab } from '@/components/ui/editor-tabs';
 import { EmptyState } from '@/components/shared/empty-state';
 import { Skeleton } from '@/components/ui/skeleton';
+import { ActionsDropdown } from '@/components/shared/actions-dropdown';
+import { ActionsList } from '@/features/pipeline/actions/actions-list';
 import { cn, downloadBlob } from '@/lib/utils';
-type PipelineTab = 'editor' | 'logs' | 'releases';
+type PipelineTab = 'editor' | 'logs' | 'releases' | 'actions';
 
 export function PipelinePage() {
   useTitle('Pipeline');
@@ -122,6 +126,28 @@ export function PipelinePage() {
   });
 
   const logs: LogEntry[] = Array.isArray(logsData) ? logsData : [];
+
+  // Actions
+  const { data: actions = [] } = useQuery({
+    queryKey: queryKeys.actions.all(projectId!),
+    queryFn: () => actionsApi.list(projectId!),
+    enabled: !!projectId,
+  });
+
+  const [actionStates, setActionStates] = useState<Map<string, ActionState>>(new Map());
+
+  // WebSocket for action states
+  useWebSocket({
+    projectId,
+    enabled: !!projectId && isDebugMode,
+    onActions: (data: ActionRuntimeState[]) => {
+      const newStates = new Map<string, ActionState>();
+      data.forEach((item) => {
+        newStates.set(item.slug, item.state);
+      });
+      setActionStates(newStates);
+    },
+  });
 
   // Auto-select branch on load (prioritize initialBranchName from state)
   useEffect(() => {
@@ -427,11 +453,26 @@ export function PipelinePage() {
           >
             Releases
           </EditorTab>
+
+          <EditorTab
+            active={activeTab === 'actions'}
+            onClick={() => setActiveTab('actions')}
+            icon={<Zap className="size-4" />}
+            badge={
+              actions.length > 0 ? (
+                <Badge variant="secondary" className="ml-1 text-xs">
+                  {actions.length}
+                </Badge>
+              ) : undefined
+            }
+          >
+            Actions
+          </EditorTab>
         </EditorTabs>
 
         <Card
-            className={cn("flex flex-col gap-0 rounded-t-none py-0 overflow-hidden", activeTab === 'releases' ? 'max-w-4xl h-auto': '')}
-            style={{ height: ['editor', 'logs'].includes(activeTab) ? 'calc(100vh - 120px)' : 'auto' }}
+            className={cn("flex flex-col gap-0 rounded-t-none py-0 overflow-hidden", ['releases', 'actions'].includes(activeTab) ? 'max-w-4xl h-auto': '')}
+            style={{ height: ['editor', 'logs'].includes(activeTab) ? 'calc(100vh - 120px)' : 'auto', maxHeight: ['releases', 'actions'].includes(activeTab) ? 'calc(100vh - 120px)' : 'auto' }}
         >
           {/* Editor Content */}
           {activeTab === 'editor' && (
@@ -507,6 +548,13 @@ export function PipelinePage() {
                           Stop
                           <Kbd className="ml-2">^.</Kbd>
                         </Button>
+                        {actions.length > 0 && project?.slug && (
+                          <ActionsDropdown
+                            projectSlug={project.slug}
+                            actions={actions}
+                            actionStates={actionStates}
+                          />
+                        )}
                       </div>
                     ) : (
                       <Button
@@ -639,6 +687,11 @@ export function PipelinePage() {
                 )}
               </CardContent>
             </>
+          )}
+
+          {/* Actions Content */}
+          {activeTab === 'actions' && (
+            <ActionsList projectId={projectId!} />
           )}
         </Card>
       </div>

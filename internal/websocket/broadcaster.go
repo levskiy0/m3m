@@ -306,3 +306,12 @@ func (b *Broadcaster) BroadcastMonitorNow(projectID primitive.ObjectID) {
 
 	b.hub.BroadcastToProject(projectIDStr, EventMonitor, stats)
 }
+
+// BroadcastActionStates broadcasts action state changes to project subscribers
+func (b *Broadcaster) BroadcastActionStates(projectID string, states []domain.ActionRuntimeState) {
+	if !b.hub.HasSubscribers(projectID) {
+		return
+	}
+
+	b.hub.BroadcastToProject(projectID, EventActions, states)
+}

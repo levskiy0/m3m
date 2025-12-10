@@ -17,6 +17,7 @@ const (
 	EventLog     EventType = "log"
 	EventRunning EventType = "running"
 	EventGoals   EventType = "goals"
+	EventActions EventType = "actions"
 )
 
 // Event represents a WebSocket event message
