@@ -103,6 +103,16 @@ export function CodeEditor({
         stopBinding?.action();
       },
     });
+
+    // Register Ctrl+R for Find & Replace (standard Cmd+H often intercepted by browser)
+    editor.addAction({
+      id: 'custom-replace',
+      label: 'Find and Replace',
+      keybindings: [monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyR],
+      run: (ed) => {
+        ed.getAction('editor.action.startFindReplaceAction')?.run();
+      },
+    });
   };
 
   useEffect(() => {
