@@ -75,6 +75,7 @@ cmd_install() {
 M3M_PORT=8080
 M3M_JWT_SECRET=$JWT_SECRET
 M3M_SERVER_URI=http://localhost:8080
+M3M_DATABASE_DRIVER=mongodb
 EOF
         log "Created config: $M3M_CONFIG"
     fi
