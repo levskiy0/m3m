@@ -484,3 +484,24 @@ func (v *DataValidator) ValidateAndCoerce(data map[string]interface{}) (map[stri
 
 	return result, nil
 }
+
+// ValidatePartialAndCoerce validates partial data (for updates) and coerces values
+func (v *DataValidator) ValidatePartialAndCoerce(data map[string]interface{}) (map[string]interface{}, error) {
+	if err := v.ValidatePartial(data); err != nil {
+		return nil, err
+	}
+
+	result := make(map[string]interface{})
+	fieldMap := make(map[string]domain.ModelField)
+	for _, f := range v.model.Fields {
+		fieldMap[f.Key] = f
+	}
+
+	for key, value := range data {
+		if field, exists := fieldMap[key]; exists {
+			result[key] = v.CoerceValue(field, value)
+		}
+	}
+
+	return result, nil
+}

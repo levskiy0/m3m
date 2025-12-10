@@ -376,6 +376,18 @@ func (r *ModelRepository) DropDataCollection(ctx context.Context, model *domain.
 	return r.db.Collection(collectionName).Drop(ctx)
 }
 
+// ExistsDataByFilter checks if a document exists matching the filter
+func (r *ModelRepository) ExistsDataByFilter(ctx context.Context, model *domain.Model, filter bson.M) (bool, error) {
+	collectionName := r.dataCollectionName(model.ProjectID, model.Slug)
+	collection := r.db.Collection(collectionName)
+
+	count, err := collection.CountDocuments(ctx, filter, options.Count().SetLimit(1))
+	if err != nil {
+		return false, err
+	}
+	return count > 0, nil
+}
+
 // FindDataAdvanced finds data with advanced filtering support
 func (r *ModelRepository) FindDataAdvanced(ctx context.Context, model *domain.Model, query *domain.AdvancedDataQuery) ([]bson.M, int64, error) {
 	collectionName := r.dataCollectionName(model.ProjectID, model.Slug)

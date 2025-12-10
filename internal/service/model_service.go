@@ -247,12 +247,23 @@ func (s *ModelService) UpsertData(ctx context.Context, modelID primitive.ObjectI
 		return nil, false, err
 	}
 
-	// Apply defaults for missing fields (only on insert)
-	dataWithDefaults := s.applyDefaults(model, data)
+	// Check if document exists to determine validation strategy
+	exists, err := s.modelRepo.ExistsDataByFilter(ctx, model, filter)
+	if err != nil {
+		return nil, false, err
+	}
 
-	// Validate data against schema
 	validator := NewDataValidator(model)
-	validatedData, err := validator.ValidateAndCoerce(dataWithDefaults)
+	var validatedData map[string]interface{}
+
+	if exists {
+		// Document exists - use partial validation (only validate provided fields)
+		validatedData, err = validator.ValidatePartialAndCoerce(data)
+	} else {
+		// New document - apply defaults and use full validation
+		dataWithDefaults := s.applyDefaults(model, data)
+		validatedData, err = validator.ValidateAndCoerce(dataWithDefaults)
+	}
 	if err != nil {
 		return nil, false, err
 	}
