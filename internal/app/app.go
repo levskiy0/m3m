@@ -72,6 +72,7 @@ func RegisterRoutes(
 	runtimeHandler *handler.RuntimeHandler,
 	widgetHandler *handler.WidgetHandler,
 	wsHandler *handler.WebSocketHandler,
+	templateHandler *handler.TemplateHandler,
 ) {
 	// Health check
 	r.GET("/health", func(c *gin.Context) {
@@ -103,6 +104,7 @@ func RegisterRoutes(
 	runtimeHandler.Register(api, authMiddleware)
 	widgetHandler.Register(api, authMiddleware)
 	wsHandler.Register(api, authMiddleware)
+	templateHandler.Register(api, authMiddleware)
 
 	// Public routes (at root level, not under /api)
 	runtimeHandler.RegisterPublicRoutes(r)
@@ -356,6 +358,7 @@ func New(configPath string) *fx.App {
 			handler.NewRuntimeHandler,
 			handler.NewWidgetHandler,
 			handler.NewWebSocketHandler,
+			handler.NewTemplateHandler,
 		),
 		fx.Invoke(RegisterRoutes, StartServer, AutoStartRuntimes, StartWebSocket),
 	)

@@ -15,9 +15,9 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 
-import { pipelineApi, runtimeApi, projectsApi } from '@/api';
+import { pipelineApi, runtimeApi, projectsApi, templatesApi } from '@/api';
 import { useTitle } from '@/hooks';
-import { DEFAULT_SERVICE_CODE, RELEASE_TAGS } from '@/features/pipeline/constants';
+import { RELEASE_TAGS } from '@/features/pipeline/constants';
 import type { CreateBranchRequest, CreateReleaseRequest, LogEntry } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -159,20 +159,27 @@ export function PipelinePage() {
     queryFn: runtimeApi.getTypes,
   });
 
+  // Fetch default service template
+  const { data: defaultTemplate } = useQuery({
+    queryKey: ['service-template'],
+    queryFn: templatesApi.getServiceTemplate,
+    staleTime: Infinity, // Template doesn't change during session
+  });
+
   // Load branch code
   useEffect(() => {
     if (currentBranch) {
       // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: sync code state with fetched branch data
       setCode(currentBranch.code);
-       
+
       setHasChanges(false);
-    } else if (branches.length === 0) {
-       
-      setCode(DEFAULT_SERVICE_CODE);
-       
+    } else if (branches.length === 0 && defaultTemplate) {
+
+      setCode(defaultTemplate);
+
       setHasChanges(true);
     }
-  }, [currentBranch, branches.length]);
+  }, [currentBranch, branches.length, defaultTemplate]);
 
   // Mutations
   const saveMutation = useMutation({
@@ -317,7 +324,7 @@ export function PipelinePage() {
 
   const handleCodeChange = (value: string) => {
     setCode(value);
-    setHasChanges(value !== (currentBranch?.code || DEFAULT_SERVICE_CODE));
+    setHasChanges(value !== (currentBranch?.code || defaultTemplate || ''));
   };
 
   const handleDownloadLogs = async () => {

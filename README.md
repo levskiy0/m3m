@@ -135,7 +135,7 @@ Runs comfortably on a **$5/mo VPS** with 512MB RAM alongside 20+ active services
 
 ## Installation
 
-### Quick Install (Recommended)
+### Quick Install (Recommended: Docker + MongoDB)
 
 ```bash
 # Download script
