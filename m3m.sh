@@ -170,6 +170,7 @@ cmd_start() {
         -e "M3M_SERVER_PORT=$M3M_PORT" \
         -e "M3M_JWT_SECRET=$M3M_JWT_SECRET" \
         -e "M3M_SERVER_URI=$M3M_SERVER_URI" \
+        -e "M3M_DATABASE_DRIVER=${M3M_DATABASE_DRIVER:-mongodb}" \
         "$M3M_IMAGE"
 
     log "Started! $M3M_SERVER_URI"
