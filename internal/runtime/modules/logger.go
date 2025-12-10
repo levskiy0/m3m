@@ -174,28 +174,28 @@ func (l *LoggerModule) GetSchema() schema.ModuleSchema {
 				Name:        "debug",
 				Description: "Log a debug message",
 				Params: []schema.ParamSchema{
-					{Name: "args", Type: "any", Description: "Values to log"},
+					{Name: "args", Type: "any", Description: "Values to log", Variadic: true},
 				},
 			},
 			{
 				Name:        "info",
 				Description: "Log an info message",
 				Params: []schema.ParamSchema{
-					{Name: "args", Type: "any", Description: "Values to log"},
+					{Name: "args", Type: "any", Description: "Values to log", Variadic: true},
 				},
 			},
 			{
 				Name:        "warn",
 				Description: "Log a warning message",
 				Params: []schema.ParamSchema{
-					{Name: "args", Type: "any", Description: "Values to log"},
+					{Name: "args", Type: "any", Description: "Values to log", Variadic: true},
 				},
 			},
 			{
 				Name:        "error",
 				Description: "Log an error message",
 				Params: []schema.ParamSchema{
-					{Name: "args", Type: "any", Description: "Values to log"},
+					{Name: "args", Type: "any", Description: "Values to log", Variadic: true},
 				},
 			},
 		},
@@ -216,27 +216,27 @@ func GetConsoleSchema() schema.ModuleSchema {
 			{
 				Name:        "log",
 				Description: "Log a message (alias for info)",
-				Params:      []schema.ParamSchema{{Name: "args", Type: "...any", Description: "Values to log"}},
+				Params:      []schema.ParamSchema{{Name: "args", Type: "any", Description: "Values to log", Variadic: true}},
 			},
 			{
 				Name:        "info",
 				Description: "Log an info message",
-				Params:      []schema.ParamSchema{{Name: "args", Type: "...any", Description: "Values to log"}},
+				Params:      []schema.ParamSchema{{Name: "args", Type: "any", Description: "Values to log", Variadic: true}},
 			},
 			{
 				Name:        "warn",
 				Description: "Log a warning message",
-				Params:      []schema.ParamSchema{{Name: "args", Type: "...any", Description: "Values to log"}},
+				Params:      []schema.ParamSchema{{Name: "args", Type: "any", Description: "Values to log", Variadic: true}},
 			},
 			{
 				Name:        "error",
 				Description: "Log an error message",
-				Params:      []schema.ParamSchema{{Name: "args", Type: "...any", Description: "Values to log"}},
+				Params:      []schema.ParamSchema{{Name: "args", Type: "any", Description: "Values to log", Variadic: true}},
 			},
 			{
 				Name:        "debug",
 				Description: "Log a debug message",
-				Params:      []schema.ParamSchema{{Name: "args", Type: "...any", Description: "Values to log"}},
+				Params:      []schema.ParamSchema{{Name: "args", Type: "any", Description: "Values to log", Variadic: true}},
 			},
 		},
 	}

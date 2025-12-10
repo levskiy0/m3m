@@ -13,6 +13,7 @@ type ParamSchema struct {
 	Type        string `json:"type"` // "string", "number", "boolean", "object", "array", "any", "void", custom type name
 	Description string `json:"description"`
 	Optional    bool   `json:"optional,omitempty"`
+	Variadic    bool   `json:"variadic,omitempty"` // true for rest parameters (...args)
 }
 
 // MethodSchema describes a module method
@@ -100,7 +101,12 @@ func (s *ModuleSchema) GenerateTypeScript() string {
 			if p.Optional {
 				optional = "?"
 			}
-			params = append(params, fmt.Sprintf("%s%s: %s", p.Name, optional, MapTypeToTS(p.Type)))
+			if p.Variadic {
+				// Rest parameter: ...args: any[]
+				params = append(params, fmt.Sprintf("...%s: %s[]", p.Name, MapTypeToTS(p.Type)))
+			} else {
+				params = append(params, fmt.Sprintf("%s%s: %s", p.Name, optional, MapTypeToTS(p.Type)))
+			}
 		}
 
 		// Build return type
@@ -131,7 +137,11 @@ func (s *ModuleSchema) GenerateTypeScript() string {
 				if p.Optional {
 					optional = "?"
 				}
-				params = append(params, fmt.Sprintf("%s%s: %s", p.Name, optional, MapTypeToTS(p.Type)))
+				if p.Variadic {
+					params = append(params, fmt.Sprintf("...%s: %s[]", p.Name, MapTypeToTS(p.Type)))
+				} else {
+					params = append(params, fmt.Sprintf("%s%s: %s", p.Name, optional, MapTypeToTS(p.Type)))
+				}
 			}
 
 			returnType := "void"
