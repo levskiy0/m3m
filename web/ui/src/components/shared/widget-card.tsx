@@ -14,6 +14,7 @@ import {
   Clock,
   CalendarClock,
   Loader2,
+  Play,
 } from 'lucide-react';
 
 import { actionsApi } from '@/api/actions';
@@ -88,13 +89,13 @@ const WIDGET_CONFIG: Record<WidgetType, {
   action: { icon: Zap, label: 'Action', color: '#6366f1' },
 };
 
-const ACTION_COLOR_CLASSES: Record<string, string> = {
-  blue: 'bg-blue-500 hover:bg-blue-600',
-  green: 'bg-green-500 hover:bg-green-600',
-  yellow: 'bg-yellow-500 hover:bg-yellow-600',
-  red: 'bg-red-500 hover:bg-red-600',
-  purple: 'bg-purple-500 hover:bg-purple-600',
-  orange: 'bg-orange-500 hover:bg-orange-600',
+const ACTION_ICON_COLOR_CLASSES: Record<string, string> = {
+  blue: 'text-blue-500',
+  green: 'text-green-500',
+  yellow: 'text-yellow-500',
+  red: 'text-red-500',
+  purple: 'text-purple-500',
+  orange: 'text-orange-500',
 };
 
 export const WidgetCard = forwardRef<HTMLDivElement, WidgetCardProps>(
@@ -565,7 +566,7 @@ const ActionWidgetCard = forwardRef<HTMLDivElement, {
 
   const isDisabled = actionState === 'disabled' || !isRunning;
   const isLoading = actionState === 'loading' || triggerMutation.isPending;
-  const buttonColorClass = action.color ? ACTION_COLOR_CLASSES[action.color] : 'bg-primary hover:bg-primary/90';
+  const iconColorClass = action.color ? ACTION_ICON_COLOR_CLASSES[action.color] : 'text-muted-foreground';
 
   return (
     <Card ref={ref} style={style} className={cn("group relative", isDragging && "z-50")}>
@@ -589,26 +590,29 @@ const ActionWidgetCard = forwardRef<HTMLDivElement, {
       </div>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <CardTitle className="text-sm font-medium">{action.name}</CardTitle>
-        <Zap className="size-4 text-muted-foreground" />
+        <Zap className={cn("size-4", iconColorClass)} />
       </CardHeader>
       <CardContent>
-        <Button
-          className={cn("w-full text-white", buttonColorClass)}
-          disabled={isDisabled || isLoading}
-          onClick={() => triggerMutation.mutate()}
-        >
-          {isLoading ? (
-            <Loader2 className="mr-2 size-4 animate-spin" />
-          ) : (
-            <Zap className="mr-2 size-4" />
-          )}
-          {isLoading ? 'Running...' : action.name}
-        </Button>
-        {!isRunning && (
-          <p className="text-xs text-muted-foreground text-center mt-2">
-            Service not running
-          </p>
-        )}
+        <div className="flex items-end justify-between gap-4">
+          <div>
+            <Button
+              variant="outline"
+              size="icon"
+              className="size-10"
+              disabled={isDisabled || isLoading}
+              onClick={() => triggerMutation.mutate()}
+            >
+              {isLoading ? (
+                <Loader2 className="size-5 animate-spin" />
+              ) : (
+                <Play className="size-5" />
+              )}
+            </Button>
+            <p className="text-xs text-muted-foreground mt-2">
+              {!isRunning ? 'Service not running' : action.group || 'Action'}
+            </p>
+          </div>
+        </div>
       </CardContent>
     </Card>
   );
