@@ -594,24 +594,22 @@ const ActionWidgetCard = forwardRef<HTMLDivElement, {
       </CardHeader>
       <CardContent>
         <div className="flex items-end justify-between gap-4">
-          <div>
-            <Button
-              variant="outline"
-              size="icon"
-              className="size-10"
-              disabled={isDisabled || isLoading}
-              onClick={() => triggerMutation.mutate()}
-            >
-              {isLoading ? (
-                <Loader2 className="size-5 animate-spin" />
-              ) : (
-                <Play className="size-5" />
-              )}
-            </Button>
-            <p className="text-xs text-muted-foreground mt-2">
-              {!isRunning ? 'Service not running' : action.group || 'Action'}
-            </p>
-          </div>
+          <p className="text-xs text-muted-foreground">
+            {!isRunning ? 'Service not running' : action.group || 'Action'}
+          </p>
+          <Button
+            variant="outline"
+            size="icon"
+            className="size-10"
+            disabled={isDisabled || isLoading}
+            onClick={() => triggerMutation.mutate()}
+          >
+            {isLoading ? (
+              <Loader2 className="size-5 animate-spin" />
+            ) : (
+              <Play className="size-5" />
+            )}
+          </Button>
         </div>
       </CardContent>
     </Card>
