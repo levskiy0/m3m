@@ -128,8 +128,8 @@ func (m *Manager) Start(ctx context.Context, projectID primitive.ObjectID, code 
 		m.stopRuntime(existing)
 	}
 
-	// Create new runtime context
-	runtimeCtx, cancel := context.WithCancel(ctx)
+	// Create new runtime context - use Background() so runtime survives parent context cancellation
+	runtimeCtx, cancel := context.WithCancel(context.Background())
 
 	// Create GOJA VM
 	vm := goja.New()
