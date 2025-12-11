@@ -59,6 +59,11 @@ type ActionBroadcaster interface {
 	BroadcastActionStates(projectID string, states []domain.ActionRuntimeState)
 }
 
+// RuntimeStopHandler is called when a runtime stops (either normally or due to crash)
+type RuntimeStopHandler interface {
+	OnRuntimeStopped(projectID primitive.ObjectID, reason CrashReason, message string)
+}
+
 // Manager manages all project runtimes
 type Manager struct {
 	runtimes          map[string]*ProjectRuntime
@@ -72,6 +77,7 @@ type Manager struct {
 	storageService    *service.StorageService
 	logBroadcaster    LogBroadcaster
 	actionBroadcaster ActionBroadcaster
+	stopHandler       RuntimeStopHandler
 }
 
 func NewManager(
@@ -103,6 +109,11 @@ func (m *Manager) SetLogBroadcaster(broadcaster LogBroadcaster) {
 // SetActionBroadcaster sets the action broadcaster for notifying about action state changes
 func (m *Manager) SetActionBroadcaster(broadcaster ActionBroadcaster) {
 	m.actionBroadcaster = broadcaster
+}
+
+// SetStopHandler sets the handler for runtime stop events
+func (m *Manager) SetStopHandler(handler RuntimeStopHandler) {
+	m.stopHandler = handler
 }
 
 // Start starts a project with the given code
@@ -155,9 +166,11 @@ func (m *Manager) Start(ctx context.Context, projectID primitive.ObjectID, code 
 		return fmt.Errorf("failed to register modules: %w", err)
 	}
 
-	if err := m.plugins.RegisterAll(vm); err != nil {
-		cancel()
-		return fmt.Errorf("failed to register plugins: %w", err)
+	if m.plugins != nil {
+		if err := m.plugins.RegisterAll(vm); err != nil {
+			cancel()
+			return fmt.Errorf("failed to register plugins: %w", err)
+		}
 	}
 
 	metricsCtx, metricsCancel := context.WithCancel(context.Background())
@@ -223,6 +236,16 @@ func (m *Manager) Start(ctx context.Context, projectID primitive.ObjectID, code 
 					"uptime", uptime.String(),
 				)
 			}
+
+			// Notify stop handler (for updating status in DB)
+			if m.stopHandler != nil {
+				m.stopHandler.OnRuntimeStopped(projectID, crashReason, crashMessage)
+			}
+
+			// Remove from runtimes map
+			m.mu.Lock()
+			delete(m.runtimes, projectIDStr)
+			m.mu.Unlock()
 		}()
 
 		_, err := vm.RunString(code)
