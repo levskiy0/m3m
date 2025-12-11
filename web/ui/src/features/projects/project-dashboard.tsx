@@ -43,7 +43,7 @@ import { config } from '@/lib/config';
 import { queryKeys } from '@/lib/query-keys';
 import { cn } from '@/lib/utils';
 import { useProjectRuntime, useTitle, useWebSocket } from '@/hooks';
-import type { LogEntry, GoalStats, WidgetVariant, WidgetType, CreateWidgetRequest, UpdateWidgetRequest, Widget, Goal, RuntimeStats, ActionRuntimeState, ActionState } from '@/types';
+import type { LogEntry, GoalStats, WidgetVariant, WidgetType, CreateWidgetRequest, UpdateWidgetRequest, Widget, Goal, RuntimeStats, ActionState } from '@/types';
 import { ActionsDropdown } from '@/components/shared/actions-dropdown';
 import { ConfirmDialog } from '@/components/shared/confirm-dialog';
 import { Button } from '@/components/ui/button';
@@ -167,18 +167,29 @@ export function ProjectDashboard() {
     enabled: !!projectId,
   });
 
-  const [actionStates, setActionStates] = useState<Map<string, ActionState>>(new Map());
+  // Fetch action states via API (refetched via queryClient on WebSocket updates)
+  const { data: actionStatesData = [] } = useQuery({
+    queryKey: queryKeys.actions.states(projectId!),
+    queryFn: () => actionsApi.getStates(projectId!),
+    enabled: !!projectId,
+  });
+
+  // Convert array to Map for quick lookup
+  const actionStates = useMemo(() => {
+    const map = new Map<string, ActionState>();
+    actionStatesData.forEach((item) => {
+      map.set(item.slug, item.state);
+    });
+    return map;
+  }, [actionStatesData]);
 
   // WebSocket for action states (only when running)
   useWebSocket({
     projectId,
     enabled: !!projectId && isRunning,
-    onActions: (data: ActionRuntimeState[]) => {
-      const newStates = new Map<string, ActionState>();
-      data.forEach((item) => {
-        newStates.set(item.slug, item.state);
-      });
-      setActionStates(newStates);
+    onActions: () => {
+      // Refetch action states when WebSocket notifies of changes
+      queryClient.invalidateQueries({ queryKey: queryKeys.actions.states(projectId!) });
     },
   });
 

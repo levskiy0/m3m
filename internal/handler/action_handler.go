@@ -232,6 +232,13 @@ func (h *ActionHandler) Trigger(c *gin.Context) {
 		return
 	}
 
+	// Check action state - only allow triggering if enabled
+	state, ok := h.runtimeManager.GetActionState(projectID, actionSlug)
+	if ok && state != domain.ActionStateEnabled {
+		c.JSON(http.StatusConflict, gin.H{"error": "action is " + string(state)})
+		return
+	}
+
 	// Get current user ID for action context
 	user := middleware.GetCurrentUser(c)
 	userID := user.ID.Hex()

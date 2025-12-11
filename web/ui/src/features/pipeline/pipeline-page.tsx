@@ -20,7 +20,7 @@ import { pipelineApi, runtimeApi, projectsApi, templatesApi, actionsApi } from '
 import { queryKeys } from '@/lib/query-keys';
 import { useTitle, useWebSocket, useProjectRuntime } from '@/hooks';
 import { RELEASE_TAGS } from '@/features/pipeline/constants';
-import type { CreateBranchRequest, CreateReleaseRequest, LogEntry, ActionRuntimeState, ActionState } from '@/types';
+import type { CreateBranchRequest, CreateReleaseRequest, LogEntry, ActionState } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { LogsViewer } from '@/components/shared/logs-viewer';
@@ -159,7 +159,21 @@ export function PipelinePage() {
     enabled: !!projectId,
   });
 
-  const [actionStates, setActionStates] = useState<Map<string, ActionState>>(new Map());
+  // Fetch action states via API (refetched via queryClient on WebSocket updates)
+  const { data: actionStatesData = [] } = useQuery({
+    queryKey: queryKeys.actions.states(projectId!),
+    queryFn: () => actionsApi.getStates(projectId!),
+    enabled: !!projectId,
+  });
+
+  // Convert array to Map for quick lookup
+  const actionStates = useMemo(() => {
+    const map = new Map<string, ActionState>();
+    actionStatesData.forEach((item) => {
+      map.set(item.slug, item.state);
+    });
+    return map;
+  }, [actionStatesData]);
 
   // WebSocket for status and action states (logs handled by useProjectRuntime)
   useWebSocket({
@@ -169,12 +183,9 @@ export function PipelinePage() {
       // Refetch project data when running status changes
       queryClient.invalidateQueries({ queryKey: queryKeys.projects.detail(projectId!) });
     },
-    onActions: (data: ActionRuntimeState[]) => {
-      const newStates = new Map<string, ActionState>();
-      data.forEach((item) => {
-        newStates.set(item.slug, item.state);
-      });
-      setActionStates(newStates);
+    onActions: () => {
+      // Refetch action states when WebSocket notifies of changes
+      queryClient.invalidateQueries({ queryKey: queryKeys.actions.states(projectId!) });
     },
   });
 

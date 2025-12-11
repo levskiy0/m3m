@@ -616,6 +616,19 @@ func (m *Manager) GetActionStates(projectID primitive.ObjectID) []domain.ActionR
 	return runtime.Hook.GetActionStates()
 }
 
+// GetActionState returns the state of a specific action
+func (m *Manager) GetActionState(projectID primitive.ObjectID, slug string) (domain.ActionState, bool) {
+	m.mu.RLock()
+	runtime, ok := m.runtimes[projectID.Hex()]
+	m.mu.RUnlock()
+
+	if !ok || runtime.Hook == nil {
+		return "", false
+	}
+
+	return runtime.Hook.GetActionState(slug)
+}
+
 // TriggerModelHook triggers a model hook in a running project
 func (m *Manager) TriggerModelHook(projectID primitive.ObjectID, modelSlug string, hookType modules.ModelHookType, data map[string]interface{}) error {
 	m.mu.RLock()

@@ -348,6 +348,14 @@ func (m *HookModule) HasActionHandler(slug string) bool {
 	return ok
 }
 
+// GetActionState returns the current state of an action
+func (m *HookModule) GetActionState(slug string) (domain.ActionState, bool) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	state, ok := m.actionStates[slug]
+	return state, ok
+}
+
 // HasModelHandler checks if a handler is registered for the given model and hook type
 func (m *HookModule) HasModelHandler(modelSlug string, hookType ModelHookType) bool {
 	m.mu.RLock()
