@@ -4,23 +4,31 @@ import type { ActionRuntimeState } from '@/types';
 
 export type EventType = 'monitor' | 'log' | 'running' | 'goals' | 'actions' | 'ui_request';
 
-export type UIDialogType = 'alert' | 'confirm' | 'prompt' | 'form' | 'toast';
+export type UIDialogType = 'alert' | 'confirm' | 'prompt' | 'form' | 'toast' | 'form_update';
 
 export interface UIRequestData {
   requestId: string;
   dialogType: UIDialogType;
-  options: {
-    title?: string;
-    text?: string;
-    severity?: 'info' | 'success' | 'warning' | 'error';
-    icon?: string;
-    yes?: string;
-    no?: string;
-    placeholder?: string;
-    defaultValue?: string;
-    schema?: UIFormField[];
-    actions?: UIFormAction[];
-  };
+  options: UIRequestOptions | UIFormUpdateOptions;
+}
+
+export interface UIRequestOptions {
+  title?: string;
+  text?: string;
+  severity?: 'info' | 'success' | 'warning' | 'error';
+  icon?: string;
+  yes?: string;
+  no?: string;
+  placeholder?: string;
+  defaultValue?: string;
+  schema?: UIFormField[];
+  actions?: UIFormAction[];
+}
+
+export interface UIFormUpdateOptions {
+  loading?: boolean;
+  errors?: Record<string, string>;
+  close?: boolean;
 }
 
 export interface UIFormField {

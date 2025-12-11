@@ -1,11 +1,11 @@
 import { useEffect } from 'react';
 import { toast } from 'sonner';
-import { wsClient, type UIRequestData } from '@/lib/websocket';
+import { wsClient, type UIRequestData, type UIRequestOptions, type UIFormUpdateOptions } from '@/lib/websocket';
 import { useUIDialogStore } from '@/stores/ui-dialog-store';
 import { UIDialog } from '@/components/shared/ui-dialog';
 
 export function UIDialogProvider({ children }: { children: React.ReactNode }) {
-  const { addDialog, setOnResponse } = useUIDialogStore();
+  const { addDialog, updateFormState, setOnResponse } = useUIDialogStore();
 
   useEffect(() => {
     // Set up response callback to send via WebSocket
@@ -17,7 +17,8 @@ export function UIDialogProvider({ children }: { children: React.ReactNode }) {
     const handleUIRequest = (projectId: string, data: UIRequestData) => {
       // Handle toast separately - it uses sonner directly
       if (data.dialogType === 'toast') {
-        const { text, severity = 'info' } = data.options;
+        const options = data.options as UIRequestOptions;
+        const { text, severity = 'info' } = options;
         const toastFn = {
           info: toast.info,
           success: toast.success,
@@ -25,6 +26,13 @@ export function UIDialogProvider({ children }: { children: React.ReactNode }) {
           error: toast.error,
         }[severity] || toast;
         toastFn(text || '');
+        return;
+      }
+
+      // Handle form updates (loading, errors, close)
+      if (data.dialogType === 'form_update') {
+        const update = data.options as UIFormUpdateOptions;
+        updateFormState(data.requestId, update);
         return;
       }
 
@@ -40,7 +48,7 @@ export function UIDialogProvider({ children }: { children: React.ReactNode }) {
       // Note: We don't clear the handler here because other handlers might still be needed
       // The wsClient.setHandlers merges handlers, so this is safe
     };
-  }, [addDialog, setOnResponse]);
+  }, [addDialog, updateFormState, setOnResponse]);
 
   return (
     <>

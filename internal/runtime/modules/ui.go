@@ -18,17 +18,19 @@ type UIBroadcaster interface {
 type UIRequest struct {
 	callback  goja.Callable
 	sessionID string
+	isForm    bool // true if this is a form request (different callback handling)
 }
 
 // UIDialogType represents the type of UI dialog
 type UIDialogType string
 
 const (
-	UIDialogAlert   UIDialogType = "alert"
-	UIDialogConfirm UIDialogType = "confirm"
-	UIDialogPrompt  UIDialogType = "prompt"
-	UIDialogForm    UIDialogType = "form"
-	UIDialogToast   UIDialogType = "toast"
+	UIDialogAlert      UIDialogType = "alert"
+	UIDialogConfirm    UIDialogType = "confirm"
+	UIDialogPrompt     UIDialogType = "prompt"
+	UIDialogForm       UIDialogType = "form"
+	UIDialogToast      UIDialogType = "toast"
+	UIDialogFormUpdate UIDialogType = "form_update" // Update existing form state
 )
 
 // UIRequestData is sent to the frontend via WebSocket
@@ -36,6 +38,13 @@ type UIRequestData struct {
 	RequestID  string       `json:"requestId"`
 	DialogType UIDialogType `json:"dialogType"`
 	Options    interface{}  `json:"options"`
+}
+
+// UIFormUpdateData is sent to update form state
+type UIFormUpdateData struct {
+	Loading *bool             `json:"loading,omitempty"` // pointer to distinguish false from unset
+	Errors  map[string]string `json:"errors,omitempty"`
+	Close   bool              `json:"close,omitempty"`
 }
 
 // UIModule provides interactive UI dialogs via WebSocket
@@ -92,9 +101,11 @@ func (u *UIModule) ClearCurrentSession() {
 func (u *UIModule) HandleResponse(requestID string, data interface{}) {
 	u.mu.Lock()
 	req, ok := u.pendingReqs[requestID]
-	if ok {
+	if ok && !req.isForm {
+		// For non-form requests, delete immediately
 		delete(u.pendingReqs, requestID)
 	}
+	// For form requests, keep the request until explicitly closed
 	u.mu.Unlock()
 
 	if !ok {
@@ -106,10 +117,59 @@ func (u *UIModule) HandleResponse(requestID string, data interface{}) {
 		// Don't clear it - let it persist for async operations like $schedule.delay
 		u.SetCurrentSession(req.sessionID)
 
-		// Convert data to goja.Value and call callback
-		jsData := u.vm.ToValue(data)
-		req.callback(goja.Undefined(), jsData)
+		if req.isForm {
+			// Form callback receives (form, result)
+			formController := u.createFormController(requestID, req.sessionID)
+			jsData := u.vm.ToValue(data)
+			req.callback(goja.Undefined(), u.vm.ToValue(formController), jsData)
+		} else {
+			// Regular callback receives just result
+			jsData := u.vm.ToValue(data)
+			req.callback(goja.Undefined(), jsData)
+		}
 	}
+}
+
+// createFormController creates a JS object with form control methods
+func (u *UIModule) createFormController(requestID, sessionID string) map[string]interface{} {
+	return map[string]interface{}{
+		"loading": func(loading bool) {
+			u.sendFormUpdate(requestID, sessionID, UIFormUpdateData{Loading: &loading})
+		},
+		"error": func(errors map[string]interface{}) {
+			// Convert to map[string]string
+			errMap := make(map[string]string)
+			for k, v := range errors {
+				if s, ok := v.(string); ok {
+					errMap[k] = s
+				}
+			}
+			u.sendFormUpdate(requestID, sessionID, UIFormUpdateData{Errors: errMap})
+		},
+		"close": func() {
+			u.sendFormUpdate(requestID, sessionID, UIFormUpdateData{Close: true})
+			// Remove pending request
+			u.mu.Lock()
+			delete(u.pendingReqs, requestID)
+			u.mu.Unlock()
+		},
+	}
+}
+
+// sendFormUpdate sends a form state update to the frontend
+func (u *UIModule) sendFormUpdate(requestID, sessionID string, update UIFormUpdateData) {
+	if u.broadcaster == nil {
+		return
+	}
+	u.broadcaster.SendUIRequest(
+		u.projectID.Hex(),
+		sessionID,
+		UIRequestData{
+			RequestID:  requestID,
+			DialogType: UIDialogFormUpdate,
+			Options:    update,
+		},
+	)
 }
 
 // getSessionID extracts sessionId from options or falls back to currentSession
@@ -269,6 +329,10 @@ func (u *UIModule) Prompt(call goja.FunctionCall) goja.Value {
 }
 
 // Form shows a form dialog with multiple fields
+// Callback signature: (form, result) => void
+// - form.loading(bool) - set loading state
+// - form.error({field: 'message'}) - show validation errors
+// - form.close() - close the form
 func (u *UIModule) Form(call goja.FunctionCall) goja.Value {
 	if len(call.Arguments) < 2 {
 		panic(u.vm.NewTypeError("$ui.form requires options and callback arguments"))
@@ -283,8 +347,14 @@ func (u *UIModule) Form(call goja.FunctionCall) goja.Value {
 	sessionID := u.getSessionID(options)
 
 	if sessionID == "" || u.broadcaster == nil {
-		// No session context - call callback with null
-		callback(goja.Undefined(), goja.Null())
+		// No session context - call callback with (nullForm, null)
+		// Create a no-op form controller
+		noopForm := map[string]interface{}{
+			"loading": func(bool) {},
+			"error":   func(map[string]interface{}) {},
+			"close":   func() {},
+		}
+		callback(goja.Undefined(), u.vm.ToValue(noopForm), goja.Null())
 		return goja.Undefined()
 	}
 
@@ -294,6 +364,7 @@ func (u *UIModule) Form(call goja.FunctionCall) goja.Value {
 	u.pendingReqs[requestID] = &UIRequest{
 		callback:  callback,
 		sessionID: sessionID,
+		isForm:    true,
 	}
 	u.mu.Unlock()
 
@@ -404,6 +475,15 @@ func (u *UIModule) GetSchema() schema.ModuleSchema {
 					{Name: "data", Type: "object", Description: "Form field values keyed by field name"},
 				},
 			},
+			{
+				Name:        "FormController",
+				Description: "Form controller for managing form state",
+				Fields: []schema.ParamSchema{
+					{Name: "loading", Type: "(loading: boolean) => void", Description: "Set loading state (shows spinner on submit button, makes fields readonly)"},
+					{Name: "error", Type: "(errors: {[field: string]: string}) => void", Description: "Show validation errors on fields"},
+					{Name: "close", Type: "() => void", Description: "Close the form dialog"},
+				},
+			},
 		},
 		Methods: []schema.MethodSchema{
 			{
@@ -438,10 +518,10 @@ func (u *UIModule) GetSchema() schema.ModuleSchema {
 			},
 			{
 				Name:        "form",
-				Description: "Show a form dialog with multiple fields. Callback can return validation errors.",
+				Description: "Show a form dialog with multiple fields. Use form controller to manage state.",
 				Params: []schema.ParamSchema{
 					{Name: "options", Type: "FormOptions", Description: "Form options with schema and actions"},
-					{Name: "callback", Type: "(result: FormResult | null) => void | {[field: string]: string}", Description: "Called with form result or null. Return object with field errors to show validation."},
+					{Name: "callback", Type: "(form: FormController, result: FormResult | null) => void", Description: "Called with form controller and result. Use form.loading(), form.error(), form.close() to manage form state."},
 				},
 			},
 		},

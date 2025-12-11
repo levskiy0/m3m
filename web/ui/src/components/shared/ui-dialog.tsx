@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -35,10 +35,11 @@ import {
   CheckCircle2,
   AlertTriangle,
   Info,
+  Loader2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useUIDialogStore, type UIDialogRequest } from '@/stores/ui-dialog-store';
-import type { UIFormField, UIFormAction } from '@/lib/websocket';
+import type { UIFormField, UIFormAction, UIRequestOptions } from '@/lib/websocket';
 
 const severityIcons = {
   info: Info,
@@ -56,7 +57,8 @@ const severityColors = {
 
 function AlertDialogComponent({ dialog }: { dialog: UIDialogRequest }) {
   const { closeDialog } = useUIDialogStore();
-  const severity = dialog.options.severity || 'info';
+  const options = dialog.options as UIRequestOptions;
+  const severity = options.severity || 'info';
   const Icon = severityIcons[severity];
 
   return (
@@ -65,10 +67,10 @@ function AlertDialogComponent({ dialog }: { dialog: UIDialogRequest }) {
         <AlertDialogHeader>
           <AlertDialogTitle className="flex items-center gap-2">
             <Icon className={cn('h-5 w-5', severityColors[severity])} />
-            {dialog.options.title || 'Alert'}
+            {options.title || 'Alert'}
           </AlertDialogTitle>
-          {dialog.options.text && (
-            <AlertDialogDescription>{dialog.options.text}</AlertDialogDescription>
+          {options.text && (
+            <AlertDialogDescription>{options.text}</AlertDialogDescription>
           )}
         </AlertDialogHeader>
         <AlertDialogFooter>
@@ -81,22 +83,23 @@ function AlertDialogComponent({ dialog }: { dialog: UIDialogRequest }) {
 
 function ConfirmDialogComponent({ dialog }: { dialog: UIDialogRequest }) {
   const { respondToDialog } = useUIDialogStore();
+  const options = dialog.options as UIRequestOptions;
 
   return (
     <AlertDialog open onOpenChange={() => respondToDialog(false)}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>{dialog.options.title || 'Confirm'}</AlertDialogTitle>
-          {dialog.options.text && (
-            <AlertDialogDescription>{dialog.options.text}</AlertDialogDescription>
+          <AlertDialogTitle>{options.title || 'Confirm'}</AlertDialogTitle>
+          {options.text && (
+            <AlertDialogDescription>{options.text}</AlertDialogDescription>
           )}
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel onClick={() => respondToDialog(false)}>
-            {dialog.options.no || 'No'}
+            {options.no || 'No'}
           </AlertDialogCancel>
           <AlertDialogAction onClick={() => respondToDialog(true)}>
-            {dialog.options.yes || 'Yes'}
+            {options.yes || 'Yes'}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
@@ -106,7 +109,8 @@ function ConfirmDialogComponent({ dialog }: { dialog: UIDialogRequest }) {
 
 function PromptDialogComponent({ dialog }: { dialog: UIDialogRequest }) {
   const { respondToDialog } = useUIDialogStore();
-  const [value, setValue] = useState(dialog.options.defaultValue || '');
+  const options = dialog.options as UIRequestOptions;
+  const [value, setValue] = useState(options.defaultValue || '');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -118,16 +122,16 @@ function PromptDialogComponent({ dialog }: { dialog: UIDialogRequest }) {
       <DialogContent>
         <form onSubmit={handleSubmit}>
           <DialogHeader>
-            <DialogTitle>{dialog.options.title || 'Enter Value'}</DialogTitle>
-            {dialog.options.text && (
-              <DialogDescription>{dialog.options.text}</DialogDescription>
+            <DialogTitle>{options.title || 'Enter Value'}</DialogTitle>
+            {options.text && (
+              <DialogDescription>{options.text}</DialogDescription>
             )}
           </DialogHeader>
           <div className="py-4">
             <Input
               value={value}
               onChange={(e) => setValue(e.target.value)}
-              placeholder={dialog.options.placeholder}
+              placeholder={options.placeholder}
               autoFocus
             />
           </div>
@@ -152,11 +156,13 @@ function FormField({
   value,
   onChange,
   error,
+  disabled,
 }: {
   field: UIFormField;
   value: unknown;
   onChange: (value: unknown) => void;
   error?: string;
+  disabled?: boolean;
 }) {
   const colSpan =
     field.colspan === 'full'
@@ -172,6 +178,7 @@ function FormField({
             onChange={(e) => onChange(e.target.value)}
             placeholder={field.placeholder}
             required={field.required}
+            disabled={disabled}
           />
         );
 
@@ -183,6 +190,7 @@ function FormField({
             placeholder={field.placeholder}
             required={field.required}
             rows={3}
+            disabled={disabled}
           />
         );
 
@@ -193,6 +201,7 @@ function FormField({
               id={field.name}
               checked={!!value}
               onCheckedChange={(checked) => onChange(checked)}
+              disabled={disabled}
             />
             <Label htmlFor={field.name} className="cursor-pointer">
               {field.label}
@@ -207,6 +216,7 @@ function FormField({
           <Select
             value={(value as string) || ''}
             onValueChange={onChange}
+            disabled={disabled}
           >
             <SelectTrigger>
               <SelectValue placeholder={field.placeholder || 'Select...'} />
@@ -232,6 +242,7 @@ function FormField({
           <RadioGroup
             value={(value as string) || ''}
             onValueChange={onChange}
+            disabled={disabled}
           >
             {options.map((opt) => {
               const optValue = typeof opt === 'string' ? opt : opt.value;
@@ -254,6 +265,7 @@ function FormField({
             value={(value as string) || ''}
             onChange={(e) => onChange(e.target.value)}
             required={field.required}
+            disabled={disabled}
           />
         );
 
@@ -264,6 +276,7 @@ function FormField({
             value={(value as string) || ''}
             onChange={(e) => onChange(e.target.value)}
             required={field.required}
+            disabled={disabled}
           />
         );
 
@@ -273,6 +286,7 @@ function FormField({
             value={(value as string) || ''}
             onChange={(e) => onChange(e.target.value)}
             placeholder={field.placeholder}
+            disabled={disabled}
           />
         );
     }
@@ -309,12 +323,16 @@ function FormField({
 }
 
 function FormDialogComponent({ dialog }: { dialog: UIDialogRequest }) {
-  const { respondToDialog } = useUIDialogStore();
-  const schema = dialog.options.schema || [];
-  const actions = dialog.options.actions || [
+  const { respondToDialog, closeDialog, getFormState } = useUIDialogStore();
+  const options = dialog.options as UIRequestOptions;
+  const schema = options.schema || [];
+  const actions = options.actions || [
     { label: 'Cancel', variant: 'outline' as const, action: 'cancel' },
     { label: 'Submit', variant: 'default' as const, action: 'submit' },
   ];
+
+  // Get form state from store (loading, errors)
+  const formState = getFormState(dialog.requestId);
 
   const [formData, setFormData] = useState<Record<string, unknown>>(() => {
     const initial: Record<string, unknown> = {};
@@ -324,46 +342,32 @@ function FormDialogComponent({ dialog }: { dialog: UIDialogRequest }) {
     return initial;
   });
 
-  const [errors, setErrors] = useState<Record<string, string>>({});
-
   const handleFieldChange = (name: string, value: unknown) => {
     setFormData((prev) => ({ ...prev, [name]: value }));
-    // Clear error when field changes
-    if (errors[name]) {
-      setErrors((prev) => {
-        const next = { ...prev };
-        delete next[name];
-        return next;
-      });
-    }
   };
 
   const handleAction = (action: UIFormAction) => {
     if (action.action === 'cancel') {
-      respondToDialog(null);
+      // Cancel closes the form without waiting for backend
+      closeDialog();
       return;
     }
 
     // For submit or custom actions, send the form data
+    // Form stays open - backend will send close or errors via form_update
     respondToDialog({
       action: action.action,
       data: formData,
     });
   };
 
-  // Handle validation errors from backend
-  useEffect(() => {
-    // This would be called if the backend returns validation errors
-    // For now, validation is handled client-side
-  }, []);
-
   return (
-    <Dialog open onOpenChange={() => respondToDialog(null)}>
+    <Dialog open onOpenChange={() => closeDialog()}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle>{dialog.options.title || 'Form'}</DialogTitle>
-          {dialog.options.text && (
-            <DialogDescription>{dialog.options.text}</DialogDescription>
+          <DialogTitle>{options.title || 'Form'}</DialogTitle>
+          {options.text && (
+            <DialogDescription>{options.text}</DialogDescription>
           )}
         </DialogHeader>
         <div className="grid grid-cols-6 gap-4 py-4">
@@ -373,20 +377,29 @@ function FormDialogComponent({ dialog }: { dialog: UIDialogRequest }) {
               field={field}
               value={formData[field.name]}
               onChange={(value) => handleFieldChange(field.name, value)}
-              error={errors[field.name]}
+              error={formState.errors[field.name]}
+              disabled={formState.loading}
             />
           ))}
         </div>
         <DialogFooter>
-          {actions.map((action, idx) => (
-            <Button
-              key={idx}
-              variant={action.variant || 'default'}
-              onClick={() => handleAction(action)}
-            >
-              {action.label}
-            </Button>
-          ))}
+          {actions.map((action, idx) => {
+            const isSubmit = action.action === 'submit';
+            const isCancel = action.action === 'cancel';
+            return (
+              <Button
+                key={idx}
+                variant={action.variant || 'default'}
+                onClick={() => handleAction(action)}
+                disabled={formState.loading && !isCancel}
+              >
+                {formState.loading && isSubmit && (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                )}
+                {action.label}
+              </Button>
+            );
+          })}
         </DialogFooter>
       </DialogContent>
     </Dialog>
