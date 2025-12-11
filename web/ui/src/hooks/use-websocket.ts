@@ -109,20 +109,14 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
     wsClient.setHandlers(handlers);
   }, [projectId, queryClient, onMonitor, onLog, onRunning, onGoals, onActions]);
 
-  // Connect and subscribe
+  // Subscribe to project (connection is managed by WebSocketProvider)
   useEffect(() => {
-    if (!enabled) return;
+    if (!enabled || !projectId) return;
 
-    wsClient.connect();
-
-    if (projectId) {
-      wsClient.subscribe(projectId);
-    }
+    wsClient.subscribe(projectId);
 
     return () => {
-      if (projectId) {
-        wsClient.unsubscribe(projectId);
-      }
+      wsClient.unsubscribe(projectId);
     };
   }, [projectId, enabled]);
 
@@ -141,13 +135,3 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
   };
 }
 
-// Hook for managing WebSocket connection at app level
-export function useWebSocketConnection() {
-  useEffect(() => {
-    wsClient.connect();
-
-    return () => {
-      wsClient.disconnect();
-    };
-  }, []);
-}
