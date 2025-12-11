@@ -276,14 +276,19 @@ func (m *HookModule) createActionContext(name, slug string) map[string]interface
 		"slug":      slug,
 		"userId":    userID,    // Include userId for informational purposes
 		"sessionId": sessionID, // Include sessionId for async $ui calls
-		"disable": func() {
-			m.setActionState(slug, domain.ActionStateDisabled)
+		"loading": func(loading bool) {
+			if loading {
+				m.setActionState(slug, domain.ActionStateLoading)
+			} else {
+				m.setActionState(slug, domain.ActionStateEnabled)
+			}
 		},
-		"enable": func() {
-			m.setActionState(slug, domain.ActionStateEnabled)
-		},
-		"loader": func() {
-			m.setActionState(slug, domain.ActionStateLoading)
+		"active": func(active bool) {
+			if active {
+				m.setActionState(slug, domain.ActionStateEnabled)
+			} else {
+				m.setActionState(slug, domain.ActionStateDisabled)
+			}
 		},
 	}
 }
@@ -374,9 +379,10 @@ func (m *HookModule) GetSchema() schema.ModuleSchema {
 				Fields: []schema.ParamSchema{
 					{Name: "name", Type: "string", Description: "Action name"},
 					{Name: "slug", Type: "string", Description: "Action slug identifier"},
-					{Name: "disable", Type: "() => void", Description: "Disable the action button"},
-					{Name: "enable", Type: "() => void", Description: "Enable the action button"},
-					{Name: "loader", Type: "() => void", Description: "Show loading spinner on the button"},
+					{Name: "userId", Type: "string", Description: "ID of the user who triggered the action"},
+					{Name: "sessionId", Type: "string", Description: "WebSocket session ID for UI targeting"},
+					{Name: "loading", Type: "(loading: boolean) => void", Description: "Set loading state (true shows spinner, false enables button)"},
+					{Name: "active", Type: "(active: boolean) => void", Description: "Set active state (true enables, false disables button)"},
 				},
 			},
 		},
