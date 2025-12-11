@@ -18,7 +18,7 @@ import { toast } from 'sonner';
 
 import { pipelineApi, runtimeApi, projectsApi, templatesApi, actionsApi } from '@/api';
 import { queryKeys } from '@/lib/query-keys';
-import { useTitle, useWebSocket } from '@/hooks';
+import { useTitle, useWebSocket, useProjectRuntime } from '@/hooks';
 import { RELEASE_TAGS } from '@/features/pipeline/constants';
 import type { CreateBranchRequest, CreateReleaseRequest, LogEntry, ActionRuntimeState, ActionState } from '@/types';
 import { Button } from '@/components/ui/button';
@@ -52,7 +52,7 @@ import { EmptyState } from '@/components/shared/empty-state';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ActionsDropdown } from '@/components/shared/actions-dropdown';
 import { ActionsList } from '@/features/pipeline/actions/actions-list';
-import { cn, downloadBlob } from '@/lib/utils';
+import { cn } from '@/lib/utils';
 type PipelineTab = 'editor' | 'logs' | 'releases' | 'actions';
 
 export function PipelinePage() {
@@ -117,12 +117,11 @@ export function PipelinePage() {
     ? project?.runningSource?.replace('release:', '')
     : null;
 
-  // Fetch logs (always load, refresh when running)
-  const { data: logsData = [] } = useQuery({
-    queryKey: ['logs', projectId],
-    queryFn: () => runtimeApi.logs(projectId!),
+  // Use shared runtime hook for logs (includes WebSocket handling)
+  const { logs: logsData = [], downloadLogs } = useProjectRuntime({
+    projectId: projectId!,
+    projectSlug: project?.slug,
     enabled: !!projectId,
-    refetchInterval: isRunning ? 30000 : false,
   });
 
   const logs: LogEntry[] = Array.isArray(logsData) ? logsData : [];
@@ -136,14 +135,10 @@ export function PipelinePage() {
 
   const [actionStates, setActionStates] = useState<Map<string, ActionState>>(new Map());
 
-  // WebSocket for logs, status and action states
-  // Always enabled to receive running status changes
+  // WebSocket for status and action states (logs handled by useProjectRuntime)
   useWebSocket({
     projectId,
     enabled: !!projectId,
-    onLog: () => {
-      queryClient.refetchQueries({ queryKey: ['logs', projectId] });
-    },
     onRunning: () => {
       // Refetch project data when running status changes
       queryClient.invalidateQueries({ queryKey: queryKeys.projects.detail(projectId!) });
@@ -371,15 +366,6 @@ export function PipelinePage() {
   const handleCodeChange = (value: string) => {
     setCode(value);
     setHasChanges(value !== (currentBranch?.code || defaultTemplate || ''));
-  };
-
-  const handleDownloadLogs = async () => {
-    try {
-      const blob = await runtimeApi.downloadLogs(projectId!);
-      await downloadBlob(blob, `${project?.slug || projectId}-logs.txt`);
-    } catch (err) {
-      console.error('Failed to download logs:', err);
-    }
   };
 
   const selectedBranchSummary = branches.find((b) => b.id === selectedBranchId);
@@ -622,7 +608,7 @@ export function PipelinePage() {
               logs={logs}
               limit={500}
               emptyMessage={isRunning ? "Waiting for logs..." : "No logs available. Start the service to see logs."}
-              onDownload={handleDownloadLogs}
+              onDownload={downloadLogs}
               height="100%"
               className="flex-1"
             />
