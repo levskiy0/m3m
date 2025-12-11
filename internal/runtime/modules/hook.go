@@ -42,14 +42,15 @@ type modelHandler struct {
 
 // HookModule manages action and model handlers
 type HookModule struct {
-	actionHandlers map[string]*actionHandler                    // slug -> handler
-	modelHandlers  map[string]map[ModelHookType][]*modelHandler // modelName -> hookType -> handlers
-	actionStates   map[string]domain.ActionState                // slug -> state
-	mu             sync.RWMutex
-	vm             *goja.Runtime
-	projectID      primitive.ObjectID
-	broadcaster    HookBroadcaster
-	currentUserID  string // current user ID for action context
+	actionHandlers   map[string]*actionHandler                    // slug -> handler
+	modelHandlers    map[string]map[ModelHookType][]*modelHandler // modelName -> hookType -> handlers
+	actionStates     map[string]domain.ActionState                // slug -> state
+	mu               sync.RWMutex
+	vm               *goja.Runtime
+	projectID        primitive.ObjectID
+	broadcaster      HookBroadcaster
+	currentUserID    string // current user ID for action context
+	currentSessionID string // current WebSocket session ID for UI targeting
 }
 
 // NewHookModule creates a new HookModule
@@ -248,17 +249,33 @@ func (m *HookModule) ClearCurrentUser() {
 	m.currentUserID = ""
 }
 
+// SetCurrentSession sets the current session ID for UI targeting
+func (m *HookModule) SetCurrentSession(sessionID string) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.currentSessionID = sessionID
+}
+
+// ClearCurrentSession clears the current session ID
+func (m *HookModule) ClearCurrentSession() {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.currentSessionID = ""
+}
+
 // createActionContext creates a JS object with action info and control methods
 func (m *HookModule) createActionContext(name, slug string) map[string]interface{} {
-	// Capture current user ID at the time the action is triggered
+	// Capture current user and session IDs at the time the action is triggered
 	m.mu.RLock()
 	userID := m.currentUserID
+	sessionID := m.currentSessionID
 	m.mu.RUnlock()
 
 	return map[string]interface{}{
-		"name":   name,
-		"slug":   slug,
-		"userId": userID, // Include userId for async $ui calls
+		"name":      name,
+		"slug":      slug,
+		"userId":    userID,    // Include userId for informational purposes
+		"sessionId": sessionID, // Include sessionId for async $ui calls
 		"disable": func() {
 			m.setActionState(slug, domain.ActionStateDisabled)
 		},

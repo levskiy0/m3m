@@ -194,7 +194,12 @@ func (h *ActionHandler) GetStates(c *gin.Context) {
 	c.JSON(http.StatusOK, states)
 }
 
-// Trigger triggers an action with user context for $ui dialogs
+// TriggerActionRequest is the request body for action trigger
+type TriggerActionRequest struct {
+	SessionID string `json:"sessionId"`
+}
+
+// Trigger triggers an action with session context for $ui dialogs
 func (h *ActionHandler) Trigger(c *gin.Context) {
 	projectID, ok := h.checkAccess(c)
 	if !ok {
@@ -202,6 +207,13 @@ func (h *ActionHandler) Trigger(c *gin.Context) {
 	}
 
 	actionSlug := c.Param("actionSlug")
+
+	// Parse request body for sessionId
+	var req TriggerActionRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		// sessionId is optional for backward compatibility
+		req.SessionID = ""
+	}
 
 	// Verify action exists
 	_, err := h.actionService.GetBySlug(c.Request.Context(), projectID, actionSlug)
@@ -220,12 +232,12 @@ func (h *ActionHandler) Trigger(c *gin.Context) {
 		return
 	}
 
-	// Get current user ID for UI context
+	// Get current user ID for action context
 	user := middleware.GetCurrentUser(c)
 	userID := user.ID.Hex()
 
-	// Trigger action with user context
-	if err := h.runtimeManager.TriggerActionWithUser(projectID, actionSlug, userID); err != nil {
+	// Trigger action with session context
+	if err := h.runtimeManager.TriggerActionWithSession(projectID, actionSlug, userID, req.SessionID); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}

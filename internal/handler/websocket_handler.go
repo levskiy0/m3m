@@ -71,6 +71,9 @@ func (h *WebSocketHandler) HandleWebSocket(c *gin.Context) {
 	// Register client
 	h.hub.Register(client)
 
+	// Send session ID to client immediately after connection
+	client.SendSessionInfo()
+
 	// Start read/write pumps
 	go client.WritePump()
 	go client.ReadPump()

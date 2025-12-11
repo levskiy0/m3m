@@ -574,8 +574,8 @@ func (m *Manager) TriggerAction(projectID primitive.ObjectID, slug string) error
 	return runtime.Hook.TriggerAction(slug)
 }
 
-// TriggerActionWithUser triggers an action with user context for $ui dialogs
-func (m *Manager) TriggerActionWithUser(projectID primitive.ObjectID, slug string, userID string) error {
+// TriggerActionWithSession triggers an action with session context for $ui dialogs
+func (m *Manager) TriggerActionWithSession(projectID primitive.ObjectID, slug string, userID string, sessionID string) error {
 	m.mu.RLock()
 	runtime, ok := m.runtimes[projectID.Hex()]
 	m.mu.RUnlock()
@@ -588,13 +588,16 @@ func (m *Manager) TriggerActionWithUser(projectID primitive.ObjectID, slug strin
 		return fmt.Errorf("hook module not initialized")
 	}
 
-	// Set user context on both Hook (for action context) and UI (for direct calls)
+	// Set user context on Hook (for action context info like userId, sessionId)
 	runtime.Hook.SetCurrentUser(userID)
+	runtime.Hook.SetCurrentSession(sessionID)
 	defer runtime.Hook.ClearCurrentUser()
+	defer runtime.Hook.ClearCurrentSession()
 
+	// Set session on UI module for targeting dialogs to specific browser tab
 	if runtime.UI != nil {
-		runtime.UI.SetCurrentUser(userID)
-		defer runtime.UI.ClearCurrentUser()
+		runtime.UI.SetCurrentSession(sessionID)
+		// Don't clear - let it persist for async operations
 	}
 
 	return runtime.Hook.TriggerAction(slug)

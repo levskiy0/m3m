@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 )
 
@@ -41,6 +42,7 @@ type Client struct {
 	projectIDs map[string]bool
 	mu         sync.RWMutex
 	userID     string
+	sessionID  string // unique session ID for this connection
 }
 
 // Hub manages WebSocket connections and broadcasts
@@ -50,6 +52,9 @@ type Hub struct {
 
 	// All clients
 	clients map[*Client]bool
+
+	// Clients by session ID (for targeted UI requests)
+	sessionClients map[string]*Client
 
 	// Register requests
 	register chan *Client
@@ -90,6 +95,7 @@ func NewHub(logger *slog.Logger) *Hub {
 	return &Hub{
 		projectClients: make(map[string]map[*Client]bool),
 		clients:        make(map[*Client]bool),
+		sessionClients: make(map[string]*Client),
 		register:       make(chan *Client),
 		unregister:     make(chan *Client),
 		subscribe:      make(chan *Subscription),
@@ -106,8 +112,9 @@ func (h *Hub) Run() {
 		case client := <-h.register:
 			h.mu.Lock()
 			h.clients[client] = true
+			h.sessionClients[client.sessionID] = client
 			h.mu.Unlock()
-			h.logger.Debug("WebSocket client connected")
+			h.logger.Debug("WebSocket client connected", "sessionId", client.sessionID)
 
 		case client := <-h.unregister:
 			h.mu.Lock()
@@ -124,10 +131,11 @@ func (h *Hub) Run() {
 				client.mu.RUnlock()
 
 				delete(h.clients, client)
+				delete(h.sessionClients, client.sessionID)
 				close(client.send)
 			}
 			h.mu.Unlock()
-			h.logger.Debug("WebSocket client disconnected")
+			h.logger.Debug("WebSocket client disconnected", "sessionId", client.sessionID)
 
 		case sub := <-h.subscribe:
 			h.mu.Lock()
@@ -270,6 +278,49 @@ func (h *Hub) SendToUser(projectID, userID string, eventType EventType, data int
 	}
 }
 
+// SendToSession sends an event to a specific session (for targeted UI requests)
+func (h *Hub) SendToSession(projectID, sessionID string, eventType EventType, data interface{}) {
+	h.mu.RLock()
+	client, ok := h.sessionClients[sessionID]
+	h.mu.RUnlock()
+
+	if !ok {
+		h.logger.Warn("Session not found", "sessionId", sessionID)
+		return
+	}
+
+	// Verify client is subscribed to this project
+	client.mu.RLock()
+	subscribed := client.projectIDs[projectID]
+	client.mu.RUnlock()
+
+	if !subscribed {
+		h.logger.Warn("Session not subscribed to project", "sessionId", sessionID, "projectId", projectID)
+		return
+	}
+
+	event := Event{
+		ProjectID: projectID,
+		Event: EventData{
+			Type: eventType,
+			Data: data,
+		},
+	}
+
+	message, err := json.Marshal(event)
+	if err != nil {
+		h.logger.Error("Failed to marshal event", "error", err)
+		return
+	}
+
+	select {
+	case client.send <- message:
+		// sent successfully
+	default:
+		h.logger.Warn("Client buffer full, skipping message")
+	}
+}
+
 const (
 	// Time allowed to write a message to the peer
 	writeWait = 10 * time.Second
@@ -284,7 +335,7 @@ const (
 	maxMessageSize = 8192
 )
 
-// NewClient creates a new WebSocket client
+// NewClient creates a new WebSocket client with a unique session ID
 func NewClient(hub *Hub, conn *websocket.Conn, userID string) *Client {
 	return &Client{
 		hub:        hub,
@@ -292,7 +343,32 @@ func NewClient(hub *Hub, conn *websocket.Conn, userID string) *Client {
 		send:       make(chan []byte, 256),
 		projectIDs: make(map[string]bool),
 		userID:     userID,
+		sessionID:  uuid.New().String(),
 	}
+}
+
+// SessionID returns the client's unique session ID
+func (c *Client) SessionID() string {
+	return c.sessionID
+}
+
+// SendSessionInfo sends the session ID to the client on connect
+func (c *Client) SendSessionInfo() {
+	msg := struct {
+		Type      string `json:"type"`
+		SessionID string `json:"sessionId"`
+	}{
+		Type:      "session",
+		SessionID: c.sessionID,
+	}
+
+	data, err := json.Marshal(msg)
+	if err != nil {
+		return
+	}
+
+	// Write directly to connection (before pumps start)
+	c.conn.WriteMessage(websocket.TextMessage, data)
 }
 
 // ReadPump pumps messages from the WebSocket connection to the hub

@@ -331,10 +331,10 @@ func (b *Broadcaster) BroadcastActionStates(projectID string, states []domain.Ac
 	b.hub.BroadcastToProject(projectID, EventActions, states)
 }
 
-// SendUIRequest sends a UI request to a specific user
+// SendUIRequest sends a UI request to a specific session
 // Implements modules.UIBroadcaster interface
-func (b *Broadcaster) SendUIRequest(projectID, userID string, data interface{}) {
-	b.hub.SendToUser(projectID, userID, EventUIRequest, data)
+func (b *Broadcaster) SendUIRequest(projectID, sessionID string, data interface{}) {
+	b.hub.SendToSession(projectID, sessionID, EventUIRequest, data)
 }
 
 // OnRuntimeStopped implements runtime.RuntimeStopHandler

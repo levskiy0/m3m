@@ -1,7 +1,6 @@
 package modules
 
 import (
-	"fmt"
 	"sync"
 
 	"github.com/dop251/goja"
@@ -10,15 +9,15 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-// UIBroadcaster interface for sending UI requests to specific users
+// UIBroadcaster interface for sending UI requests to specific sessions
 type UIBroadcaster interface {
-	SendUIRequest(projectID, userID string, data interface{})
+	SendUIRequest(projectID, sessionID string, data interface{})
 }
 
 // UIRequest represents a pending UI request waiting for response
 type UIRequest struct {
-	callback goja.Callable
-	userID   string
+	callback  goja.Callable
+	sessionID string
 }
 
 // UIDialogType represents the type of UI dialog
@@ -40,12 +39,12 @@ type UIRequestData struct {
 
 // UIModule provides interactive UI dialogs via WebSocket
 type UIModule struct {
-	vm          *goja.Runtime
-	projectID   primitive.ObjectID
-	broadcaster UIBroadcaster
-	pendingReqs map[string]*UIRequest
-	mu          sync.Mutex
-	currentUser string // set during action execution
+	vm             *goja.Runtime
+	projectID      primitive.ObjectID
+	broadcaster    UIBroadcaster
+	pendingReqs    map[string]*UIRequest
+	mu             sync.Mutex
+	currentSession string // set during action execution (WebSocket session ID)
 }
 
 // NewUIModule creates a new UIModule
@@ -73,24 +72,22 @@ func (u *UIModule) Register(vm interface{}) {
 	})
 }
 
-// SetCurrentUser sets the current user ID for UI requests
-func (u *UIModule) SetCurrentUser(userID string) {
+// SetCurrentSession sets the current session ID for UI requests
+func (u *UIModule) SetCurrentSession(sessionID string) {
 	u.mu.Lock()
 	defer u.mu.Unlock()
-	u.currentUser = userID
+	u.currentSession = sessionID
 }
 
-// ClearCurrentUser clears the current user ID
-func (u *UIModule) ClearCurrentUser() {
+// ClearCurrentSession clears the current session ID
+func (u *UIModule) ClearCurrentSession() {
 	u.mu.Lock()
 	defer u.mu.Unlock()
-	u.currentUser = ""
+	u.currentSession = ""
 }
 
 // HandleResponse handles a UI response from the frontend
 func (u *UIModule) HandleResponse(requestID string, data interface{}) {
-	fmt.Printf("[UI] HandleResponse called: requestID=%s, data=%v\n", requestID, data)
-
 	u.mu.Lock()
 	req, ok := u.pendingReqs[requestID]
 	if ok {
@@ -99,70 +96,54 @@ func (u *UIModule) HandleResponse(requestID string, data interface{}) {
 	u.mu.Unlock()
 
 	if !ok {
-		fmt.Printf("[UI] HandleResponse: request not found\n")
 		return
 	}
 
-	fmt.Printf("[UI] HandleResponse: found request, userID=%s\n", req.userID)
-
 	if req.callback != nil {
-		// Restore user context for the callback and async code that may run later
+		// Restore session context for the callback and async code that may run later
 		// Don't clear it - let it persist for async operations like $schedule.delay
-		u.SetCurrentUser(req.userID)
-
-		fmt.Printf("[UI] HandleResponse: calling callback, currentUser set to %s\n", req.userID)
+		u.SetCurrentSession(req.sessionID)
 
 		// Convert data to goja.Value and call callback
 		jsData := u.vm.ToValue(data)
 		req.callback(goja.Undefined(), jsData)
-
-		fmt.Printf("[UI] HandleResponse: callback finished\n")
 	}
 }
 
-// getUserID extracts userId from options or falls back to currentUser
-func (u *UIModule) getUserID(options interface{}) string {
-	// Try to get userId from options
+// getSessionID extracts sessionId from options or falls back to currentSession
+func (u *UIModule) getSessionID(options interface{}) string {
+	// Try to get sessionId from options (for async callbacks)
 	if opts, ok := options.(map[string]interface{}); ok {
-		if uid, ok := opts["userId"].(string); ok && uid != "" {
-			fmt.Printf("[UI] getUserID: found userId in options: %s\n", uid)
-			return uid
+		if sid, ok := opts["sessionId"].(string); ok && sid != "" {
+			return sid
 		}
 	}
 
-	// Fall back to currentUser
+	// Fall back to currentSession
 	u.mu.Lock()
-	currentUser := u.currentUser
+	currentSession := u.currentSession
 	u.mu.Unlock()
-	fmt.Printf("[UI] getUserID: falling back to currentUser: %s\n", currentUser)
-	return currentUser
+	return currentSession
 }
 
 // Alert shows an alert notification (fire-and-forget)
 func (u *UIModule) Alert(call goja.FunctionCall) goja.Value {
-	fmt.Printf("[UI] Alert called\n")
-
 	if len(call.Arguments) < 1 {
 		panic(u.vm.NewTypeError("$ui.alert requires options argument"))
 	}
 
 	options := call.Arguments[0].Export()
-	userID := u.getUserID(options)
+	sessionID := u.getSessionID(options)
 
-	fmt.Printf("[UI] Alert: userID=%s, broadcaster=%v\n", userID, u.broadcaster != nil)
-
-	if userID == "" || u.broadcaster == nil {
-		// No user context or no broadcaster - silently ignore
-		fmt.Printf("[UI] Alert: no user context or broadcaster, ignoring\n")
+	if sessionID == "" || u.broadcaster == nil {
+		// No session context or no broadcaster - silently ignore
 		return goja.Undefined()
 	}
 
-	fmt.Printf("[UI] Alert: sending request\n")
-
-	// Send alert to user (fire-and-forget, no callback)
+	// Send alert to session (fire-and-forget, no callback)
 	u.broadcaster.SendUIRequest(
 		u.projectID.Hex(),
-		userID,
+		sessionID,
 		UIRequestData{
 			RequestID:  uuid.New().String(),
 			DialogType: UIDialogAlert,
@@ -185,10 +166,10 @@ func (u *UIModule) Confirm(call goja.FunctionCall) goja.Value {
 		panic(u.vm.NewTypeError("second argument must be a function"))
 	}
 
-	userID := u.getUserID(options)
+	sessionID := u.getSessionID(options)
 
-	if userID == "" || u.broadcaster == nil {
-		// No user context - call callback with null
+	if sessionID == "" || u.broadcaster == nil {
+		// No session context - call callback with null
 		callback(goja.Undefined(), goja.Null())
 		return goja.Undefined()
 	}
@@ -197,14 +178,14 @@ func (u *UIModule) Confirm(call goja.FunctionCall) goja.Value {
 
 	u.mu.Lock()
 	u.pendingReqs[requestID] = &UIRequest{
-		callback: callback,
-		userID:   userID,
+		callback:  callback,
+		sessionID: sessionID,
 	}
 	u.mu.Unlock()
 
 	u.broadcaster.SendUIRequest(
 		u.projectID.Hex(),
-		userID,
+		sessionID,
 		UIRequestData{
 			RequestID:  requestID,
 			DialogType: UIDialogConfirm,
@@ -227,10 +208,10 @@ func (u *UIModule) Prompt(call goja.FunctionCall) goja.Value {
 		panic(u.vm.NewTypeError("second argument must be a function"))
 	}
 
-	userID := u.getUserID(options)
+	sessionID := u.getSessionID(options)
 
-	if userID == "" || u.broadcaster == nil {
-		// No user context - call callback with null
+	if sessionID == "" || u.broadcaster == nil {
+		// No session context - call callback with null
 		callback(goja.Undefined(), goja.Null())
 		return goja.Undefined()
 	}
@@ -239,14 +220,14 @@ func (u *UIModule) Prompt(call goja.FunctionCall) goja.Value {
 
 	u.mu.Lock()
 	u.pendingReqs[requestID] = &UIRequest{
-		callback: callback,
-		userID:   userID,
+		callback:  callback,
+		sessionID: sessionID,
 	}
 	u.mu.Unlock()
 
 	u.broadcaster.SendUIRequest(
 		u.projectID.Hex(),
-		userID,
+		sessionID,
 		UIRequestData{
 			RequestID:  requestID,
 			DialogType: UIDialogPrompt,
@@ -269,10 +250,10 @@ func (u *UIModule) Form(call goja.FunctionCall) goja.Value {
 		panic(u.vm.NewTypeError("second argument must be a function"))
 	}
 
-	userID := u.getUserID(options)
+	sessionID := u.getSessionID(options)
 
-	if userID == "" || u.broadcaster == nil {
-		// No user context - call callback with null
+	if sessionID == "" || u.broadcaster == nil {
+		// No session context - call callback with null
 		callback(goja.Undefined(), goja.Null())
 		return goja.Undefined()
 	}
@@ -281,14 +262,14 @@ func (u *UIModule) Form(call goja.FunctionCall) goja.Value {
 
 	u.mu.Lock()
 	u.pendingReqs[requestID] = &UIRequest{
-		callback: callback,
-		userID:   userID,
+		callback:  callback,
+		sessionID: sessionID,
 	}
 	u.mu.Unlock()
 
 	u.broadcaster.SendUIRequest(
 		u.projectID.Hex(),
-		userID,
+		sessionID,
 		UIRequestData{
 			RequestID:  requestID,
 			DialogType: UIDialogForm,
@@ -304,7 +285,7 @@ func (u *UIModule) Cleanup() {
 	u.mu.Lock()
 	defer u.mu.Unlock()
 	u.pendingReqs = make(map[string]*UIRequest)
-	u.currentUser = ""
+	u.currentSession = ""
 }
 
 // GetSchema implements JSSchemaProvider

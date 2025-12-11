@@ -70,6 +70,7 @@ class WebSocketClient {
   private maxReconnectAttempts = 5;
   private reconnectDelay = 1000;
   private unsubscribeDelay = 500; // ms to wait before actually unsubscribing
+  private _sessionId: string | null = null; // unique session ID for this connection
 
   private getWSUrl(): string {
     // config.apiURL is like http://localhost:8080 or https://example.com
@@ -166,6 +167,7 @@ class WebSocketClient {
     }
 
     this.subscriptionCounts.clear();
+    this._sessionId = null;
   }
 
   private handleMessage(data: string): void {
@@ -174,9 +176,19 @@ class WebSocketClient {
       const messages = data.split('\n').filter(Boolean);
 
       for (const msg of messages) {
-        const event: WSEvent = JSON.parse(msg);
+        const parsed = JSON.parse(msg);
 
-        switch (event.event.type) {
+        // Handle session message (sent on connect)
+        if (parsed.type === 'session' && parsed.sessionId) {
+          this._sessionId = parsed.sessionId;
+          console.log('WebSocket: Session ID received:', this._sessionId);
+          continue;
+        }
+
+        // Handle regular events
+        const event = parsed as WSEvent;
+
+        switch (event.event?.type) {
           case 'monitor':
             this.handlers.onMonitor?.(event.projectId, event.event.data);
             break;
@@ -269,6 +281,10 @@ class WebSocketClient {
 
   isConnected(): boolean {
     return this.ws?.readyState === WebSocket.OPEN;
+  }
+
+  get sessionId(): string | null {
+    return this._sessionId;
   }
 }
 
