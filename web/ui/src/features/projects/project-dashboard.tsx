@@ -17,7 +17,7 @@ import {
   Plus,
   LayoutGrid,
   BarChart3,
-  Minus,
+  Minus, ScrollText,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -496,7 +496,7 @@ export function ProjectDashboard() {
           <EditorTab
             active={activeTab === 'logs'}
             onClick={() => setActiveTab('logs')}
-            icon={<Code className="size-4" />}
+            icon={<ScrollText className="size-4" />}
             badge={
               logs.filter(l => l.level === 'error').length > 0 ? (
                 <Badge variant="destructive" className="ml-1 h-5 px-1.5 text-xs">

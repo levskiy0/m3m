@@ -424,20 +424,18 @@ export function PipelinePage() {
             Editor
           </EditorTab>
 
-          {isDebugMode && runningBranch === currentBranch?.name && (
-            <EditorTab
-              active={activeTab === 'logs'}
-              onClick={() => setActiveTab('logs')}
-              icon={<ScrollText className="size-4" />}
-              badge={
+          <EditorTab
+            active={activeTab === 'logs'}
+            onClick={() => setActiveTab('logs')}
+            icon={<ScrollText className="size-4" />}
+            badge={
                 <Badge variant="outline" className="ml-1 border-amber-500/50 text-amber-500 text-[10px] h-[20px] py-0">
                   {runningBranch}
                 </Badge>
-              }
-            >
-              Logs
-            </EditorTab>
-          )}
+            }
+          >
+            Logs
+          </EditorTab>
 
           <EditorTab
             active={activeTab === 'releases'}
@@ -591,11 +589,11 @@ export function PipelinePage() {
           )}
 
           {/* Logs Content */}
-          {activeTab === 'logs' && isDebugMode && runningBranch === currentBranch?.name && (
+          {activeTab === 'logs' && (
             <LogsViewer
               logs={logs}
               limit={500}
-              emptyMessage="Waiting for logs..."
+              emptyMessage={isRunning ? "Waiting for logs..." : "No logs available. Start the service to see logs."}
               onDownload={handleDownloadLogs}
               height="100%"
               className="flex-1"
