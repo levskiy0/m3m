@@ -122,7 +122,7 @@ export function PipelinePage() {
     queryKey: ['logs', projectId],
     queryFn: () => runtimeApi.logs(projectId!),
     enabled: !!projectId,
-    refetchInterval: isRunning ? 2000 : false,
+    refetchInterval: isRunning ? 30000 : false,
   });
 
   const logs: LogEntry[] = Array.isArray(logsData) ? logsData : [];

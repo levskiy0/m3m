@@ -298,7 +298,7 @@ function ProjectCard({
     queryKey: queryKeys.projects.status(project.id),
     queryFn: () => runtimeApi.status(project.id),
     enabled: isRunning,
-    refetchInterval: isRunning ? 10000 : false,
+    refetchInterval: isRunning ? 30000 : false,
   });
 
   const { data: releases = [] } = useQuery({

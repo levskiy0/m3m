@@ -273,7 +273,7 @@ func (h *ModelHandler) CreateData(c *gin.Context) {
 		return
 	}
 
-	// Trigger model insert hook
+	// Trigger model insert hook with full document (including system fields)
 	if model, err := h.modelService.GetByID(c.Request.Context(), modelID); err == nil {
 		h.runtimeManager.TriggerModelHook(projectID, model.Slug, modules.ModelHookInsert, result)
 	}
@@ -390,10 +390,11 @@ func (h *ModelHandler) UpdateData(c *gin.Context) {
 		return
 	}
 
-	// Trigger model update hook with updated data
+	// Trigger model update hook with full document (including system fields)
 	if model, err := h.modelService.GetByID(c.Request.Context(), modelID); err == nil {
-		data["_id"] = dataID.Hex()
-		h.runtimeManager.TriggerModelHook(projectID, model.Slug, modules.ModelHookUpdate, data)
+		if fullData, err := h.modelService.GetDataByID(c.Request.Context(), modelID, dataID); err == nil {
+			h.runtimeManager.TriggerModelHook(projectID, model.Slug, modules.ModelHookUpdate, fullData)
+		}
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "data updated successfully"})
@@ -417,16 +418,23 @@ func (h *ModelHandler) DeleteData(c *gin.Context) {
 		return
 	}
 
+	// Fetch data before deleting for the hook
+	dataForHook, _ := h.modelService.GetDataByID(c.Request.Context(), modelID, dataID)
+
 	if err := h.modelService.DeleteData(c.Request.Context(), modelID, dataID); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	// Trigger model delete hook
+	// Trigger model delete hook with all fields
 	if model, err := h.modelService.GetByID(c.Request.Context(), modelID); err == nil {
-		h.runtimeManager.TriggerModelHook(projectID, model.Slug, modules.ModelHookDelete, map[string]interface{}{
-			"_id": dataID.Hex(),
-		})
+		if dataForHook != nil {
+			h.runtimeManager.TriggerModelHook(projectID, model.Slug, modules.ModelHookDelete, dataForHook)
+		} else {
+			h.runtimeManager.TriggerModelHook(projectID, model.Slug, modules.ModelHookDelete, map[string]interface{}{
+				"_id": dataID.Hex(),
+			})
+		}
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "data deleted successfully"})
@@ -462,18 +470,27 @@ func (h *ModelHandler) BulkDeleteData(c *gin.Context) {
 		objectIDs = append(objectIDs, id)
 	}
 
+	// Fetch all data before deleting for the hooks
+	dataForHooks := make([]map[string]interface{}, 0, len(objectIDs))
+	for _, id := range objectIDs {
+		data, _ := h.modelService.GetDataByID(c.Request.Context(), modelID, id)
+		if data != nil {
+			dataForHooks = append(dataForHooks, data)
+		} else {
+			dataForHooks = append(dataForHooks, map[string]interface{}{"_id": id.Hex()})
+		}
+	}
+
 	deletedCount, err := h.modelService.DeleteManyData(c.Request.Context(), modelID, objectIDs)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	// Trigger model delete hook for each deleted item
+	// Trigger model delete hook for each deleted item with all fields
 	if model, err := h.modelService.GetByID(c.Request.Context(), modelID); err == nil {
-		for _, id := range objectIDs {
-			h.runtimeManager.TriggerModelHook(projectID, model.Slug, modules.ModelHookDelete, map[string]interface{}{
-				"_id": id.Hex(),
-			})
+		for _, data := range dataForHooks {
+			h.runtimeManager.TriggerModelHook(projectID, model.Slug, modules.ModelHookDelete, data)
 		}
 	}
 

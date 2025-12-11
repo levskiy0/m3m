@@ -3,6 +3,7 @@ package modules
 import (
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/dop251/goja"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -196,14 +197,34 @@ func (m *HookModule) TriggerModelHook(modelSlug string, hookType ModelHookType, 
 		return nil
 	}
 
-	// Convert _id from ObjectID to hex string if present
-	if id, ok := data["_id"].(primitive.ObjectID); ok {
-		data["_id"] = id.Hex()
+	// Prepare clean data for hooks
+	cleanData := make(map[string]interface{})
+	for k, v := range data {
+		// Skip internal _model_id field
+		if k == "_model_id" {
+			continue
+		}
+		// Convert ObjectID to hex string
+		if id, ok := v.(primitive.ObjectID); ok {
+			cleanData[k] = id.Hex()
+			continue
+		}
+		// Convert time.Time to UTC
+		if t, ok := v.(time.Time); ok {
+			cleanData[k] = t.UTC()
+			continue
+		}
+		// Convert primitive.DateTime to UTC time.Time
+		if dt, ok := v.(primitive.DateTime); ok {
+			cleanData[k] = dt.Time().UTC()
+			continue
+		}
+		cleanData[k] = v
 	}
 
 	// Call all handlers
 	for _, h := range hookHandlers {
-		_, err := h.handler(goja.Undefined(), m.vm.ToValue(data))
+		_, err := h.handler(goja.Undefined(), m.vm.ToValue(cleanData))
 		if err != nil {
 			return err
 		}
