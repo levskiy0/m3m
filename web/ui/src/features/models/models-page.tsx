@@ -1,13 +1,13 @@
 import { useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, Database, Settings, Table, Trash2, MoreHorizontal } from 'lucide-react';
+import { Plus, Database, Settings, Table, Trash2, MoreHorizontal, Pencil } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { modelsApi } from '@/api';
 import { queryKeys } from '@/lib/query-keys';
 import { useAutoSlug, useDeleteDialog, useTitle } from '@/hooks';
-import type { CreateModelRequest, ModelField } from '@/types';
+import type { CreateModelRequest, Model, ModelField } from '@/types';
 import { Button } from '@/components/ui/button';
 import { LoadingButton } from '@/components/ui/loading-button';
 import {
@@ -47,6 +47,8 @@ export function ModelsPage() {
   const queryClient = useQueryClient();
 
   const [createOpen, setCreateOpen] = useState(false);
+  const [renameModel, setRenameModel] = useState<Model | null>(null);
+  const [newName, setNewName] = useState('');
   const deleteDialog = useDeleteDialog<string>();
   const { name, slug, setName, setSlug, reset: resetSlug } = useAutoSlug({ separator: '_' });
 
@@ -81,6 +83,31 @@ export function ModelsPage() {
       toast.error(err instanceof Error ? err.message : 'Failed to delete model');
     },
   });
+
+  const renameMutation = useMutation({
+    mutationFn: ({ modelId, name }: { modelId: string; name: string }) =>
+      modelsApi.update(projectId!, modelId, { name }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.models.all(projectId!) });
+      setRenameModel(null);
+      setNewName('');
+      toast.success('Model renamed');
+    },
+    onError: (err) => {
+      toast.error(err instanceof Error ? err.message : 'Failed to rename model');
+    },
+  });
+
+  const handleRename = () => {
+    if (renameModel && newName.trim()) {
+      renameMutation.mutate({ modelId: renameModel.id, name: newName.trim() });
+    }
+  };
+
+  const openRenameDialog = (model: Model) => {
+    setRenameModel(model);
+    setNewName(model.name);
+  };
 
   const handleCreate = () => {
     const defaultFields: ModelField[] = [
@@ -156,6 +183,15 @@ export function ModelsPage() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
+                        <DropdownMenuItem
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openRenameDialog(model);
+                          }}
+                        >
+                          <Pencil className="mr-2 size-4" />
+                          Rename
+                        </DropdownMenuItem>
                         <DropdownMenuItem asChild>
                           <Link to={`/projects/${projectId}/models/${model.id}/schema`}>
                             <Settings className="mr-2 size-4" />
@@ -230,6 +266,44 @@ export function ModelsPage() {
               loading={createMutation.isPending}
             >
               Create
+            </LoadingButton>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!renameModel} onOpenChange={(open) => !open && setRenameModel(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Rename Model</DialogTitle>
+            <DialogDescription>
+              Enter a new name for the model
+            </DialogDescription>
+          </DialogHeader>
+          <FieldGroup>
+            <Field>
+              <FieldLabel>Name</FieldLabel>
+              <Input
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+                placeholder="Model name"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && newName.trim()) {
+                    handleRename();
+                  }
+                }}
+              />
+            </Field>
+          </FieldGroup>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRenameModel(null)}>
+              Cancel
+            </Button>
+            <LoadingButton
+              onClick={handleRename}
+              disabled={!newName.trim() || newName === renameModel?.name}
+              loading={renameMutation.isPending}
+            >
+              Rename
             </LoadingButton>
           </DialogFooter>
         </DialogContent>
