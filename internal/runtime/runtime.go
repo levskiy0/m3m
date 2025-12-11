@@ -28,6 +28,14 @@ const (
 	CrashReasonShutdown CrashReason = "shutdown"
 )
 
+// Auto-restart settings
+const (
+	MaxRestartsPerHour    = 5                // max restarts within 1 hour before giving up
+	RestartCooldownPeriod = time.Hour        // reset restart counter after this period
+	InitialRestartDelay   = 1 * time.Second  // initial delay before restart
+	MaxRestartDelay       = 30 * time.Second // max delay between restarts
+)
+
 // ProjectRuntime represents a running project instance
 type ProjectRuntime struct {
 	ProjectID     primitive.ObjectID
@@ -47,6 +55,8 @@ type ProjectRuntime struct {
 	crashReason   CrashReason // reason for last crash
 	crashMessage  string      // crash error message
 	restartCount  int         // number of restarts
+	lastRestartAt time.Time   // last restart time
+	stopRequested bool        // true if stop was explicitly requested (no auto-restart)
 }
 
 // LogBroadcaster interface for broadcasting log updates
@@ -219,7 +229,9 @@ func (m *Manager) Start(ctx context.Context, projectID primitive.ObjectID, code 
 			rt.crashMessage = crashMessage
 
 			uptime := time.Since(rt.StartedAt)
-			if crashReason != "" {
+			shouldRestart := false
+
+			if crashReason != "" && crashReason != CrashReasonShutdown {
 				loggerModule.Error(fmt.Sprintf("Service crashed after %s: [%s] %s",
 					formatDuration(uptime), crashReason, crashMessage))
 				m.logger.Error("Service crashed",
@@ -228,6 +240,25 @@ func (m *Manager) Start(ctx context.Context, projectID primitive.ObjectID, code 
 					"message", crashMessage,
 					"uptime", uptime.String(),
 				)
+
+				// Check if we should auto-restart
+				if !rt.stopRequested {
+					// Reset counter if cooldown period passed
+					if time.Since(rt.lastRestartAt) > RestartCooldownPeriod {
+						rt.restartCount = 0
+					}
+
+					if rt.restartCount < MaxRestartsPerHour {
+						shouldRestart = true
+					} else {
+						loggerModule.Error(fmt.Sprintf("Auto-restart disabled: exceeded max restarts (%d) per hour", MaxRestartsPerHour))
+						m.logger.Error("Auto-restart limit exceeded",
+							"project", projectIDStr,
+							"restarts", rt.restartCount,
+							"max", MaxRestartsPerHour,
+						)
+					}
+				}
 			} else {
 				loggerModule.Info(fmt.Sprintf("Service stopped after %s (normal shutdown)",
 					formatDuration(uptime)))
@@ -242,10 +273,44 @@ func (m *Manager) Start(ctx context.Context, projectID primitive.ObjectID, code 
 				m.stopHandler.OnRuntimeStopped(projectID, crashReason, crashMessage)
 			}
 
-			// Remove from runtimes map
-			m.mu.Lock()
-			delete(m.runtimes, projectIDStr)
-			m.mu.Unlock()
+			// Auto-restart if needed
+			if shouldRestart {
+				restartCount := rt.restartCount + 1
+				lastRestartAt := time.Now()
+
+				// Calculate backoff delay
+				delay := InitialRestartDelay * time.Duration(1<<uint(restartCount-1))
+				if delay > MaxRestartDelay {
+					delay = MaxRestartDelay
+				}
+
+				loggerModule.Info(fmt.Sprintf("Auto-restarting in %v (attempt %d/%d)...",
+					delay, restartCount, MaxRestartsPerHour))
+				m.logger.Info("Auto-restarting project",
+					"project", projectIDStr,
+					"attempt", restartCount,
+					"delay", delay.String(),
+				)
+
+				code := rt.code
+
+				time.Sleep(delay)
+
+				// Restart with preserved restart info
+				go func() {
+					if err := m.startWithRestartInfo(projectID, code, restartCount, lastRestartAt); err != nil {
+						m.logger.Error("Auto-restart failed",
+							"project", projectIDStr,
+							"error", err,
+						)
+					}
+				}()
+			} else {
+				// Remove from runtimes map only if not restarting
+				m.mu.Lock()
+				delete(m.runtimes, projectIDStr)
+				m.mu.Unlock()
+			}
 		}()
 
 		_, err := vm.RunString(code)
@@ -359,12 +424,15 @@ func (m *Manager) Stop(projectID primitive.ObjectID) error {
 	defer m.mu.Unlock()
 
 	projectIDStr := projectID.Hex()
-	runtime, ok := m.runtimes[projectIDStr]
+	rt, ok := m.runtimes[projectIDStr]
 	if !ok {
 		return fmt.Errorf("project not running")
 	}
 
-	m.stopRuntime(runtime)
+	// Mark as explicitly stopped (no auto-restart)
+	rt.stopRequested = true
+
+	m.stopRuntime(rt)
 	delete(m.runtimes, projectIDStr)
 	m.logger.Info("Project stopped", "project", projectIDStr)
 
@@ -448,9 +516,10 @@ func (m *Manager) StopAll() {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	for projectIDStr, runtime := range m.runtimes {
+	for projectIDStr, rt := range m.runtimes {
 		m.logger.Info("Stopping project", "project", projectIDStr)
-		m.stopRuntime(runtime)
+		rt.stopRequested = true // No auto-restart on graceful shutdown
+		m.stopRuntime(rt)
 	}
 	m.runtimes = make(map[string]*ProjectRuntime)
 }
@@ -677,6 +746,247 @@ func (m *Manager) registerModules(
 
 	delayedModule := modules.NewDelayedModule(m.config.Runtime.WorkerPoolSize)
 	delayedModule.Register(vm)
+
+	return nil
+}
+
+// startWithRestartInfo starts a project with preserved restart information
+func (m *Manager) startWithRestartInfo(projectID primitive.ObjectID, code string, restartCount int, lastRestartAt time.Time) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	projectIDStr := projectID.Hex()
+
+	// Stop existing runtime if running
+	if existing, ok := m.runtimes[projectIDStr]; ok {
+		m.stopRuntime(existing)
+	}
+
+	// Create new runtime context - use Background() so runtime survives parent context cancellation
+	runtimeCtx, cancel := context.WithCancel(context.Background())
+
+	// Create GOJA VM
+	vm := goja.New()
+	vm.SetFieldNameMapper(goja.TagFieldNameMapper("json", true))
+
+	logFile, err := m.storageService.CreateLogFile(projectIDStr)
+	if err != nil {
+		cancel()
+		return fmt.Errorf("failed to create log file: %w", err)
+	}
+
+	loggerModule := modules.NewLoggerModule(logFile)
+
+	if m.logBroadcaster != nil {
+		loggerModule.SetOnLog(func() {
+			m.logBroadcaster.BroadcastLogUpdate(projectIDStr)
+		})
+	}
+
+	routerModule := modules.NewRouterModule()
+	routerModule.SetVM(vm)
+	schedulerModule := modules.NewScheduleModule(m.logger)
+	serviceModule := modules.NewServiceModule(vm, m.config.Runtime.Timeout)
+	actionsModule := modules.NewActionsModule(vm, projectID, m.actionBroadcaster)
+
+	// Create env getter for lazy loading (enables hot reload of env vars)
+	envGetter := func() map[string]interface{} {
+		envMap, _ := m.envService.GetEnvMap(context.Background(), projectID)
+		return envMap
+	}
+
+	if err := m.registerModules(vm, projectID, loggerModule, routerModule, schedulerModule, serviceModule, actionsModule, envGetter); err != nil {
+		cancel()
+		return fmt.Errorf("failed to register modules: %w", err)
+	}
+
+	if m.plugins != nil {
+		if err := m.plugins.RegisterAll(vm); err != nil {
+			cancel()
+			return fmt.Errorf("failed to register plugins: %w", err)
+		}
+	}
+
+	metricsCtx, metricsCancel := context.WithCancel(context.Background())
+
+	rt := &ProjectRuntime{
+		ProjectID:     projectID,
+		VM:            vm,
+		Cancel:        cancel,
+		Logger:        loggerModule,
+		Router:        routerModule,
+		Scheduler:     schedulerModule,
+		Service:       serviceModule,
+		Actions:       actionsModule,
+		StartedAt:     time.Now(),
+		Metrics:       NewMetricsHistory(),
+		metricsCancel: metricsCancel,
+		code:          code,
+		restartCount:  restartCount,
+		lastRestartAt: lastRestartAt,
+	}
+
+	go rt.collectMetrics(metricsCtx)
+
+	go func() {
+		var crashReason CrashReason
+		var crashMessage string
+
+		defer func() {
+			if r := recover(); r != nil {
+				crashReason = CrashReasonPanic
+				crashMessage = fmt.Sprintf("%v", r)
+				// Get stack trace
+				buf := make([]byte, 4096)
+				n := runtime.Stack(buf, false)
+				stackTrace := string(buf[:n])
+
+				loggerModule.Error(fmt.Sprintf("FATAL PANIC: %v", r))
+				loggerModule.Error(fmt.Sprintf("Stack trace:\n%s", stackTrace))
+				m.logger.Error("Runtime panic",
+					"project", projectIDStr,
+					"panic", r,
+					"stack", stackTrace,
+				)
+			}
+
+			// Log shutdown reason
+			rt.crashReason = crashReason
+			rt.crashMessage = crashMessage
+
+			uptime := time.Since(rt.StartedAt)
+			shouldRestart := false
+
+			if crashReason != "" && crashReason != CrashReasonShutdown {
+				loggerModule.Error(fmt.Sprintf("Service crashed after %s: [%s] %s",
+					formatDuration(uptime), crashReason, crashMessage))
+				m.logger.Error("Service crashed",
+					"project", projectIDStr,
+					"reason", crashReason,
+					"message", crashMessage,
+					"uptime", uptime.String(),
+				)
+
+				// Check if we should auto-restart
+				if !rt.stopRequested {
+					// Reset counter if cooldown period passed
+					if time.Since(rt.lastRestartAt) > RestartCooldownPeriod {
+						rt.restartCount = 0
+					}
+
+					if rt.restartCount < MaxRestartsPerHour {
+						shouldRestart = true
+					} else {
+						loggerModule.Error(fmt.Sprintf("Auto-restart disabled: exceeded max restarts (%d) per hour", MaxRestartsPerHour))
+						m.logger.Error("Auto-restart limit exceeded",
+							"project", projectIDStr,
+							"restarts", rt.restartCount,
+							"max", MaxRestartsPerHour,
+						)
+					}
+				}
+			} else {
+				loggerModule.Info(fmt.Sprintf("Service stopped after %s (normal shutdown)",
+					formatDuration(uptime)))
+				m.logger.Info("Service stopped normally",
+					"project", projectIDStr,
+					"uptime", uptime.String(),
+				)
+			}
+
+			// Notify stop handler (for updating status in DB)
+			if m.stopHandler != nil {
+				m.stopHandler.OnRuntimeStopped(projectID, crashReason, crashMessage)
+			}
+
+			// Auto-restart if needed
+			if shouldRestart {
+				newRestartCount := rt.restartCount + 1
+				newLastRestartAt := time.Now()
+
+				// Calculate backoff delay
+				delay := InitialRestartDelay * time.Duration(1<<uint(newRestartCount-1))
+				if delay > MaxRestartDelay {
+					delay = MaxRestartDelay
+				}
+
+				loggerModule.Info(fmt.Sprintf("Auto-restarting in %v (attempt %d/%d)...",
+					delay, newRestartCount, MaxRestartsPerHour))
+				m.logger.Info("Auto-restarting project",
+					"project", projectIDStr,
+					"attempt", newRestartCount,
+					"delay", delay.String(),
+				)
+
+				savedCode := rt.code
+
+				time.Sleep(delay)
+
+				// Restart with preserved restart info
+				go func() {
+					if err := m.startWithRestartInfo(projectID, savedCode, newRestartCount, newLastRestartAt); err != nil {
+						m.logger.Error("Auto-restart failed",
+							"project", projectIDStr,
+							"error", err,
+						)
+					}
+				}()
+			} else {
+				// Remove from runtimes map only if not restarting
+				m.mu.Lock()
+				delete(m.runtimes, projectIDStr)
+				m.mu.Unlock()
+			}
+		}()
+
+		loggerModule.Info(fmt.Sprintf("Service restarted (attempt %d/%d)", restartCount, MaxRestartsPerHour))
+
+		_, err := vm.RunString(code)
+		if err != nil {
+			crashReason = CrashReasonError
+			crashMessage = err.Error()
+			loggerModule.Error(fmt.Sprintf("Runtime error: %v", err))
+			m.logger.Error("Runtime execution error", "project", projectIDStr, "error", err)
+			return
+		}
+
+		loggerModule.Info("Executing boot phase...")
+		if err := serviceModule.ExecuteBoot(); err != nil {
+			crashReason = CrashReasonError
+			crashMessage = fmt.Sprintf("boot: %v", err)
+			loggerModule.Error(fmt.Sprintf("Boot error: %v", err))
+			m.logger.Error("Boot error", "project", projectIDStr, "error", err)
+			return
+		}
+
+		loggerModule.Info("Executing start phase...")
+		if err := serviceModule.ExecuteStart(); err != nil {
+			loggerModule.Error(fmt.Sprintf("Start error: %v", err))
+			m.logger.Error("Start error", "project", projectIDStr, "error", err)
+			// Don't return - continue running even if start callback has error
+		}
+
+		schedulerModule.Start()
+
+		loggerModule.Info("Service is running")
+
+		// Wait for shutdown signal
+		<-runtimeCtx.Done()
+
+		// Normal shutdown - not a crash
+		loggerModule.Info("Shutdown signal received")
+		loggerModule.Info("Executing shutdown phase...")
+		if err := serviceModule.ExecuteShutdown(); err != nil {
+			loggerModule.Error(fmt.Sprintf("Shutdown error: %v", err))
+		}
+
+		schedulerModule.Stop()
+		loggerModule.Info("Service stopped")
+		loggerModule.Close()
+	}()
+
+	m.runtimes[projectIDStr] = rt
+	m.logger.Info("Project restarted", "project", projectIDStr, "attempt", restartCount)
 
 	return nil
 }
