@@ -136,10 +136,13 @@ export function PipelinePage() {
 
   const [actionStates, setActionStates] = useState<Map<string, ActionState>>(new Map());
 
-  // WebSocket for action states
+  // WebSocket for logs and action states
   useWebSocket({
     projectId,
-    enabled: !!projectId && isDebugMode,
+    enabled: !!projectId && isRunning,
+    onLog: () => {
+      queryClient.refetchQueries({ queryKey: ['logs', projectId] });
+    },
     onActions: (data: ActionRuntimeState[]) => {
       const newStates = new Map<string, ActionState>();
       data.forEach((item) => {
