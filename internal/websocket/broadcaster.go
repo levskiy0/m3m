@@ -331,6 +331,12 @@ func (b *Broadcaster) BroadcastActionStates(projectID string, states []domain.Ac
 	b.hub.BroadcastToProject(projectID, EventActions, states)
 }
 
+// SendUIRequest sends a UI request to a specific user
+// Implements modules.UIBroadcaster interface
+func (b *Broadcaster) SendUIRequest(projectID, userID string, data interface{}) {
+	b.hub.SendToUser(projectID, userID, EventUIRequest, data)
+}
+
 // OnRuntimeStopped implements runtime.RuntimeStopHandler
 // Called when a runtime stops (either normally or due to crash)
 func (b *Broadcaster) OnRuntimeStopped(projectID primitive.ObjectID, reason runtime.CrashReason, message string, willRestart bool) {

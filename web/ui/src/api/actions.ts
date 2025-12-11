@@ -39,7 +39,7 @@ export const actionsApi = {
     );
   },
 
-  trigger: async (projectSlug: string, actionSlug: string): Promise<void> => {
-    return api.post(`/r/${projectSlug}/actions/${actionSlug}`);
+  trigger: async (projectId: string, actionSlug: string): Promise<void> => {
+    return api.post(`/api/projects/${projectId}/actions/${actionSlug}/trigger`);
   },
 };

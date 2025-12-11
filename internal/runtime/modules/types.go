@@ -25,6 +25,7 @@ func GetAllSchemas() []schema.ModuleSchema {
 		GetDrawSchema(),
 		GetMailSchema(),
 		GetHookSchema(),
+		GetUISchema(),
 	}
 }
 

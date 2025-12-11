@@ -41,6 +41,7 @@ func (h *ActionHandler) Register(r *gin.RouterGroup, authMiddleware *middleware.
 		actions.PUT("/:actionId", h.Update)
 		actions.DELETE("/:actionId", h.Delete)
 		actions.GET("/states", h.GetStates)
+		actions.POST("/:actionSlug/trigger", h.Trigger)
 	}
 }
 
@@ -191,4 +192,43 @@ func (h *ActionHandler) GetStates(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, states)
+}
+
+// Trigger triggers an action with user context for $ui dialogs
+func (h *ActionHandler) Trigger(c *gin.Context) {
+	projectID, ok := h.checkAccess(c)
+	if !ok {
+		return
+	}
+
+	actionSlug := c.Param("actionSlug")
+
+	// Verify action exists
+	_, err := h.actionService.GetBySlug(c.Request.Context(), projectID, actionSlug)
+	if err != nil {
+		if errors.Is(err, repository.ErrActionNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "action not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Check if project is running
+	if !h.runtimeManager.IsRunning(projectID) {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "project not running"})
+		return
+	}
+
+	// Get current user ID for UI context
+	user := middleware.GetCurrentUser(c)
+	userID := user.ID.Hex()
+
+	// Trigger action with user context
+	if err := h.runtimeManager.TriggerActionWithUser(projectID, actionSlug, userID); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "action triggered successfully"})
 }

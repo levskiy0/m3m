@@ -611,9 +611,9 @@ export function PipelinePage() {
                           Stop
                           <Kbd className="ml-2">^.</Kbd>
                         </Button>
-                        {actions.length > 0 && project?.slug && (
+                        {actions.length > 0 && projectId && (
                           <ActionsDropdown
-                            projectSlug={project.slug}
+                            projectId={projectId}
                             actions={actions}
                             actionStates={actionStates}
                           />

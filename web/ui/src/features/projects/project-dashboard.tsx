@@ -410,9 +410,9 @@ export function ProjectDashboard() {
                 <Square className="size-4" />
                 Stop
               </Button>
-              {actions.length > 0 && project?.slug && (
+              {actions.length > 0 && projectId && (
                 <ActionsDropdown
-                  projectSlug={project.slug}
+                  projectId={projectId}
                   actions={actions}
                   actionStates={actionStates}
                 />

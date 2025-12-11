@@ -13,11 +13,12 @@ import (
 type EventType string
 
 const (
-	EventMonitor EventType = "monitor"
-	EventLog     EventType = "log"
-	EventRunning EventType = "running"
-	EventGoals   EventType = "goals"
-	EventActions EventType = "actions"
+	EventMonitor   EventType = "monitor"
+	EventLog       EventType = "log"
+	EventRunning   EventType = "running"
+	EventGoals     EventType = "goals"
+	EventActions   EventType = "actions"
+	EventUIRequest EventType = "ui_request"
 )
 
 // Event represents a WebSocket event message
@@ -64,6 +65,9 @@ type Hub struct {
 
 	// Broadcast to project subscribers
 	broadcast chan *Broadcast
+
+	// UI response handler
+	uiResponseHandler UIResponseHandler
 
 	mu     sync.RWMutex
 	logger *slog.Logger
@@ -217,6 +221,55 @@ func (h *Hub) HasSubscribers(projectID string) bool {
 	return len(h.projectClients[projectID]) > 0
 }
 
+// SetUIResponseHandler sets the handler for UI responses
+func (h *Hub) SetUIResponseHandler(handler UIResponseHandler) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	h.uiResponseHandler = handler
+}
+
+// SendToUser sends an event to a specific user subscribed to a project
+func (h *Hub) SendToUser(projectID, userID string, eventType EventType, data interface{}) {
+	h.mu.RLock()
+	clients := h.projectClients[projectID]
+	h.mu.RUnlock()
+
+	if len(clients) == 0 {
+		h.logger.Warn("No clients subscribed to project", "projectId", projectID)
+		return
+	}
+
+	event := Event{
+		ProjectID: projectID,
+		Event: EventData{
+			Type: eventType,
+			Data: data,
+		},
+	}
+
+	message, err := json.Marshal(event)
+	if err != nil {
+		h.logger.Error("Failed to marshal event", "error", err)
+		return
+	}
+
+	sent := false
+	for client := range clients {
+		if client.userID == userID {
+			select {
+			case client.send <- message:
+				sent = true
+			default:
+				h.logger.Warn("Client buffer full, skipping message")
+			}
+		}
+	}
+
+	if !sent {
+		h.logger.Warn("User not subscribed to project", "projectId", projectID, "userId", userID)
+	}
+}
+
 const (
 	// Time allowed to write a message to the peer
 	writeWait = 10 * time.Second
@@ -227,8 +280,8 @@ const (
 	// Send pings to peer with this period (must be less than pongWait)
 	pingPeriod = (pongWait * 9) / 10
 
-	// Maximum message size allowed from peer
-	maxMessageSize = 512
+	// Maximum message size allowed from peer (increased for ui_response form data)
+	maxMessageSize = 8192
 )
 
 // NewClient creates a new WebSocket client
@@ -281,6 +334,15 @@ func (c *Client) ReadPump() {
 			if msg.ProjectID != "" {
 				c.hub.unsubscribe <- &Subscription{client: c, projectID: msg.ProjectID}
 			}
+		case "ui_response":
+			if msg.ProjectID != "" && msg.RequestID != "" {
+				c.hub.mu.RLock()
+				handler := c.hub.uiResponseHandler
+				c.hub.mu.RUnlock()
+				if handler != nil {
+					go handler(msg.ProjectID, msg.RequestID, msg.Data)
+				}
+			}
 		}
 	}
 }
@@ -329,6 +391,11 @@ func (c *Client) WritePump() {
 
 // ClientMessage represents a message from the client
 type ClientMessage struct {
-	Action    string `json:"action"` // "subscribe" or "unsubscribe"
-	ProjectID string `json:"projectId"`
+	Action    string      `json:"action"` // "subscribe", "unsubscribe", or "ui_response"
+	ProjectID string      `json:"projectId"`
+	RequestID string      `json:"requestId,omitempty"` // for ui_response
+	Data      interface{} `json:"data,omitempty"`      // for ui_response
 }
+
+// UIResponseHandler is called when a UI response is received
+type UIResponseHandler func(projectID, requestID string, data interface{})

@@ -67,6 +67,7 @@ type ProjectRuntime struct {
 	Scheduler     *modules.ScheduleModule
 	Service       *modules.ServiceModule
 	Hook          *modules.HookModule
+	UI            *modules.UIModule
 	StartedAt     time.Time
 	Metrics       *MetricsHistory
 	metricsCancel context.CancelFunc
@@ -96,6 +97,11 @@ type RuntimeStopHandler interface {
 	OnRuntimeStopped(projectID primitive.ObjectID, reason CrashReason, message string, willRestart bool)
 }
 
+// UIBroadcaster interface for sending UI requests to specific users
+type UIBroadcaster interface {
+	SendUIRequest(projectID, userID string, data interface{})
+}
+
 // Manager manages all project runtimes
 type Manager struct {
 	runtimes        map[string]*ProjectRuntime
@@ -109,6 +115,7 @@ type Manager struct {
 	storageService  *service.StorageService
 	logBroadcaster  LogBroadcaster
 	hookBroadcaster HookBroadcaster
+	uiBroadcaster   UIBroadcaster
 	stopHandler     RuntimeStopHandler
 }
 
@@ -146,6 +153,24 @@ func (m *Manager) SetHookBroadcaster(broadcaster HookBroadcaster) {
 // SetStopHandler sets the handler for runtime stop events
 func (m *Manager) SetStopHandler(handler RuntimeStopHandler) {
 	m.stopHandler = handler
+}
+
+// SetUIBroadcaster sets the UI broadcaster for showing dialogs to users
+func (m *Manager) SetUIBroadcaster(broadcaster UIBroadcaster) {
+	m.uiBroadcaster = broadcaster
+}
+
+// HandleUIResponse routes a UI response to the appropriate runtime's UI module
+func (m *Manager) HandleUIResponse(projectID, requestID string, data interface{}) {
+	m.mu.RLock()
+	runtime, ok := m.runtimes[projectID]
+	m.mu.RUnlock()
+
+	if !ok || runtime.UI == nil {
+		return
+	}
+
+	runtime.UI.HandleResponse(requestID, data)
 }
 
 // Start starts a project with the given code
@@ -186,6 +211,7 @@ func (m *Manager) Start(ctx context.Context, projectID primitive.ObjectID, code 
 	schedulerModule := modules.NewScheduleModule(m.logger)
 	serviceModule := modules.NewServiceModule(vm, m.config.Runtime.Timeout)
 	hookModule := modules.NewHookModule(vm, projectID, m.hookBroadcaster)
+	uiModule := modules.NewUIModule(vm, projectID, m.uiBroadcaster)
 
 	// Create env getter for lazy loading (enables hot reload of env vars)
 	envGetter := func() map[string]interface{} {
@@ -193,7 +219,7 @@ func (m *Manager) Start(ctx context.Context, projectID primitive.ObjectID, code 
 		return envMap
 	}
 
-	if err := m.registerModules(vm, projectID, loggerModule, routerModule, schedulerModule, serviceModule, hookModule, envGetter); err != nil {
+	if err := m.registerModules(vm, projectID, loggerModule, routerModule, schedulerModule, serviceModule, hookModule, uiModule, envGetter); err != nil {
 		cancel()
 		return fmt.Errorf("failed to register modules: %w", err)
 	}
@@ -216,6 +242,7 @@ func (m *Manager) Start(ctx context.Context, projectID primitive.ObjectID, code 
 		Scheduler:     schedulerModule,
 		Service:       serviceModule,
 		Hook:          hookModule,
+		UI:            uiModule,
 		StartedAt:     time.Now(),
 		Metrics:       NewMetricsHistory(),
 		metricsCancel: metricsCancel,
@@ -420,6 +447,9 @@ func (m *Manager) stopRuntime(rt *ProjectRuntime) {
 	if rt.Scheduler != nil {
 		rt.Scheduler.Stop()
 	}
+	if rt.UI != nil {
+		rt.UI.Cleanup()
+	}
 	if rt.Logger != nil {
 		rt.Logger.Close()
 	}
@@ -539,6 +569,32 @@ func (m *Manager) TriggerAction(projectID primitive.ObjectID, slug string) error
 
 	if runtime.Hook == nil {
 		return fmt.Errorf("hook module not initialized")
+	}
+
+	return runtime.Hook.TriggerAction(slug)
+}
+
+// TriggerActionWithUser triggers an action with user context for $ui dialogs
+func (m *Manager) TriggerActionWithUser(projectID primitive.ObjectID, slug string, userID string) error {
+	m.mu.RLock()
+	runtime, ok := m.runtimes[projectID.Hex()]
+	m.mu.RUnlock()
+
+	if !ok {
+		return fmt.Errorf("project not running")
+	}
+
+	if runtime.Hook == nil {
+		return fmt.Errorf("hook module not initialized")
+	}
+
+	// Set user context on both Hook (for action context) and UI (for direct calls)
+	runtime.Hook.SetCurrentUser(userID)
+	defer runtime.Hook.ClearCurrentUser()
+
+	if runtime.UI != nil {
+		runtime.UI.SetCurrentUser(userID)
+		defer runtime.UI.ClearCurrentUser()
 	}
 
 	return runtime.Hook.TriggerAction(slug)
@@ -763,6 +819,7 @@ func (m *Manager) registerModules(
 	schedulerModule *modules.ScheduleModule,
 	serviceModule *modules.ServiceModule,
 	hookModule *modules.HookModule,
+	uiModule *modules.UIModule,
 	envGetter func() map[string]interface{},
 ) error {
 	projectIDStr := projectID.Hex()
@@ -773,6 +830,7 @@ func (m *Manager) registerModules(
 	routerModule.Register(vm)
 	schedulerModule.Register(vm)
 	hookModule.Register(vm)
+	uiModule.Register(vm)
 
 	// Environment-dependent modules (lazy loading for hot reload)
 	envModule := modules.NewEnvModule(envGetter)
@@ -856,6 +914,7 @@ func (m *Manager) startWithRestartInfo(projectID primitive.ObjectID, code string
 	schedulerModule := modules.NewScheduleModule(m.logger)
 	serviceModule := modules.NewServiceModule(vm, m.config.Runtime.Timeout)
 	hookModule := modules.NewHookModule(vm, projectID, m.hookBroadcaster)
+	uiModule := modules.NewUIModule(vm, projectID, m.uiBroadcaster)
 
 	// Create env getter for lazy loading (enables hot reload of env vars)
 	envGetter := func() map[string]interface{} {
@@ -863,7 +922,7 @@ func (m *Manager) startWithRestartInfo(projectID primitive.ObjectID, code string
 		return envMap
 	}
 
-	if err := m.registerModules(vm, projectID, loggerModule, routerModule, schedulerModule, serviceModule, hookModule, envGetter); err != nil {
+	if err := m.registerModules(vm, projectID, loggerModule, routerModule, schedulerModule, serviceModule, hookModule, uiModule, envGetter); err != nil {
 		cancel()
 		return fmt.Errorf("failed to register modules: %w", err)
 	}

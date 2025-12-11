@@ -2,7 +2,43 @@ import { config } from '@/lib/config';
 import { getToken } from '@/api/client';
 import type { ActionRuntimeState } from '@/types';
 
-export type EventType = 'monitor' | 'log' | 'running' | 'goals' | 'actions';
+export type EventType = 'monitor' | 'log' | 'running' | 'goals' | 'actions' | 'ui_request';
+
+export type UIDialogType = 'alert' | 'confirm' | 'prompt' | 'form';
+
+export interface UIRequestData {
+  requestId: string;
+  dialogType: UIDialogType;
+  options: {
+    title?: string;
+    text?: string;
+    severity?: 'info' | 'success' | 'warning' | 'error';
+    yes?: string;
+    no?: string;
+    placeholder?: string;
+    defaultValue?: string;
+    schema?: UIFormField[];
+    actions?: UIFormAction[];
+  };
+}
+
+export interface UIFormField {
+  name: string;
+  type: 'input' | 'textarea' | 'checkbox' | 'select' | 'combobox' | 'radiogroup' | 'date' | 'datetime';
+  label?: string;
+  hint?: string;
+  colspan?: number | 'full';
+  required?: boolean;
+  placeholder?: string;
+  defaultValue?: unknown;
+  options?: string[] | { label: string; value: string }[];
+}
+
+export interface UIFormAction {
+  label: string;
+  variant?: 'default' | 'outline' | 'destructive';
+  action: string;
+}
 
 export interface WSEvent {
   projectId: string;
@@ -18,6 +54,7 @@ export interface WSEventHandlers {
   onRunning?: (projectId: string, data: { running: boolean }) => void;
   onGoals?: (projectId: string, data: unknown) => void;
   onActions?: (projectId: string, data: ActionRuntimeState[]) => void;
+  onUIRequest?: (projectId: string, data: UIRequestData) => void;
   onConnect?: () => void;
   onDisconnect?: () => void;
   onError?: (error: Event) => void;
@@ -155,6 +192,9 @@ class WebSocketClient {
           case 'actions':
             this.handlers.onActions?.(event.projectId, event.event.data as ActionRuntimeState[]);
             break;
+          case 'ui_request':
+            this.handlers.onUIRequest?.(event.projectId, event.event.data as UIRequestData);
+            break;
         }
       }
     } catch (error) {
@@ -174,6 +214,10 @@ class WebSocketClient {
 
   private sendUnsubscribe(projectId: string): void {
     this.send({ action: 'unsubscribe', projectId });
+  }
+
+  sendUIResponse(projectId: string, requestId: string, data: unknown): void {
+    this.send({ action: 'ui_response', projectId, requestId, data });
   }
 
   subscribe(projectId: string): void {

@@ -14,18 +14,18 @@ import {
 } from '@/components/ui/dropdown-menu';
 
 interface ActionsDropdownProps {
-  projectSlug: string;
+  projectId: string;
   actions: Action[];
   actionStates: Map<string, ActionState>;
 }
 
 export function ActionsDropdown({
-  projectSlug,
+  projectId,
   actions,
   actionStates,
 }: ActionsDropdownProps) {
   const triggerMutation = useMutation({
-    mutationFn: (actionSlug: string) => actionsApi.trigger(projectSlug, actionSlug),
+    mutationFn: (actionSlug: string) => actionsApi.trigger(projectId, actionSlug),
     onError: (err) => {
       toast.error(err instanceof Error ? err.message : 'Failed to trigger action');
     },

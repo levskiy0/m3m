@@ -49,6 +49,7 @@ type HookModule struct {
 	vm             *goja.Runtime
 	projectID      primitive.ObjectID
 	broadcaster    HookBroadcaster
+	currentUserID  string // current user ID for action context
 }
 
 // NewHookModule creates a new HookModule
@@ -233,11 +234,31 @@ func (m *HookModule) TriggerModelHook(modelSlug string, hookType ModelHookType, 
 	return nil
 }
 
+// SetCurrentUser sets the current user ID for action context
+func (m *HookModule) SetCurrentUser(userID string) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.currentUserID = userID
+}
+
+// ClearCurrentUser clears the current user ID
+func (m *HookModule) ClearCurrentUser() {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.currentUserID = ""
+}
+
 // createActionContext creates a JS object with action info and control methods
 func (m *HookModule) createActionContext(name, slug string) map[string]interface{} {
+	// Capture current user ID at the time the action is triggered
+	m.mu.RLock()
+	userID := m.currentUserID
+	m.mu.RUnlock()
+
 	return map[string]interface{}{
-		"name": name,
-		"slug": slug,
+		"name":   name,
+		"slug":   slug,
+		"userId": userID, // Include userId for async $ui calls
 		"disable": func() {
 			m.setActionState(slug, domain.ActionStateDisabled)
 		},
