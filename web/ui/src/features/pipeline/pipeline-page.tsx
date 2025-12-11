@@ -44,7 +44,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Field, FieldGroup, FieldLabel, FieldDescription } from '@/components/ui/field';
-import { CodeEditor } from '@/components/shared/code-editor';
+import { CodeEditor, type RuntimeError } from '@/components/shared/code-editor';
 import { ConfirmDialog } from '@/components/shared/confirm-dialog';
 import { Kbd } from '@/components/ui/kbd';
 import { EditorTabs, EditorTab } from '@/components/ui/editor-tabs';
@@ -53,6 +53,25 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { ActionsDropdown } from '@/components/shared/actions-dropdown';
 import { ActionsList } from '@/features/pipeline/actions/actions-list';
 import { cn } from '@/lib/utils';
+
+// Parse runtime errors from log entries
+// Format: "Start error: ReferenceError: xxx is not defined at <eval>:25:17(46)"
+// Or: "Service crashed after 0s: [code_error] start: ReferenceError: xxx at <eval>:25:17(46)"
+function parseRuntimeError(message: string): RuntimeError | null {
+  const posMatch = message.match(/at <eval>:(\d+):(\d+)/);
+  if (!posMatch) return null;
+
+  const line = parseInt(posMatch[1], 10);
+  const column = parseInt(posMatch[2], 10);
+
+  // Extract error type and message (e.g., "ReferenceError: xxx is not defined")
+  // Look for standard JS error types anywhere in the message
+  const errorMatch = message.match(/((?:Reference|Type|Syntax|Range|URI|Eval)Error:\s*[^]+?)(?:\s+at\s+<eval>|$)/);
+  const errorMessage = errorMatch ? errorMatch[1].trim() : message;
+
+  return { line, column, message: errorMessage };
+}
+
 type PipelineTab = 'editor' | 'logs' | 'releases' | 'actions';
 
 export function PipelinePage() {
@@ -182,6 +201,31 @@ export function PipelinePage() {
     queryFn: () => pipelineApi.getBranch(projectId!, selectedBranchId),
     enabled: !!projectId && !!selectedBranchId,
   });
+
+  // Extract runtime errors from error logs for Monaco markers
+  // Clear errors when code is modified (stale errors not relevant to current code)
+  const runtimeErrors = useMemo(() => {
+    // Don't show stale errors if user modified code
+    if (hasChanges) return [];
+
+    // Only look at recent error logs (last 10 errors max)
+    const errorLogs = logs.filter((l) => l.level === 'error').slice(-10);
+
+    const errors: RuntimeError[] = [];
+    for (const log of errorLogs) {
+      const error = parseRuntimeError(log.message);
+      if (error) {
+        // Dedupe by line/column
+        const exists = errors.some(
+          (e) => e.line === error.line && e.column === error.column
+        );
+        if (!exists) {
+          errors.push(error);
+        }
+      }
+    }
+    return errors;
+  }, [logs, hasChanges]);
 
   const { data: runtimeTypes } = useQuery({
     queryKey: ['runtime-types'],
@@ -597,6 +641,7 @@ export function PipelinePage() {
                   language="javascript"
                   typeDefinitions={runtimeTypes}
                   keyBindings={keyBindings}
+                  runtimeErrors={runtimeErrors}
                 />
               </div>
             </>

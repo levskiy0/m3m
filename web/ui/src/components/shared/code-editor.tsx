@@ -1,12 +1,18 @@
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useState } from 'react';
 import Editor from '@monaco-editor/react';
 import type { OnMount, Monaco } from '@monaco-editor/react';
-import type { editor, IDisposable } from 'monaco-editor';
+import type { editor, IDisposable, MarkerSeverity } from 'monaco-editor';
 
 interface KeyBinding {
   key: string;
   label: string;
   action: () => void;
+}
+
+export interface RuntimeError {
+  line: number;
+  column: number;
+  message: string;
 }
 
 interface CodeEditorProps {
@@ -17,6 +23,7 @@ interface CodeEditorProps {
   height?: string | number;
   typeDefinitions?: string;
   keyBindings?: KeyBinding[];
+  runtimeErrors?: RuntimeError[];
 }
 
 
@@ -28,16 +35,23 @@ export function CodeEditor({
   height = '100%',
   typeDefinitions,
   keyBindings,
+  runtimeErrors = [],
 }: CodeEditorProps) {
   const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
   const monacoRef = useRef<Monaco | null>(null);
   const keyBindingsRef = useRef(keyBindings);
   const typeLibRef = useRef<IDisposable | null>(null);
+  const runtimeErrorsRef = useRef(runtimeErrors);
+  const [editorVersion, setEditorVersion] = useState(0);
 
-  // Update ref in effect to avoid updating during render
+  // Update refs to avoid stale closures
   useEffect(() => {
     keyBindingsRef.current = keyBindings;
   }, [keyBindings]);
+
+  useEffect(() => {
+    runtimeErrorsRef.current = runtimeErrors;
+  }, [runtimeErrors]);
 
   const handleMount: OnMount = (editor, monaco) => {
     editorRef.current = editor;
@@ -113,6 +127,9 @@ export function CodeEditor({
         ed.getAction('editor.action.startFindReplaceAction')?.run();
       },
     });
+
+    // Trigger re-render to apply any pending markers
+    setEditorVersion((v) => v + 1);
   };
 
   useEffect(() => {
@@ -125,6 +142,56 @@ export function CodeEditor({
       );
     }
   }, [typeDefinitions]);
+
+  // Update runtime error decorations (line highlight + markers)
+  const decorationsRef = useRef<string[]>([]);
+
+  useEffect(() => {
+    const monaco = monacoRef.current;
+    const editor = editorRef.current;
+    const errors = runtimeErrorsRef.current;
+    if (!monaco || !editor) return;
+
+    const model = editor.getModel();
+    if (!model) return;
+
+    // Clear old decorations and markers
+    if (errors.length === 0) {
+      monaco.editor.setModelMarkers(model, 'runtime', []);
+      decorationsRef.current = editor.deltaDecorations(decorationsRef.current, []);
+      return;
+    }
+
+    // Set markers (for Problems panel / hover tooltip)
+    const markers = errors.map((error) => {
+      const lineLength = model.getLineLength(error.line) || 100;
+      return {
+        severity: monaco.MarkerSeverity.Error as MarkerSeverity,
+        message: error.message,
+        startLineNumber: error.line,
+        startColumn: 1,
+        endLineNumber: error.line,
+        endColumn: lineLength + 1,
+      };
+    });
+    monaco.editor.setModelMarkers(model, 'runtime', markers);
+
+    // Set decorations (for line highlight)
+    const decorations = errors.map((error) => ({
+      range: new monaco.Range(error.line, 1, error.line, 1),
+      options: {
+        isWholeLine: true,
+        className: 'runtime-error-line',
+        glyphMarginClassName: 'runtime-error-glyph',
+        overviewRuler: {
+          color: '#ff0000',
+          position: monaco.editor.OverviewRulerLane.Full,
+        },
+      },
+    }));
+
+    decorationsRef.current = editor.deltaDecorations(decorationsRef.current, decorations);
+  }, [runtimeErrors, editorVersion]);
 
   return (
     <Editor
@@ -149,6 +216,7 @@ export function CodeEditor({
         acceptSuggestionOnEnter: 'on',
         quickSuggestions: true,
         padding: { top: 16, bottom: 16 },
+        glyphMargin: true,
       }}
       theme="vs-dark"
     />
