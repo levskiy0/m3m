@@ -429,9 +429,15 @@ export function PipelinePage() {
             onClick={() => setActiveTab('logs')}
             icon={<ScrollText className="size-4" />}
             badge={
+              logs.filter(l => l.level === 'error').length > 0 ? (
+                <Badge variant="destructive" className="ml-1 h-5 px-1.5 text-xs">
+                  {logs.filter(l => l.level === 'error').length}
+                </Badge>
+              ) : isDebugMode && runningBranch === currentBranch?.name ? (
                 <Badge variant="outline" className="ml-1 border-amber-500/50 text-amber-500 text-[10px] h-[20px] py-0">
                   {runningBranch}
                 </Badge>
+              ) : undefined
             }
           >
             Logs
