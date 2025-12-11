@@ -336,9 +336,11 @@ func (m *Manager) Start(ctx context.Context, projectID primitive.ObjectID, code 
 
 		loggerModule.Info("Executing start phase...")
 		if err := serviceModule.ExecuteStart(); err != nil {
+			crashReason = CrashReasonError
+			crashMessage = fmt.Sprintf("start: %v", err)
 			loggerModule.Error(fmt.Sprintf("Start error: %v", err))
 			m.logger.Error("Start error", "project", projectIDStr, "error", err)
-			// Don't return - continue running even if start callback has error
+			return
 		}
 
 		schedulerModule.Start()
@@ -979,9 +981,11 @@ func (m *Manager) startWithRestartInfo(projectID primitive.ObjectID, code string
 
 		loggerModule.Info("Executing start phase...")
 		if err := serviceModule.ExecuteStart(); err != nil {
+			crashReason = CrashReasonError
+			crashMessage = fmt.Sprintf("start: %v", err)
 			loggerModule.Error(fmt.Sprintf("Start error: %v", err))
 			m.logger.Error("Start error", "project", projectIDStr, "error", err)
-			// Don't return - continue running even if start callback has error
+			return
 		}
 
 		schedulerModule.Start()
