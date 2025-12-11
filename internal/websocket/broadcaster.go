@@ -333,14 +333,20 @@ func (b *Broadcaster) BroadcastActionStates(projectID string, states []domain.Ac
 
 // OnRuntimeStopped implements runtime.RuntimeStopHandler
 // Called when a runtime stops (either normally or due to crash)
-func (b *Broadcaster) OnRuntimeStopped(projectID primitive.ObjectID, reason runtime.CrashReason, message string) {
+func (b *Broadcaster) OnRuntimeStopped(projectID primitive.ObjectID, reason runtime.CrashReason, message string, willRestart bool) {
 	projectIDStr := projectID.Hex()
 
 	b.logger.Info("Runtime stopped, updating status and broadcasting",
 		"project", projectIDStr,
 		"reason", reason,
 		"message", message,
+		"willRestart", willRestart,
 	)
+
+	// Don't update status to stopped if service will restart
+	if willRestart {
+		return
+	}
 
 	// Update project status in database
 	if b.projectService != nil {

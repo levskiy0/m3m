@@ -72,7 +72,7 @@ type ActionBroadcaster interface {
 
 // RuntimeStopHandler is called when a runtime stops (either normally or due to crash)
 type RuntimeStopHandler interface {
-	OnRuntimeStopped(projectID primitive.ObjectID, reason CrashReason, message string)
+	OnRuntimeStopped(projectID primitive.ObjectID, reason CrashReason, message string, willRestart bool)
 }
 
 // Manager manages all project runtimes
@@ -272,7 +272,7 @@ func (m *Manager) Start(ctx context.Context, projectID primitive.ObjectID, code 
 
 			// Notify stop handler (for updating status in DB)
 			if m.stopHandler != nil {
-				m.stopHandler.OnRuntimeStopped(projectID, crashReason, crashMessage)
+				m.stopHandler.OnRuntimeStopped(projectID, crashReason, crashMessage, shouldRestart)
 			}
 
 			// Auto-restart if needed
@@ -913,7 +913,7 @@ func (m *Manager) startWithRestartInfo(projectID primitive.ObjectID, code string
 
 			// Notify stop handler (for updating status in DB)
 			if m.stopHandler != nil {
-				m.stopHandler.OnRuntimeStopped(projectID, crashReason, crashMessage)
+				m.stopHandler.OnRuntimeStopped(projectID, crashReason, crashMessage, shouldRestart)
 			}
 
 			// Auto-restart if needed
