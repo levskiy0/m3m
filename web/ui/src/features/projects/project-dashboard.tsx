@@ -45,6 +45,7 @@ import { cn } from '@/lib/utils';
 import { useProjectRuntime, useTitle, useWebSocket } from '@/hooks';
 import type { LogEntry, GoalStats, WidgetVariant, WidgetType, CreateWidgetRequest, UpdateWidgetRequest, Widget, Goal, RuntimeStats, ActionRuntimeState, ActionState } from '@/types';
 import { ActionsDropdown } from '@/components/shared/actions-dropdown';
+import { ConfirmDialog } from '@/components/shared/confirm-dialog';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -112,7 +113,12 @@ export function ProjectDashboard() {
   useTitle(project?.name);
 
   const isRunning = project?.status === 'running';
+  const isDebugMode = isRunning && project?.runningSource?.startsWith('debug:');
   const publicUrl = project ? `${config.apiURL}/r/${project.slug}` : '';
+
+  // Confirm dialogs for restart/stop in release mode
+  const [stopConfirmOpen, setStopConfirmOpen] = useState(false);
+  const [restartConfirmOpen, setRestartConfirmOpen] = useState(false);
 
   // Runtime hook - handles start/stop/restart, logs, monitor
   // Now uses WebSocket for real-time updates instead of polling
@@ -368,7 +374,13 @@ export function ProjectDashboard() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => runtime.restart()}
+                onClick={() => {
+                  if (isDebugMode) {
+                    runtime.restart();
+                  } else {
+                    setRestartConfirmOpen(true);
+                  }
+                }}
                 disabled={runtime.isPending}
                 className="gap-2"
               >
@@ -378,7 +390,13 @@ export function ProjectDashboard() {
               <Button
                 variant="destructive"
                 size="sm"
-                onClick={() => runtime.stop()}
+                onClick={() => {
+                  if (isDebugMode) {
+                    runtime.stop();
+                  } else {
+                    setStopConfirmOpen(true);
+                  }
+                }}
                 disabled={runtime.isPending}
                 className="gap-2"
               >
@@ -727,6 +745,35 @@ export function ProjectDashboard() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Confirm Stop Dialog (for release mode) */}
+      <ConfirmDialog
+        open={stopConfirmOpen}
+        onOpenChange={setStopConfirmOpen}
+        title="Stop Service?"
+        description="Service is running in production mode. Stopping will make it unavailable for users."
+        confirmLabel="Stop"
+        variant="destructive"
+        onConfirm={() => {
+          runtime.stop();
+          setStopConfirmOpen(false);
+        }}
+        isLoading={runtime.isStopping}
+      />
+
+      {/* Confirm Restart Dialog (for release mode) */}
+      <ConfirmDialog
+        open={restartConfirmOpen}
+        onOpenChange={setRestartConfirmOpen}
+        title="Restart Service?"
+        description="Service is running in production mode. Restarting will cause brief downtime."
+        confirmLabel="Restart"
+        onConfirm={() => {
+          runtime.restart();
+          setRestartConfirmOpen(false);
+        }}
+        isLoading={runtime.isRestarting}
+      />
     </div>
   );
 }
