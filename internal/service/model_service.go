@@ -158,12 +158,16 @@ func (s *ModelService) CreateData(ctx context.Context, modelID primitive.ObjectI
 		return nil, err
 	}
 
-	return bson.M{
-		"id":         result.ID,
-		"data":       result.Data,
-		"created_at": result.CreatedAt,
-		"updated_at": result.UpdatedAt,
-	}, nil
+	// Return in same format as Find: flat document with _id and user data
+	doc := bson.M{
+		"_id":         result.ID,
+		"_created_at": result.CreatedAt,
+		"_updated_at": result.UpdatedAt,
+	}
+	for k, v := range result.Data {
+		doc[k] = v
+	}
+	return doc, nil
 }
 
 func (s *ModelService) GetData(ctx context.Context, modelID primitive.ObjectID, query *domain.DataQuery) ([]bson.M, int64, error) {

@@ -151,7 +151,12 @@ func (c *CollectionWrapper) FindWithOptions(filter map[string]interface{}, optio
 
 	result := make([]map[string]interface{}, len(data))
 	for i, d := range data {
-		result[i] = map[string]interface{}(d)
+		item := map[string]interface{}(d)
+		// Convert _id from ObjectID to hex string for JavaScript compatibility
+		if id, ok := item["_id"].(primitive.ObjectID); ok {
+			item["_id"] = id.Hex()
+		}
+		result[i] = item
 	}
 	return result
 }
@@ -173,6 +178,11 @@ func (c *CollectionWrapper) Insert(data map[string]interface{}) (map[string]inte
 	result, err := c.modelService.CreateData(ctx, c.modelID, data)
 	if err != nil {
 		return nil, err
+	}
+
+	// Convert _id from ObjectID to hex string for JavaScript compatibility
+	if id, ok := result["_id"].(primitive.ObjectID); ok {
+		result["_id"] = id.Hex()
 	}
 
 	return result, nil
