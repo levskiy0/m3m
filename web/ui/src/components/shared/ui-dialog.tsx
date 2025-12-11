@@ -151,6 +151,17 @@ function PromptDialogComponent({ dialog }: { dialog: UIDialogRequest }) {
   );
 }
 
+// Static mapping for Tailwind col-span classes (dynamic classes don't work)
+const colSpanClasses: Record<number | 'full', string> = {
+  1: 'col-span-1',
+  2: 'col-span-2',
+  3: 'col-span-3',
+  4: 'col-span-4',
+  5: 'col-span-5',
+  6: 'col-span-6',
+  'full': 'col-span-6',
+};
+
 function FormField({
   field,
   value,
@@ -164,10 +175,7 @@ function FormField({
   error?: string;
   disabled?: boolean;
 }) {
-  const colSpan =
-    field.colspan === 'full'
-      ? 'col-span-6'
-      : `col-span-${field.colspan || 6}`;
+  const colSpan = colSpanClasses[field.colspan || 6] || 'col-span-6';
 
   const renderField = () => {
     switch (field.type) {
