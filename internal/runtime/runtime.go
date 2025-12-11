@@ -52,6 +52,7 @@ type ProjectRuntime struct {
 	lastHitCount  int64
 	lastJobCount  int64
 	code          string      // stored for auto-restart
+	logFile       string      // log file path for auto-restart
 	crashReason   CrashReason // reason for last crash
 	crashMessage  string      // crash error message
 	restartCount  int         // number of restarts
@@ -198,6 +199,7 @@ func (m *Manager) Start(ctx context.Context, projectID primitive.ObjectID, code 
 		Metrics:       NewMetricsHistory(),
 		metricsCancel: metricsCancel,
 		code:          code,
+		logFile:       logFile,
 	}
 
 	go rt.collectMetrics(metricsCtx)
@@ -293,12 +295,13 @@ func (m *Manager) Start(ctx context.Context, projectID primitive.ObjectID, code 
 				)
 
 				code := rt.code
+				savedLogFile := rt.logFile
 
 				time.Sleep(delay)
 
 				// Restart with preserved restart info
 				go func() {
-					if err := m.startWithRestartInfo(projectID, code, restartCount, lastRestartAt); err != nil {
+					if err := m.startWithRestartInfo(projectID, code, restartCount, lastRestartAt, savedLogFile); err != nil {
 						m.logger.Error("Auto-restart failed",
 							"project", projectIDStr,
 							"error", err,
@@ -759,7 +762,7 @@ func (m *Manager) registerModules(
 }
 
 // startWithRestartInfo starts a project with preserved restart information
-func (m *Manager) startWithRestartInfo(projectID primitive.ObjectID, code string, restartCount int, lastRestartAt time.Time) error {
+func (m *Manager) startWithRestartInfo(projectID primitive.ObjectID, code string, restartCount int, lastRestartAt time.Time, existingLogFile string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -777,10 +780,15 @@ func (m *Manager) startWithRestartInfo(projectID primitive.ObjectID, code string
 	vm := goja.New()
 	vm.SetFieldNameMapper(goja.TagFieldNameMapper("json", true))
 
-	logFile, err := m.storageService.CreateLogFile(projectIDStr)
-	if err != nil {
-		cancel()
-		return fmt.Errorf("failed to create log file: %w", err)
+	// Reuse existing log file on restart, create new one only for fresh start
+	logFile := existingLogFile
+	if logFile == "" {
+		var err error
+		logFile, err = m.storageService.CreateLogFile(projectIDStr)
+		if err != nil {
+			cancel()
+			return fmt.Errorf("failed to create log file: %w", err)
+		}
 	}
 
 	loggerModule := modules.NewLoggerModule(logFile)
@@ -830,6 +838,7 @@ func (m *Manager) startWithRestartInfo(projectID primitive.ObjectID, code string
 		Metrics:       NewMetricsHistory(),
 		metricsCancel: metricsCancel,
 		code:          code,
+		logFile:       logFile,
 		restartCount:  restartCount,
 		lastRestartAt: lastRestartAt,
 	}
@@ -927,12 +936,13 @@ func (m *Manager) startWithRestartInfo(projectID primitive.ObjectID, code string
 				)
 
 				savedCode := rt.code
+				savedLogFile := rt.logFile
 
 				time.Sleep(delay)
 
 				// Restart with preserved restart info
 				go func() {
-					if err := m.startWithRestartInfo(projectID, savedCode, newRestartCount, newLastRestartAt); err != nil {
+					if err := m.startWithRestartInfo(projectID, savedCode, newRestartCount, newLastRestartAt, savedLogFile); err != nil {
 						m.logger.Error("Auto-restart failed",
 							"project", projectIDStr,
 							"error", err,
