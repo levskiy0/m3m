@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"runtime"
+	"strings"
 	"sync"
 	"time"
 
@@ -22,10 +23,11 @@ import (
 type CrashReason string
 
 const (
-	CrashReasonNone     CrashReason = ""
-	CrashReasonPanic    CrashReason = "panic"
-	CrashReasonError    CrashReason = "error"
-	CrashReasonShutdown CrashReason = "shutdown"
+	CrashReasonNone      CrashReason = ""
+	CrashReasonPanic     CrashReason = "panic"
+	CrashReasonError     CrashReason = "error"
+	CrashReasonCodeError CrashReason = "code_error" // SyntaxError, ReferenceError, TypeError - no auto-restart
+	CrashReasonShutdown  CrashReason = "shutdown"
 )
 
 // Auto-restart settings
@@ -35,6 +37,25 @@ const (
 	InitialRestartDelay   = 1 * time.Second  // initial delay before restart
 	MaxRestartDelay       = 30 * time.Second // max delay between restarts
 )
+
+// isCodeError checks if error is a code-level error that won't be fixed by restart
+func isCodeError(err error) bool {
+	if err == nil {
+		return false
+	}
+	msg := err.Error()
+	return strings.Contains(msg, "SyntaxError") ||
+		strings.Contains(msg, "ReferenceError") ||
+		strings.Contains(msg, "TypeError")
+}
+
+// crashReasonForError returns appropriate crash reason based on error type
+func crashReasonForError(err error) CrashReason {
+	if isCodeError(err) {
+		return CrashReasonCodeError
+	}
+	return CrashReasonError
+}
 
 // ProjectRuntime represents a running project instance
 type ProjectRuntime struct {
@@ -243,8 +264,8 @@ func (m *Manager) Start(ctx context.Context, projectID primitive.ObjectID, code 
 					"uptime", uptime.String(),
 				)
 
-				// Check if we should auto-restart
-				if !rt.stopRequested {
+				// Check if we should auto-restart (not for code errors - they won't fix themselves)
+				if !rt.stopRequested && crashReason != CrashReasonCodeError {
 					// Reset counter if cooldown period passed
 					if time.Since(rt.lastRestartAt) > RestartCooldownPeriod {
 						rt.restartCount = 0
@@ -260,6 +281,9 @@ func (m *Manager) Start(ctx context.Context, projectID primitive.ObjectID, code 
 							"max", MaxRestartsPerHour,
 						)
 					}
+				} else if crashReason == CrashReasonCodeError {
+					loggerModule.Error("Auto-restart disabled: code error detected (fix your code and restart manually)")
+					m.logger.Info("Auto-restart skipped due to code error", "project", projectIDStr)
 				}
 			} else {
 				loggerModule.Info(fmt.Sprintf("Service stopped after %s (normal shutdown)",
@@ -318,7 +342,7 @@ func (m *Manager) Start(ctx context.Context, projectID primitive.ObjectID, code 
 
 		_, err := vm.RunString(code)
 		if err != nil {
-			crashReason = CrashReasonError
+			crashReason = crashReasonForError(err)
 			crashMessage = err.Error()
 			loggerModule.Error(fmt.Sprintf("Runtime error: %v", err))
 			m.logger.Error("Runtime execution error", "project", projectIDStr, "error", err)
@@ -327,7 +351,7 @@ func (m *Manager) Start(ctx context.Context, projectID primitive.ObjectID, code 
 
 		loggerModule.Info("Executing boot phase...")
 		if err := serviceModule.ExecuteBoot(); err != nil {
-			crashReason = CrashReasonError
+			crashReason = crashReasonForError(err)
 			crashMessage = fmt.Sprintf("boot: %v", err)
 			loggerModule.Error(fmt.Sprintf("Boot error: %v", err))
 			m.logger.Error("Boot error", "project", projectIDStr, "error", err)
@@ -336,7 +360,7 @@ func (m *Manager) Start(ctx context.Context, projectID primitive.ObjectID, code 
 
 		loggerModule.Info("Executing start phase...")
 		if err := serviceModule.ExecuteStart(); err != nil {
-			crashReason = CrashReasonError
+			crashReason = crashReasonForError(err)
 			crashMessage = fmt.Sprintf("start: %v", err)
 			loggerModule.Error(fmt.Sprintf("Start error: %v", err))
 			m.logger.Error("Start error", "project", projectIDStr, "error", err)
@@ -886,8 +910,8 @@ func (m *Manager) startWithRestartInfo(projectID primitive.ObjectID, code string
 					"uptime", uptime.String(),
 				)
 
-				// Check if we should auto-restart
-				if !rt.stopRequested {
+				// Check if we should auto-restart (not for code errors - they won't fix themselves)
+				if !rt.stopRequested && crashReason != CrashReasonCodeError {
 					// Reset counter if cooldown period passed
 					if time.Since(rt.lastRestartAt) > RestartCooldownPeriod {
 						rt.restartCount = 0
@@ -903,6 +927,9 @@ func (m *Manager) startWithRestartInfo(projectID primitive.ObjectID, code string
 							"max", MaxRestartsPerHour,
 						)
 					}
+				} else if crashReason == CrashReasonCodeError {
+					loggerModule.Error("Auto-restart disabled: code error detected (fix your code and restart manually)")
+					m.logger.Info("Auto-restart skipped due to code error", "project", projectIDStr)
 				}
 			} else {
 				loggerModule.Info(fmt.Sprintf("Service stopped after %s (normal shutdown)",
@@ -963,7 +990,7 @@ func (m *Manager) startWithRestartInfo(projectID primitive.ObjectID, code string
 
 		_, err := vm.RunString(code)
 		if err != nil {
-			crashReason = CrashReasonError
+			crashReason = crashReasonForError(err)
 			crashMessage = err.Error()
 			loggerModule.Error(fmt.Sprintf("Runtime error: %v", err))
 			m.logger.Error("Runtime execution error", "project", projectIDStr, "error", err)
@@ -972,7 +999,7 @@ func (m *Manager) startWithRestartInfo(projectID primitive.ObjectID, code string
 
 		loggerModule.Info("Executing boot phase...")
 		if err := serviceModule.ExecuteBoot(); err != nil {
-			crashReason = CrashReasonError
+			crashReason = crashReasonForError(err)
 			crashMessage = fmt.Sprintf("boot: %v", err)
 			loggerModule.Error(fmt.Sprintf("Boot error: %v", err))
 			m.logger.Error("Boot error", "project", projectIDStr, "error", err)
@@ -981,7 +1008,7 @@ func (m *Manager) startWithRestartInfo(projectID primitive.ObjectID, code string
 
 		loggerModule.Info("Executing start phase...")
 		if err := serviceModule.ExecuteStart(); err != nil {
-			crashReason = CrashReasonError
+			crashReason = crashReasonForError(err)
 			crashMessage = fmt.Sprintf("start: %v", err)
 			loggerModule.Error(fmt.Sprintf("Start error: %v", err))
 			m.logger.Error("Start error", "project", projectIDStr, "error", err)
