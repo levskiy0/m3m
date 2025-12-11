@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useParams, Link, useLocation } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
@@ -221,6 +221,13 @@ export function ProjectDashboard() {
 
   const logs: LogEntry[] = Array.isArray(runtime.logs) ? runtime.logs : [];
   const stats = runtime.monitor;
+
+  // Fetch logs when Logs tab is opened
+  useEffect(() => {
+    if (activeTab === 'logs') {
+      runtime.refetchLogs();
+    }
+  }, [activeTab, runtime.refetchLogs]);
 
   const createWidgetMutation = useMutation({
     mutationFn: (data: CreateWidgetRequest) => widgetsApi.create(projectId!, data),

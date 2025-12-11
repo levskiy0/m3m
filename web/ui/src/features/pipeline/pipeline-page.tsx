@@ -137,11 +137,18 @@ export function PipelinePage() {
     : null;
 
   // Use shared runtime hook for logs (includes WebSocket handling)
-  const { logs: logsData = [], downloadLogs } = useProjectRuntime({
+  const { logs: logsData = [], downloadLogs, refetchLogs } = useProjectRuntime({
     projectId: projectId!,
     projectSlug: project?.slug,
     enabled: !!projectId,
   });
+
+  // Fetch logs when Logs tab is opened
+  useEffect(() => {
+    if (activeTab === 'logs') {
+      refetchLogs();
+    }
+  }, [activeTab, refetchLogs]);
 
   const logs: LogEntry[] = Array.isArray(logsData) ? logsData : [];
 
