@@ -28,6 +28,7 @@ const (
 	UIDialogConfirm UIDialogType = "confirm"
 	UIDialogPrompt  UIDialogType = "prompt"
 	UIDialogForm    UIDialogType = "form"
+	UIDialogToast   UIDialogType = "toast"
 )
 
 // UIRequestData is sent to the frontend via WebSocket
@@ -69,6 +70,7 @@ func (u *UIModule) Register(vm interface{}) {
 		"confirm": u.Confirm,
 		"prompt":  u.Prompt,
 		"form":    u.Form,
+		"toast":   u.Toast,
 	})
 }
 
@@ -147,6 +149,34 @@ func (u *UIModule) Alert(call goja.FunctionCall) goja.Value {
 		UIRequestData{
 			RequestID:  uuid.New().String(),
 			DialogType: UIDialogAlert,
+			Options:    options,
+		},
+	)
+
+	return goja.Undefined()
+}
+
+// Toast shows a toast notification (fire-and-forget, auto-dismisses)
+func (u *UIModule) Toast(call goja.FunctionCall) goja.Value {
+	if len(call.Arguments) < 1 {
+		panic(u.vm.NewTypeError("$ui.toast requires options argument"))
+	}
+
+	options := call.Arguments[0].Export()
+	sessionID := u.getSessionID(options)
+
+	if sessionID == "" || u.broadcaster == nil {
+		// No session context or no broadcaster - silently ignore
+		return goja.Undefined()
+	}
+
+	// Send toast to session (fire-and-forget, no callback)
+	u.broadcaster.SendUIRequest(
+		u.projectID.Hex(),
+		sessionID,
+		UIRequestData{
+			RequestID:  uuid.New().String(),
+			DialogType: UIDialogToast,
 			Options:    options,
 		},
 	)
@@ -304,6 +334,15 @@ func (u *UIModule) GetSchema() schema.ModuleSchema {
 				},
 			},
 			{
+				Name:        "ToastOptions",
+				Description: "Options for toast notification",
+				Fields: []schema.ParamSchema{
+					{Name: "text", Type: "string", Description: "Toast message text"},
+					{Name: "icon", Type: "string", Description: "Icon name (optional)"},
+					{Name: "severity", Type: "'info' | 'success' | 'warning' | 'error'", Description: "Toast severity (default: 'info')"},
+				},
+			},
+			{
 				Name:        "ConfirmOptions",
 				Description: "Options for confirm dialog",
 				Fields: []schema.ParamSchema{
@@ -372,6 +411,13 @@ func (u *UIModule) GetSchema() schema.ModuleSchema {
 				Description: "Show an alert notification (fire-and-forget, no callback)",
 				Params: []schema.ParamSchema{
 					{Name: "options", Type: "AlertOptions", Description: "Alert options"},
+				},
+			},
+			{
+				Name:        "toast",
+				Description: "Show a toast notification (fire-and-forget, auto-dismisses)",
+				Params: []schema.ParamSchema{
+					{Name: "options", Type: "ToastOptions", Description: "Toast options"},
 				},
 			},
 			{

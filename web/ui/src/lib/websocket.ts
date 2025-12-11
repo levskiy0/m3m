@@ -4,7 +4,7 @@ import type { ActionRuntimeState } from '@/types';
 
 export type EventType = 'monitor' | 'log' | 'running' | 'goals' | 'actions' | 'ui_request';
 
-export type UIDialogType = 'alert' | 'confirm' | 'prompt' | 'form';
+export type UIDialogType = 'alert' | 'confirm' | 'prompt' | 'form' | 'toast';
 
 export interface UIRequestData {
   requestId: string;
@@ -13,6 +13,7 @@ export interface UIRequestData {
     title?: string;
     text?: string;
     severity?: 'info' | 'success' | 'warning' | 'error';
+    icon?: string;
     yes?: string;
     no?: string;
     placeholder?: string;
