@@ -26,11 +26,20 @@ func (s *ActionService) Create(ctx context.Context, projectID primitive.ObjectID
 		return nil, err
 	}
 
+	// Default ShowInMenu to true if not specified
+	showInMenu := true
+	if req.ShowInMenu != nil {
+		showInMenu = *req.ShowInMenu
+	}
+
 	action := &domain.Action{
-		ProjectID: projectID,
-		Name:      req.Name,
-		Slug:      req.Slug,
-		Order:     maxOrder + 1,
+		ProjectID:  projectID,
+		Name:       req.Name,
+		Slug:       req.Slug,
+		Group:      req.Group,
+		ShowInMenu: showInMenu,
+		Color:      req.Color,
+		Order:      maxOrder + 1,
 	}
 
 	if err := s.actionRepo.Create(ctx, action); err != nil {
@@ -60,6 +69,15 @@ func (s *ActionService) Update(ctx context.Context, id primitive.ObjectID, req *
 
 	if req.Name != nil {
 		action.Name = *req.Name
+	}
+	if req.Group != nil {
+		action.Group = *req.Group
+	}
+	if req.ShowInMenu != nil {
+		action.ShowInMenu = *req.ShowInMenu
+	}
+	if req.Color != nil {
+		action.Color = *req.Color
 	}
 	if req.Order != nil {
 		action.Order = *req.Order

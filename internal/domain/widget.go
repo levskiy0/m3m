@@ -17,6 +17,7 @@ const (
 	WidgetTypeDatabase WidgetType = "database" // Database size widget
 	WidgetTypeUptime   WidgetType = "uptime"   // Uptime widget
 	WidgetTypeJobs     WidgetType = "jobs"     // Scheduled jobs widget
+	WidgetTypeAction   WidgetType = "action"   // Action button widget
 )
 
 type WidgetVariant string
@@ -31,7 +32,8 @@ type Widget struct {
 	ID        primitive.ObjectID  `bson:"_id,omitempty" json:"id"`
 	ProjectID primitive.ObjectID  `bson:"project_id" json:"projectId"`
 	Type      WidgetType          `bson:"type" json:"type"`
-	GoalID    *primitive.ObjectID `bson:"goal_id,omitempty" json:"goalId,omitempty"` // Only for goal widgets
+	GoalID    *primitive.ObjectID `bson:"goal_id,omitempty" json:"goalId,omitempty"`     // Only for goal widgets
+	ActionID  *primitive.ObjectID `bson:"action_id,omitempty" json:"actionId,omitempty"` // Only for action widgets
 	Variant   WidgetVariant       `bson:"variant" json:"variant"`
 	GridSpan  int                 `bson:"grid_span" json:"gridSpan"`
 	Order     int                 `bson:"order" json:"order"`
@@ -41,7 +43,8 @@ type Widget struct {
 
 type CreateWidgetRequest struct {
 	Type     WidgetType    `json:"type" binding:"required"`
-	GoalID   string        `json:"goalId"` // Required only for goal widgets
+	GoalID   string        `json:"goalId"`   // Required only for goal widgets
+	ActionID string        `json:"actionId"` // Required only for action widgets
 	Variant  WidgetVariant `json:"variant" binding:"required"`
 	GridSpan int           `json:"gridSpan"`
 }

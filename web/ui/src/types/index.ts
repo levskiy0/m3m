@@ -173,7 +173,8 @@ export type WidgetType =
   | 'storage'
   | 'database'
   | 'uptime'
-  | 'jobs';
+  | 'jobs'
+  | 'action';
 
 export type WidgetVariant = 'mini' | 'detailed' | 'simple';
 
@@ -182,6 +183,7 @@ export interface Widget {
   projectId: string;
   type: WidgetType;
   goalId?: string; // Only for goal widgets
+  actionId?: string; // Only for action widgets
   variant: WidgetVariant;
   gridSpan: number;
   order: number;
@@ -192,6 +194,7 @@ export interface Widget {
 export interface CreateWidgetRequest {
   type: WidgetType;
   goalId?: string; // Required only for goal widgets
+  actionId?: string; // Required only for action widgets
   variant: WidgetVariant;
   gridSpan?: number;
 }
@@ -478,6 +481,9 @@ export interface Action {
   project_id: string;
   name: string;
   slug: string;
+  group?: string;
+  show_in_menu: boolean;
+  color?: string;
   order: number;
   created_at: string;
   updated_at: string;
@@ -491,10 +497,16 @@ export interface ActionRuntimeState {
 export interface CreateActionRequest {
   name: string;
   slug: string;
+  group?: string;
+  show_in_menu?: boolean;
+  color?: string;
 }
 
 export interface UpdateActionRequest {
   name?: string;
+  group?: string;
+  show_in_menu?: boolean;
+  color?: string;
   order?: number;
 }
 
