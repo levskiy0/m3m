@@ -18,6 +18,16 @@ import (
 	"github.com/levskiy0/m3m/internal/service"
 )
 
+// CrashReason indicates why a runtime stopped
+type CrashReason string
+
+const (
+	CrashReasonNone     CrashReason = ""
+	CrashReasonPanic    CrashReason = "panic"
+	CrashReasonError    CrashReason = "error"
+	CrashReasonShutdown CrashReason = "shutdown"
+)
+
 // ProjectRuntime represents a running project instance
 type ProjectRuntime struct {
 	ProjectID     primitive.ObjectID
@@ -33,6 +43,10 @@ type ProjectRuntime struct {
 	metricsCancel context.CancelFunc
 	lastHitCount  int64
 	lastJobCount  int64
+	code          string      // stored for auto-restart
+	crashReason   CrashReason // reason for last crash
+	crashMessage  string      // crash error message
+	restartCount  int         // number of restarts
 }
 
 // LogBroadcaster interface for broadcasting log updates
@@ -148,7 +162,7 @@ func (m *Manager) Start(ctx context.Context, projectID primitive.ObjectID, code 
 
 	metricsCtx, metricsCancel := context.WithCancel(context.Background())
 
-	runtime := &ProjectRuntime{
+	rt := &ProjectRuntime{
 		ProjectID:     projectID,
 		VM:            vm,
 		Cancel:        cancel,
@@ -160,19 +174,61 @@ func (m *Manager) Start(ctx context.Context, projectID primitive.ObjectID, code 
 		StartedAt:     time.Now(),
 		Metrics:       NewMetricsHistory(),
 		metricsCancel: metricsCancel,
+		code:          code,
 	}
 
-	go runtime.collectMetrics(metricsCtx)
+	go rt.collectMetrics(metricsCtx)
 
 	go func() {
+		var crashReason CrashReason
+		var crashMessage string
+
 		defer func() {
 			if r := recover(); r != nil {
-				loggerModule.Error(fmt.Sprintf("Runtime panic: %v", r))
+				crashReason = CrashReasonPanic
+				crashMessage = fmt.Sprintf("%v", r)
+				// Get stack trace
+				buf := make([]byte, 4096)
+				n := runtime.Stack(buf, false)
+				stackTrace := string(buf[:n])
+
+				loggerModule.Error(fmt.Sprintf("FATAL PANIC: %v", r))
+				loggerModule.Error(fmt.Sprintf("Stack trace:\n%s", stackTrace))
+				m.logger.Error("Runtime panic",
+					"project", projectIDStr,
+					"panic", r,
+					"stack", stackTrace,
+				)
+			}
+
+			// Log shutdown reason
+			rt.crashReason = crashReason
+			rt.crashMessage = crashMessage
+
+			uptime := time.Since(rt.StartedAt)
+			if crashReason != "" {
+				loggerModule.Error(fmt.Sprintf("Service crashed after %s: [%s] %s",
+					formatDuration(uptime), crashReason, crashMessage))
+				m.logger.Error("Service crashed",
+					"project", projectIDStr,
+					"reason", crashReason,
+					"message", crashMessage,
+					"uptime", uptime.String(),
+				)
+			} else {
+				loggerModule.Info(fmt.Sprintf("Service stopped after %s (normal shutdown)",
+					formatDuration(uptime)))
+				m.logger.Info("Service stopped normally",
+					"project", projectIDStr,
+					"uptime", uptime.String(),
+				)
 			}
 		}()
 
 		_, err := vm.RunString(code)
 		if err != nil {
+			crashReason = CrashReasonError
+			crashMessage = err.Error()
 			loggerModule.Error(fmt.Sprintf("Runtime error: %v", err))
 			m.logger.Error("Runtime execution error", "project", projectIDStr, "error", err)
 			return
@@ -180,22 +236,29 @@ func (m *Manager) Start(ctx context.Context, projectID primitive.ObjectID, code 
 
 		loggerModule.Info("Executing boot phase...")
 		if err := serviceModule.ExecuteBoot(); err != nil {
+			crashReason = CrashReasonError
+			crashMessage = fmt.Sprintf("boot: %v", err)
 			loggerModule.Error(fmt.Sprintf("Boot error: %v", err))
 			m.logger.Error("Boot error", "project", projectIDStr, "error", err)
+			return
 		}
 
 		loggerModule.Info("Executing start phase...")
 		if err := serviceModule.ExecuteStart(); err != nil {
 			loggerModule.Error(fmt.Sprintf("Start error: %v", err))
 			m.logger.Error("Start error", "project", projectIDStr, "error", err)
+			// Don't return - continue running even if start callback has error
 		}
 
 		schedulerModule.Start()
 
 		loggerModule.Info("Service is running")
 
+		// Wait for shutdown signal
 		<-runtimeCtx.Done()
 
+		// Normal shutdown - not a crash
+		loggerModule.Info("Shutdown signal received")
 		loggerModule.Info("Executing shutdown phase...")
 		if err := serviceModule.ExecuteShutdown(); err != nil {
 			loggerModule.Error(fmt.Sprintf("Shutdown error: %v", err))
@@ -206,7 +269,7 @@ func (m *Manager) Start(ctx context.Context, projectID primitive.ObjectID, code 
 		loggerModule.Close()
 	}()
 
-	m.runtimes[projectIDStr] = runtime
+	m.runtimes[projectIDStr] = rt
 	m.logger.Info("Project started", "project", projectIDStr)
 
 	return nil

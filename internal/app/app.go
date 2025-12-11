@@ -260,7 +260,8 @@ func AutoStartRuntimes(
 						}
 					}
 
-					if err := runtimeManager.Start(ctx, project.ID, release.Code); err != nil {
+					// Use background context - runtime should outlive the OnStart callback
+					if err := runtimeManager.Start(context.Background(), project.ID, release.Code); err != nil {
 						logger.Error("Failed to autostart project",
 							"project", project.Slug, "error", err)
 						projectService.UpdateStatus(ctx, project.ID, domain.ProjectStatusStopped)
