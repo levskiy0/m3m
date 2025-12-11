@@ -27,10 +27,12 @@ class WebSocketClient {
   private ws: WebSocket | null = null;
   private reconnectTimeout: number | null = null;
   private handlers: WSEventHandlers = {};
-  private subscribedProjects: Set<string> = new Set();
+  private subscriptionCounts: Map<string, number> = new Map(); // reference counting
+  private pendingUnsubscribes: Map<string, number> = new Map(); // debounce unsubscribes
   private reconnectAttempts = 0;
   private maxReconnectAttempts = 5;
   private reconnectDelay = 1000;
+  private unsubscribeDelay = 500; // ms to wait before actually unsubscribing
 
   private getWSUrl(): string {
     // config.apiURL is like http://localhost:8080 or https://example.com
@@ -68,7 +70,7 @@ class WebSocketClient {
         this.handlers.onConnect?.();
 
         // Re-subscribe to projects
-        this.subscribedProjects.forEach(projectId => {
+        this.subscriptionCounts.forEach((_, projectId) => {
           this.sendSubscribe(projectId);
         });
       };
@@ -117,12 +119,16 @@ class WebSocketClient {
       this.reconnectTimeout = null;
     }
 
+    // Clear pending unsubscribes
+    this.pendingUnsubscribes.forEach((timeout) => clearTimeout(timeout));
+    this.pendingUnsubscribes.clear();
+
     if (this.ws) {
       this.ws.close();
       this.ws = null;
     }
 
-    this.subscribedProjects.clear();
+    this.subscriptionCounts.clear();
   }
 
   private handleMessage(data: string): void {
@@ -171,16 +177,41 @@ class WebSocketClient {
   }
 
   subscribe(projectId: string): void {
-    this.subscribedProjects.add(projectId);
-    if (this.ws?.readyState === WebSocket.OPEN) {
+    // Cancel any pending unsubscribe
+    const pendingTimeout = this.pendingUnsubscribes.get(projectId);
+    if (pendingTimeout) {
+      clearTimeout(pendingTimeout);
+      this.pendingUnsubscribes.delete(projectId);
+    }
+
+    const count = this.subscriptionCounts.get(projectId) || 0;
+    this.subscriptionCounts.set(projectId, count + 1);
+
+    // Only send subscribe on first subscription
+    if (count === 0 && this.ws?.readyState === WebSocket.OPEN) {
       this.sendSubscribe(projectId);
     }
   }
 
   unsubscribe(projectId: string): void {
-    this.subscribedProjects.delete(projectId);
-    if (this.ws?.readyState === WebSocket.OPEN) {
-      this.sendUnsubscribe(projectId);
+    const count = this.subscriptionCounts.get(projectId) || 0;
+    if (count <= 1) {
+      // Last subscriber - schedule unsubscribe with delay
+      this.subscriptionCounts.delete(projectId);
+
+      // Debounce: wait before actually unsubscribing
+      const timeout = window.setTimeout(() => {
+        this.pendingUnsubscribes.delete(projectId);
+        // Only unsubscribe if still not re-subscribed
+        if (!this.subscriptionCounts.has(projectId) && this.ws?.readyState === WebSocket.OPEN) {
+          this.sendUnsubscribe(projectId);
+        }
+      }, this.unsubscribeDelay);
+
+      this.pendingUnsubscribes.set(projectId, timeout);
+    } else {
+      // Still have other subscribers
+      this.subscriptionCounts.set(projectId, count - 1);
     }
   }
 
