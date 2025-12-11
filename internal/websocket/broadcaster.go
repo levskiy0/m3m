@@ -14,6 +14,9 @@ import (
 	"github.com/levskiy0/m3m/internal/service"
 )
 
+// Verify Broadcaster implements RuntimeStopHandler at compile time
+var _ runtime.RuntimeStopHandler = (*Broadcaster)(nil)
+
 // GoalStatsResponse represents aggregated goal statistics (same as handler)
 type GoalStatsResponse struct {
 	GoalID     string          `json:"goalID"`
@@ -35,12 +38,19 @@ type RuntimeManager interface {
 	GetRunningProjects() []primitive.ObjectID
 }
 
+// ProjectService interface for updating project status
+type ProjectService interface {
+	UpdateStatus(ctx context.Context, projectID primitive.ObjectID, status domain.ProjectStatus) error
+	SetRunningSource(ctx context.Context, projectID primitive.ObjectID, source string) error
+}
+
 // Broadcaster handles periodic event broadcasting
 type Broadcaster struct {
 	hub            *Hub
 	logger         *slog.Logger
 	runtimeManager RuntimeManager
 	goalService    *service.GoalService
+	projectService ProjectService
 
 	// Track last log update times per project
 	lastLogUpdate map[string]time.Time
@@ -66,6 +76,11 @@ func NewBroadcaster(
 // SetRuntimeManager sets the runtime manager (called after runtime.Manager is created)
 func (b *Broadcaster) SetRuntimeManager(rm RuntimeManager) {
 	b.runtimeManager = rm
+}
+
+// SetProjectService sets the project service for status updates
+func (b *Broadcaster) SetProjectService(ps ProjectService) {
+	b.projectService = ps
 }
 
 // Start starts the broadcaster goroutines
@@ -314,4 +329,38 @@ func (b *Broadcaster) BroadcastActionStates(projectID string, states []domain.Ac
 	}
 
 	b.hub.BroadcastToProject(projectID, EventActions, states)
+}
+
+// OnRuntimeStopped implements runtime.RuntimeStopHandler
+// Called when a runtime stops (either normally or due to crash)
+func (b *Broadcaster) OnRuntimeStopped(projectID primitive.ObjectID, reason runtime.CrashReason, message string) {
+	projectIDStr := projectID.Hex()
+
+	b.logger.Info("Runtime stopped, updating status and broadcasting",
+		"project", projectIDStr,
+		"reason", reason,
+		"message", message,
+	)
+
+	// Update project status in database
+	if b.projectService != nil {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+
+		if err := b.projectService.UpdateStatus(ctx, projectID, domain.ProjectStatusStopped); err != nil {
+			b.logger.Error("Failed to update project status on runtime stop",
+				"project", projectIDStr,
+				"error", err,
+			)
+		}
+		if err := b.projectService.SetRunningSource(ctx, projectID, ""); err != nil {
+			b.logger.Error("Failed to clear running source on runtime stop",
+				"project", projectIDStr,
+				"error", err,
+			)
+		}
+	}
+
+	// Broadcast running=false to all subscribers
+	b.BroadcastRunning(projectIDStr, false)
 }

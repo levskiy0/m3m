@@ -76,6 +76,7 @@ M3M_PORT=8080
 M3M_JWT_SECRET=$JWT_SECRET
 M3M_SERVER_URI=http://localhost:8080
 M3M_DATABASE_DRIVER=mongodb
+LOG_LEVEL=info
 EOF
         log "Created config: $M3M_CONFIG"
     fi
@@ -171,6 +172,7 @@ cmd_start() {
         -e "M3M_JWT_SECRET=$M3M_JWT_SECRET" \
         -e "M3M_SERVER_URI=$M3M_SERVER_URI" \
         -e "M3M_DATABASE_DRIVER=${M3M_DATABASE_DRIVER:-mongodb}" \
+        -e "M3M_LOGGING_LEVEL=${LOG_LEVEL:-info}" \
         "$M3M_IMAGE"
 
     log "Started! $M3M_SERVER_URI"
@@ -292,6 +294,7 @@ Config variables:
   M3M_PORT           Server port (default: 8080)
   M3M_JWT_SECRET     JWT signing secret (auto-generated)
   M3M_SERVER_URI     Public server URI
+  LOG_LEVEL          Logging level: debug, info, warn, error (default: info)
 
 EOF
 }

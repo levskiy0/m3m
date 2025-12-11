@@ -363,19 +363,27 @@ func (m *Manager) Start(ctx context.Context, projectID primitive.ObjectID, code 
 	return nil
 }
 
-func (m *Manager) stopRuntime(runtime *ProjectRuntime) {
-	if runtime.metricsCancel != nil {
-		runtime.metricsCancel()
+func (m *Manager) stopRuntime(rt *ProjectRuntime) {
+	// Log who is stopping the runtime with stack trace
+	buf := make([]byte, 4096)
+	n := runtime.Stack(buf, false)
+	m.logger.Debug("stopRuntime called",
+		"project", rt.ProjectID.Hex(),
+		"stack", string(buf[:n]),
+	)
+
+	if rt.metricsCancel != nil {
+		rt.metricsCancel()
 	}
-	if runtime.Service != nil {
-		runtime.Service.ExecuteShutdown()
+	if rt.Service != nil {
+		rt.Service.ExecuteShutdown()
 	}
-	runtime.Cancel()
-	if runtime.Scheduler != nil {
-		runtime.Scheduler.Stop()
+	rt.Cancel()
+	if rt.Scheduler != nil {
+		rt.Scheduler.Stop()
 	}
-	if runtime.Logger != nil {
-		runtime.Logger.Close()
+	if rt.Logger != nil {
+		rt.Logger.Close()
 	}
 }
 

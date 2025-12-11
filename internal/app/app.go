@@ -286,14 +286,17 @@ func StartWebSocket(
 	hub *websocket.Hub,
 	broadcaster *websocket.Broadcaster,
 	runtimeManager *runtime.Manager,
+	projectService *service.ProjectService,
 ) {
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
 			go hub.Run()
 
 			broadcaster.SetRuntimeManager(runtimeManager)
+			broadcaster.SetProjectService(projectService)
 			runtimeManager.SetLogBroadcaster(broadcaster)
 			runtimeManager.SetActionBroadcaster(broadcaster)
+			runtimeManager.SetStopHandler(broadcaster)
 			broadcaster.Start(ctx)
 
 			logger.Info("WebSocket hub and broadcaster started")
