@@ -80,8 +80,8 @@ export const runtimeApi = {
     return api.post(`/api/projects/${projectId}/stop`);
   },
 
-  restart: async (projectId: string): Promise<void> => {
-    return api.post(`/api/projects/${projectId}/restart`);
+  restart: async (projectId: string, options?: StartOptions): Promise<{ runningSource?: string }> => {
+    return api.post(`/api/projects/${projectId}/restart`, options);
   },
 
   status: async (projectId: string): Promise<RuntimeStatus> => {

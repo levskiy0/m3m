@@ -130,7 +130,7 @@ export function useProjectRuntime({
   });
 
   const restartMutation = useMutation({
-    mutationFn: () => runtimeApi.restart(projectId),
+    mutationFn: (options?: StartOptions) => runtimeApi.restart(projectId, options),
     onSuccess: () => {
       invalidateAll();
       toast.success('Service restarted');
@@ -173,7 +173,7 @@ export function useProjectRuntime({
     // Mutations
     start: startMutation.mutate,
     stop: stopMutation.mutate,
-    restart: restartMutation.mutate,
+    restart: (options?: StartOptions) => restartMutation.mutate(options),
     isStarting: startMutation.isPending,
     isStopping: stopMutation.isPending,
     isRestarting: restartMutation.isPending,

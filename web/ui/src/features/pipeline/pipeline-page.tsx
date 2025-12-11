@@ -315,6 +315,18 @@ export function PipelinePage() {
     },
   });
 
+  const restartDebugMutation = useMutation({
+    mutationFn: (branchName: string) => runtimeApi.restart(projectId!, { branch: branchName }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['project', projectId] });
+      queryClient.invalidateQueries({ queryKey: ['logs', projectId] });
+      toast.success('Service restarted');
+    },
+    onError: (err) => {
+      toast.error(err instanceof Error ? err.message : 'Failed to restart');
+    },
+  });
+
   const stopDebugMutation = useMutation({
     mutationFn: () => runtimeApi.stop(projectId!),
     onSuccess: () => {
@@ -382,7 +394,7 @@ export function PipelinePage() {
   }, [hasChanges, saveMutation]);
 
   const handleRunOrRestart = useCallback(async () => {
-    if (!currentBranch || saveMutation.isPending || startDebugMutation.isPending) return;
+    if (!currentBranch || saveMutation.isPending || startDebugMutation.isPending || restartDebugMutation.isPending) return;
     // Can't start if another release is running
     if (isRunning && !isDebugMode) return;
 
@@ -390,11 +402,13 @@ export function PipelinePage() {
       await saveMutation.mutateAsync();
     }
     if (runningBranch === currentBranch.name) {
-      // Restart: stop then start
-      await stopDebugMutation.mutateAsync();
+      // Restart with the same branch
+      restartDebugMutation.mutate(currentBranch.name);
+    } else {
+      // Start new debug session
+      startDebugMutation.mutate(currentBranch.name);
     }
-    startDebugMutation.mutate(currentBranch.name);
-  }, [currentBranch, hasChanges, runningBranch, isRunning, isDebugMode, saveMutation, startDebugMutation, stopDebugMutation]);
+  }, [currentBranch, hasChanges, runningBranch, isRunning, isDebugMode, saveMutation, startDebugMutation, restartDebugMutation]);
 
   const handleStop = useCallback(() => {
     if (isDebugMode && !stopDebugMutation.isPending) {
@@ -543,10 +557,10 @@ export function PipelinePage() {
                           variant="outline"
                           size="sm"
                           onClick={handleRunOrRestart}
-                          disabled={stopDebugMutation.isPending || startDebugMutation.isPending || saveMutation.isPending}
+                          disabled={restartDebugMutation.isPending || saveMutation.isPending}
                           className="border-amber-500/50 text-amber-600 hover:bg-amber-500/10"
                         >
-                          <RotateCcw className="mr-2 size-4" />
+                          <RotateCcw className={cn("mr-2 size-4", restartDebugMutation.isPending && "animate-spin")} />
                           Restart
                           <Kbd className="ml-2">^,</Kbd>
                         </Button>
