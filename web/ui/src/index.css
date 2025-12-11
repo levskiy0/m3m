@@ -135,4 +135,6 @@
   background-color: #ff0000;
   border-radius: 50%;
   margin-left: 5px;
+  width: 16px !important;
+  height: 16px !important;
 }
