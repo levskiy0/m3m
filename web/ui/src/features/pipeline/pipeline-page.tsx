@@ -117,12 +117,12 @@ export function PipelinePage() {
     ? project?.runningSource?.replace('release:', '')
     : null;
 
-  // Fetch logs when running debug mode
+  // Fetch logs (always load, refresh when running)
   const { data: logsData = [] } = useQuery({
     queryKey: ['logs', projectId],
     queryFn: () => runtimeApi.logs(projectId!),
-    enabled: !!projectId && isDebugMode,
-    refetchInterval: isDebugMode ? 2000 : false,
+    enabled: !!projectId,
+    refetchInterval: isRunning ? 2000 : false,
   });
 
   const logs: LogEntry[] = Array.isArray(logsData) ? logsData : [];
