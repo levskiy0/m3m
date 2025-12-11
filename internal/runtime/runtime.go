@@ -66,7 +66,7 @@ type ProjectRuntime struct {
 	Router        *modules.RouterModule
 	Scheduler     *modules.ScheduleModule
 	Service       *modules.ServiceModule
-	Actions       *modules.ActionsModule
+	Hook          *modules.HookModule
 	StartedAt     time.Time
 	Metrics       *MetricsHistory
 	metricsCancel context.CancelFunc
@@ -86,8 +86,8 @@ type LogBroadcaster interface {
 	BroadcastLogUpdate(projectID string)
 }
 
-// ActionBroadcaster interface for broadcasting action state changes
-type ActionBroadcaster interface {
+// HookBroadcaster interface for broadcasting action state changes
+type HookBroadcaster interface {
 	BroadcastActionStates(projectID string, states []domain.ActionRuntimeState)
 }
 
@@ -98,18 +98,18 @@ type RuntimeStopHandler interface {
 
 // Manager manages all project runtimes
 type Manager struct {
-	runtimes          map[string]*ProjectRuntime
-	mu                sync.RWMutex
-	config            *config.Config
-	logger            *slog.Logger
-	plugins           *plugin.Loader
-	envService        *service.EnvironmentService
-	goalService       *service.GoalService
-	modelService      *service.ModelService
-	storageService    *service.StorageService
-	logBroadcaster    LogBroadcaster
-	actionBroadcaster ActionBroadcaster
-	stopHandler       RuntimeStopHandler
+	runtimes        map[string]*ProjectRuntime
+	mu              sync.RWMutex
+	config          *config.Config
+	logger          *slog.Logger
+	plugins         *plugin.Loader
+	envService      *service.EnvironmentService
+	goalService     *service.GoalService
+	modelService    *service.ModelService
+	storageService  *service.StorageService
+	logBroadcaster  LogBroadcaster
+	hookBroadcaster HookBroadcaster
+	stopHandler     RuntimeStopHandler
 }
 
 func NewManager(
@@ -138,9 +138,9 @@ func (m *Manager) SetLogBroadcaster(broadcaster LogBroadcaster) {
 	m.logBroadcaster = broadcaster
 }
 
-// SetActionBroadcaster sets the action broadcaster for notifying about action state changes
-func (m *Manager) SetActionBroadcaster(broadcaster ActionBroadcaster) {
-	m.actionBroadcaster = broadcaster
+// SetHookBroadcaster sets the hook broadcaster for notifying about action state changes
+func (m *Manager) SetHookBroadcaster(broadcaster HookBroadcaster) {
+	m.hookBroadcaster = broadcaster
 }
 
 // SetStopHandler sets the handler for runtime stop events
@@ -185,7 +185,7 @@ func (m *Manager) Start(ctx context.Context, projectID primitive.ObjectID, code 
 	routerModule.SetVM(vm)
 	schedulerModule := modules.NewScheduleModule(m.logger)
 	serviceModule := modules.NewServiceModule(vm, m.config.Runtime.Timeout)
-	actionsModule := modules.NewActionsModule(vm, projectID, m.actionBroadcaster)
+	hookModule := modules.NewHookModule(vm, projectID, m.hookBroadcaster)
 
 	// Create env getter for lazy loading (enables hot reload of env vars)
 	envGetter := func() map[string]interface{} {
@@ -193,7 +193,7 @@ func (m *Manager) Start(ctx context.Context, projectID primitive.ObjectID, code 
 		return envMap
 	}
 
-	if err := m.registerModules(vm, projectID, loggerModule, routerModule, schedulerModule, serviceModule, actionsModule, envGetter); err != nil {
+	if err := m.registerModules(vm, projectID, loggerModule, routerModule, schedulerModule, serviceModule, hookModule, envGetter); err != nil {
 		cancel()
 		return fmt.Errorf("failed to register modules: %w", err)
 	}
@@ -215,7 +215,7 @@ func (m *Manager) Start(ctx context.Context, projectID primitive.ObjectID, code 
 		Router:        routerModule,
 		Scheduler:     schedulerModule,
 		Service:       serviceModule,
-		Actions:       actionsModule,
+		Hook:          hookModule,
 		StartedAt:     time.Now(),
 		Metrics:       NewMetricsHistory(),
 		metricsCancel: metricsCancel,
@@ -295,7 +295,13 @@ func (m *Manager) Start(ctx context.Context, projectID primitive.ObjectID, code 
 			}
 
 			// Notify stop handler (for updating status in DB)
-			if m.stopHandler != nil {
+			// But only if this runtime is still the current one (not replaced by a new Start)
+			m.mu.RLock()
+			currentRT, isCurrentRuntime := m.runtimes[projectIDStr]
+			isReplaced := isCurrentRuntime && currentRT != rt
+			m.mu.RUnlock()
+
+			if m.stopHandler != nil && !isReplaced {
 				m.stopHandler.OnRuntimeStopped(projectID, crashReason, crashMessage, shouldRestart)
 			}
 
@@ -334,8 +340,11 @@ func (m *Manager) Start(ctx context.Context, projectID primitive.ObjectID, code 
 				}()
 			} else {
 				// Remove from runtimes map only if not restarting
+				// Check if this runtime is still the current one (not replaced by a new Start)
 				m.mu.Lock()
-				delete(m.runtimes, projectIDStr)
+				if currentRT, ok := m.runtimes[projectIDStr]; ok && currentRT == rt {
+					delete(m.runtimes, projectIDStr)
+				}
 				m.mu.Unlock()
 			}
 		}()
@@ -528,11 +537,11 @@ func (m *Manager) TriggerAction(projectID primitive.ObjectID, slug string) error
 		return fmt.Errorf("project not running")
 	}
 
-	if runtime.Actions == nil {
-		return fmt.Errorf("actions module not initialized")
+	if runtime.Hook == nil {
+		return fmt.Errorf("hook module not initialized")
 	}
 
-	return runtime.Actions.Trigger(slug)
+	return runtime.Hook.TriggerAction(slug)
 }
 
 // GetActionStates returns current action states for a project
@@ -541,11 +550,28 @@ func (m *Manager) GetActionStates(projectID primitive.ObjectID) []domain.ActionR
 	runtime, ok := m.runtimes[projectID.Hex()]
 	m.mu.RUnlock()
 
-	if !ok || runtime.Actions == nil {
+	if !ok || runtime.Hook == nil {
 		return nil
 	}
 
-	return runtime.Actions.GetStates()
+	return runtime.Hook.GetActionStates()
+}
+
+// TriggerModelHook triggers a model hook in a running project
+func (m *Manager) TriggerModelHook(projectID primitive.ObjectID, modelSlug string, hookType modules.ModelHookType, data map[string]interface{}) error {
+	m.mu.RLock()
+	runtime, ok := m.runtimes[projectID.Hex()]
+	m.mu.RUnlock()
+
+	if !ok {
+		return nil // Project not running, skip hook
+	}
+
+	if runtime.Hook == nil {
+		return nil
+	}
+
+	return runtime.Hook.TriggerModelHook(modelSlug, hookType, data)
 }
 
 // StopAll stops all running runtimes (for graceful shutdown)
@@ -736,7 +762,7 @@ func (m *Manager) registerModules(
 	routerModule *modules.RouterModule,
 	schedulerModule *modules.ScheduleModule,
 	serviceModule *modules.ServiceModule,
-	actionsModule *modules.ActionsModule,
+	hookModule *modules.HookModule,
 	envGetter func() map[string]interface{},
 ) error {
 	projectIDStr := projectID.Hex()
@@ -746,7 +772,7 @@ func (m *Manager) registerModules(
 	loggerModule.Register(vm) // Also registers console
 	routerModule.Register(vm)
 	schedulerModule.Register(vm)
-	actionsModule.Register(vm)
+	hookModule.Register(vm)
 
 	// Environment-dependent modules (lazy loading for hot reload)
 	envModule := modules.NewEnvModule(envGetter)
@@ -829,7 +855,7 @@ func (m *Manager) startWithRestartInfo(projectID primitive.ObjectID, code string
 	routerModule.SetVM(vm)
 	schedulerModule := modules.NewScheduleModule(m.logger)
 	serviceModule := modules.NewServiceModule(vm, m.config.Runtime.Timeout)
-	actionsModule := modules.NewActionsModule(vm, projectID, m.actionBroadcaster)
+	hookModule := modules.NewHookModule(vm, projectID, m.hookBroadcaster)
 
 	// Create env getter for lazy loading (enables hot reload of env vars)
 	envGetter := func() map[string]interface{} {
@@ -837,7 +863,7 @@ func (m *Manager) startWithRestartInfo(projectID primitive.ObjectID, code string
 		return envMap
 	}
 
-	if err := m.registerModules(vm, projectID, loggerModule, routerModule, schedulerModule, serviceModule, actionsModule, envGetter); err != nil {
+	if err := m.registerModules(vm, projectID, loggerModule, routerModule, schedulerModule, serviceModule, hookModule, envGetter); err != nil {
 		cancel()
 		return fmt.Errorf("failed to register modules: %w", err)
 	}
@@ -859,7 +885,7 @@ func (m *Manager) startWithRestartInfo(projectID primitive.ObjectID, code string
 		Router:        routerModule,
 		Scheduler:     schedulerModule,
 		Service:       serviceModule,
-		Actions:       actionsModule,
+		Hook:          hookModule,
 		StartedAt:     time.Now(),
 		Metrics:       NewMetricsHistory(),
 		metricsCancel: metricsCancel,
@@ -941,7 +967,13 @@ func (m *Manager) startWithRestartInfo(projectID primitive.ObjectID, code string
 			}
 
 			// Notify stop handler (for updating status in DB)
-			if m.stopHandler != nil {
+			// But only if this runtime is still the current one (not replaced by a new Start)
+			m.mu.RLock()
+			currentRT, isCurrentRuntime := m.runtimes[projectIDStr]
+			isReplaced := isCurrentRuntime && currentRT != rt
+			m.mu.RUnlock()
+
+			if m.stopHandler != nil && !isReplaced {
 				m.stopHandler.OnRuntimeStopped(projectID, crashReason, crashMessage, shouldRestart)
 			}
 
@@ -980,8 +1012,11 @@ func (m *Manager) startWithRestartInfo(projectID primitive.ObjectID, code string
 				}()
 			} else {
 				// Remove from runtimes map only if not restarting
+				// Check if this runtime is still the current one (not replaced by a new Start)
 				m.mu.Lock()
-				delete(m.runtimes, projectIDStr)
+				if currentRT, ok := m.runtimes[projectIDStr]; ok && currentRT == rt {
+					delete(m.runtimes, projectIDStr)
+				}
 				m.mu.Unlock()
 			}
 		}()

@@ -295,7 +295,7 @@ func StartWebSocket(
 			broadcaster.SetRuntimeManager(runtimeManager)
 			broadcaster.SetProjectService(projectService)
 			runtimeManager.SetLogBroadcaster(broadcaster)
-			runtimeManager.SetActionBroadcaster(broadcaster)
+			runtimeManager.SetHookBroadcaster(broadcaster)
 			runtimeManager.SetStopHandler(broadcaster)
 			broadcaster.Start(ctx)
 

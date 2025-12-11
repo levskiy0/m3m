@@ -9,18 +9,22 @@ import (
 
 	"github.com/levskiy0/m3m/internal/domain"
 	"github.com/levskiy0/m3m/internal/middleware"
+	"github.com/levskiy0/m3m/internal/runtime"
+	"github.com/levskiy0/m3m/internal/runtime/modules"
 	"github.com/levskiy0/m3m/internal/service"
 )
 
 type ModelHandler struct {
 	modelService   *service.ModelService
 	projectService *service.ProjectService
+	runtimeManager *runtime.Manager
 }
 
-func NewModelHandler(modelService *service.ModelService, projectService *service.ProjectService) *ModelHandler {
+func NewModelHandler(modelService *service.ModelService, projectService *service.ProjectService, runtimeManager *runtime.Manager) *ModelHandler {
 	return &ModelHandler{
 		modelService:   modelService,
 		projectService: projectService,
+		runtimeManager: runtimeManager,
 	}
 }
 
@@ -238,7 +242,7 @@ func (h *ModelHandler) ListData(c *gin.Context) {
 }
 
 func (h *ModelHandler) CreateData(c *gin.Context) {
-	_, ok := h.checkAccess(c)
+	projectID, ok := h.checkAccess(c)
 	if !ok {
 		return
 	}
@@ -267,6 +271,11 @@ func (h *ModelHandler) CreateData(c *gin.Context) {
 		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
+	}
+
+	// Trigger model insert hook
+	if model, err := h.modelService.GetByID(c.Request.Context(), modelID); err == nil {
+		h.runtimeManager.TriggerModelHook(projectID, model.Slug, modules.ModelHookInsert, result)
 	}
 
 	c.JSON(http.StatusCreated, result)
@@ -345,7 +354,7 @@ func (h *ModelHandler) GetData(c *gin.Context) {
 }
 
 func (h *ModelHandler) UpdateData(c *gin.Context) {
-	_, ok := h.checkAccess(c)
+	projectID, ok := h.checkAccess(c)
 	if !ok {
 		return
 	}
@@ -381,11 +390,17 @@ func (h *ModelHandler) UpdateData(c *gin.Context) {
 		return
 	}
 
+	// Trigger model update hook with updated data
+	if model, err := h.modelService.GetByID(c.Request.Context(), modelID); err == nil {
+		data["_id"] = dataID.Hex()
+		h.runtimeManager.TriggerModelHook(projectID, model.Slug, modules.ModelHookUpdate, data)
+	}
+
 	c.JSON(http.StatusOK, gin.H{"message": "data updated successfully"})
 }
 
 func (h *ModelHandler) DeleteData(c *gin.Context) {
-	_, ok := h.checkAccess(c)
+	projectID, ok := h.checkAccess(c)
 	if !ok {
 		return
 	}
@@ -407,11 +422,18 @@ func (h *ModelHandler) DeleteData(c *gin.Context) {
 		return
 	}
 
+	// Trigger model delete hook
+	if model, err := h.modelService.GetByID(c.Request.Context(), modelID); err == nil {
+		h.runtimeManager.TriggerModelHook(projectID, model.Slug, modules.ModelHookDelete, map[string]interface{}{
+			"_id": dataID.Hex(),
+		})
+	}
+
 	c.JSON(http.StatusOK, gin.H{"message": "data deleted successfully"})
 }
 
 func (h *ModelHandler) BulkDeleteData(c *gin.Context) {
-	_, ok := h.checkAccess(c)
+	projectID, ok := h.checkAccess(c)
 	if !ok {
 		return
 	}
@@ -444,6 +466,15 @@ func (h *ModelHandler) BulkDeleteData(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
+	}
+
+	// Trigger model delete hook for each deleted item
+	if model, err := h.modelService.GetByID(c.Request.Context(), modelID); err == nil {
+		for _, id := range objectIDs {
+			h.runtimeManager.TriggerModelHook(projectID, model.Slug, modules.ModelHookDelete, map[string]interface{}{
+				"_id": id.Hex(),
+			})
+		}
 	}
 
 	c.JSON(http.StatusOK, gin.H{
