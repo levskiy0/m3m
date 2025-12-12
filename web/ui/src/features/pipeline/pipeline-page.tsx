@@ -163,12 +163,12 @@ export function PipelinePage() {
     enabled: !!projectId,
   });
 
-  // Fetch logs when Logs tab or split panel is opened
+  // Fetch logs when Logs tab or split panel is opened (only in debug mode)
   useEffect(() => {
-    if (activeTab === 'logs' || viewMode === 'split') {
+    if (isDebugMode && (activeTab === 'logs' || viewMode === 'split')) {
       refetchLogs();
     }
-  }, [activeTab, viewMode, refetchLogs]);
+  }, [activeTab, viewMode, isDebugMode, refetchLogs]);
 
   const logs: LogEntry[] = Array.isArray(logsData) ? logsData : [];
 
@@ -539,7 +539,7 @@ export function PipelinePage() {
             Editor
           </EditorTab>
 
-          {viewMode === 'tabs' && (
+          {viewMode === 'tabs' && isDebugMode && (
             <EditorTab
               active={activeTab === 'logs'}
               onClick={() => setActiveTab('logs')}
@@ -549,7 +549,7 @@ export function PipelinePage() {
                   <Badge variant="destructive" className="ml-1 h-5 px-1.5 text-xs">
                     {logs.filter(l => l.level === 'error').length}
                   </Badge>
-                ) : isDebugMode && runningBranch === currentBranch?.name ? (
+                ) : runningBranch === currentBranch?.name ? (
                   <Badge variant="outline" className="ml-1 border-amber-500/50 text-amber-500 text-[10px] h-[20px] py-0">
                     {runningBranch}
                   </Badge>
@@ -696,26 +696,28 @@ export function PipelinePage() {
                     Save
                     <Kbd className="ml-2">^S</Kbd>
                   </LoadingButton>
-                  {/* View Mode Toggle */}
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={toggleViewMode}
-                        className="size-8"
-                      >
-                        {viewMode === 'split' ? (
-                          <PanelRightClose className="size-4" />
-                        ) : (
-                          <PanelRight className="size-4" />
-                        )}
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      {viewMode === 'split' ? 'Hide logs panel' : 'Show logs panel'}
-                    </TooltipContent>
-                  </Tooltip>
+                  {/* View Mode Toggle (only in debug mode) */}
+                  {isDebugMode && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={toggleViewMode}
+                          className="size-8"
+                        >
+                          {viewMode === 'split' ? (
+                            <PanelRightClose className="size-4" />
+                          ) : (
+                            <PanelRight className="size-4" />
+                          )}
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        {viewMode === 'split' ? 'Hide logs panel' : 'Show logs panel'}
+                      </TooltipContent>
+                    </Tooltip>
+                  )}
                 </div>
               </div>
               {/* Code Editor with optional Logs Panel */}
@@ -737,7 +739,7 @@ export function PipelinePage() {
                     />
                   </div>
                 </ResizablePanel>
-                {viewMode === 'split' && (
+                {viewMode === 'split' && isDebugMode && (
                   <>
                     <ResizableHandle />
                     <ResizablePanel defaultSize={30} minSize={15} maxSize={50}>
@@ -759,12 +761,12 @@ export function PipelinePage() {
             </>
           )}
 
-          {/* Logs Content (only in tabs mode) */}
-          {activeTab === 'logs' && viewMode === 'tabs' && (
+          {/* Logs Content (only in tabs mode, only in debug mode) */}
+          {activeTab === 'logs' && viewMode === 'tabs' && isDebugMode && (
             <LogsViewer
               logs={logs}
               limit={500}
-              emptyMessage={isRunning ? "Waiting for logs..." : "No logs available. Start the service to see logs."}
+              emptyMessage="Waiting for logs..."
               onDownload={downloadLogs}
               onRefresh={refetchLogs}
               height="100%"
