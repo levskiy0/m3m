@@ -195,10 +195,16 @@ func loadPluginSchema(path string) (schema.ModuleSchema, error) {
 
 func main() {
 	flag.StringVar(&httpAddr, "http", "", "HTTP address to listen on (e.g., :3100)")
-	flag.StringV
+	flag.StringVar(&pluginsPath, "plugins", "./plugins", "Path to plugins directory containing .so files")
 	flag.Parse()
 
- "plugins", "./plugins", "Path to plugins directory containing .so files"
+	// Load plugin schemas and append to built-in modules
+	pluginSchemas := loadPluginSchemas(pluginsPath)
+	if len(pluginSchemas) > 0 {
+		moduleSchemas = append(moduleSchemas, pluginSchemas...)
+		fmt.Fprintf(os.Stderr, "Loaded %d plugins\n", len(pluginSchemas))
+	}
+
 	if httpAddr != "" {
 		runHTTPServer()
 	} else {
