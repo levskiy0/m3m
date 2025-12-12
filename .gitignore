@@ -12,7 +12,7 @@ issue.md
 dev.sh
 
 test/
-plugins/*.so
+plugins/
 storage/
 
 web/ui/dist

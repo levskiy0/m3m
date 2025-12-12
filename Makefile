@@ -109,7 +109,14 @@ build-plugin:
 	fi
 	@echo "Building plugin $(PLUGIN)..."
 	@mkdir -p $(BUILD_DIR)/plugins
-	cd plugins/$(PLUGIN) && $(GOBUILD) -buildmode=plugin -o ../$(PLUGIN).so
+	@if [ -d "plugins/m3m-$(PLUGIN)" ]; then \
+		cd plugins/m3m-$(PLUGIN) && $(GOBUILD) -buildmode=plugin -o ../$(PLUGIN).so; \
+	elif [ -d "plugins/$(PLUGIN)" ]; then \
+		cd plugins/$(PLUGIN) && $(GOBUILD) -buildmode=plugin -o ../$(PLUGIN).so; \
+	else \
+		echo "Plugin not found: $(PLUGIN)"; \
+		exit 1; \
+	fi
 	@cp plugins/$(PLUGIN).so $(BUILD_DIR)/plugins/
 
 # Build all plugins

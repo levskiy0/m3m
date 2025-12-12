@@ -13,8 +13,9 @@ all:
 	@echo "Building all plugins..."
 	@for dir in $(PLUGIN_DIRS); do \
 		name=$$(basename $$dir); \
-		echo "  Building $$name..."; \
-		(cd $$dir && $(GOBUILD) -buildmode=plugin -o ../$$name.so); \
+		outname=$$(echo $$name | sed 's/^m3m-//'); \
+		echo "  Building $$name -> $$outname.so"; \
+		(cd $$dir && $(GOBUILD) -buildmode=plugin -o ../$$outname.so); \
 	done
 	@echo "Done! Built plugins:"
 	@ls -la *.so 2>/dev/null || echo "  No .so files found"
@@ -22,7 +23,11 @@ all:
 # Build specific plugin
 # Usage: make telegram
 %:
-	@if [ -d "./$@" ]; then \
+	@if [ -d "./m3m-$@" ]; then \
+		echo "Building m3m-$@ -> $@.so"; \
+		cd ./m3m-$@ && $(GOBUILD) -buildmode=plugin -o ../$@.so; \
+		echo "Built $@.so"; \
+	elif [ -d "./$@" ]; then \
 		echo "Building $@..."; \
 		cd ./$@ && $(GOBUILD) -buildmode=plugin -o ../$@.so; \
 		echo "Built $@.so"; \
