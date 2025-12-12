@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
-import { ArrowDown, Download, RefreshCw } from 'lucide-react';
+import { ArrowDownToLine, Download, RefreshCw } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   Select,
@@ -52,12 +53,6 @@ export function LogsViewer({
     }
   }, [logs, autoScroll]);
 
-  const scrollToBottom = () => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
-  };
-
   return (
     <div className={cn('flex flex-col overflow-hidden', className)} style={{ height }}>
       {/* Header */}
@@ -79,33 +74,39 @@ export function LogsViewer({
             </SelectContent>
           </Select>
         </div>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setAutoScroll(!autoScroll)}
-            className={cn('h-8', autoScroll && 'bg-muted')}
-          >
-            Auto-scroll: {autoScroll ? 'On' : 'Off'}
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8"
-            onClick={scrollToBottom}
-          >
-            <ArrowDown className="size-4" />
-          </Button>
+        <div className="flex items-center gap-1">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setAutoScroll(!autoScroll)}
+                className={cn('h-8 w-8', autoScroll && 'bg-muted')}
+              >
+                <ArrowDownToLine className="size-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Auto-scroll: {autoScroll ? 'On' : 'Off'}</TooltipContent>
+          </Tooltip>
           {onRefresh && (
-            <Button variant="ghost" size="icon" onClick={onRefresh} className="h-8 w-8">
-              <RefreshCw className="size-4" />
-            </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="ghost" size="icon" onClick={onRefresh} className="h-8 w-8">
+                  <RefreshCw className="size-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Refresh</TooltipContent>
+            </Tooltip>
           )}
           {onDownload && (
-            <Button variant="outline" size="sm" onClick={onDownload} className="h-8">
-              <Download className="mr-2 size-4" />
-              Download
-            </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="ghost" size="icon" onClick={onDownload} className="h-8 w-8">
+                  <Download className="size-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Download</TooltipContent>
+            </Tooltip>
           )}
         </div>
       </div>
