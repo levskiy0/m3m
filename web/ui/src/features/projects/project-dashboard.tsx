@@ -641,6 +641,7 @@ export function ProjectDashboard() {
               height={"calc(100vh - 205px)"}
               logs={logs}
               onDownload={runtime.downloadLogs}
+              onRefresh={runtime.refetchLogs}
             />
           </Card>
         )}
