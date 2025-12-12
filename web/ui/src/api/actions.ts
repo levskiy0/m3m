@@ -1,4 +1,5 @@
 import { api } from './client';
+import { wsClient } from '@/lib/websocket';
 import type {
   Action,
   ActionRuntimeState,
@@ -39,7 +40,11 @@ export const actionsApi = {
     );
   },
 
-  trigger: async (projectSlug: string, actionSlug: string): Promise<void> => {
-    return api.post(`/r/${projectSlug}/actions/${actionSlug}`);
+  trigger: async (projectId: string, actionSlug: string): Promise<void> => {
+    // Include sessionId for UI targeting (so dialogs appear only in this tab)
+    const sessionId = wsClient.sessionId;
+    return api.post(`/api/projects/${projectId}/actions/${actionSlug}/trigger`, {
+      sessionId: sessionId || '',
+    });
   },
 };

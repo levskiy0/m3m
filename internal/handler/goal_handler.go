@@ -188,7 +188,7 @@ func (h *GoalHandler) GetStats(c *gin.Context) {
 
 	// Aggregate stats by goal ID
 	goalStatsMap := make(map[string]*GoalStatsResponse)
-	today := time.Now().Format("2006-01-02")
+	today := time.Now().UTC().Format("2006-01-02")
 
 	for _, stat := range stats {
 		goalID := stat.GoalID.Hex()
@@ -281,7 +281,7 @@ func (h *GoalHandler) GetGoalStats(c *gin.Context) {
 		DailyStats: []DailyStatItem{},
 	}
 
-	today := time.Now().Format("2006-01-02")
+	today := time.Now().UTC().Format("2006-01-02")
 	for _, stat := range stats {
 		response.DailyStats = append(response.DailyStats, DailyStatItem{
 			Date:  stat.Date,

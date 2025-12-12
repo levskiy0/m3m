@@ -69,7 +69,7 @@ type ScheduleModule struct {
 
 func NewScheduleModule(logger *slog.Logger) *ScheduleModule {
 	return &ScheduleModule{
-		cron:   cron.New(),
+		cron:   cron.New(cron.WithLocation(time.UTC)),
 		jobs:   make(map[string]*internalJob),
 		logger: logger,
 	}
@@ -96,7 +96,7 @@ func (s *ScheduleModule) addCronJob(spec string, handler goja.Callable, opts *Jo
 			Status:        JobStatusActive,
 			SkipIfRunning: opts != nil && opts.SkipIfRunning,
 			Timeout:       0,
-			CreatedAt:     time.Now(),
+			CreatedAt:     time.Now().UTC(),
 		},
 		handler: handler,
 	}
@@ -150,7 +150,7 @@ func (s *ScheduleModule) executeJob(job *internalJob) {
 	// Increment execution counts
 	atomic.AddInt64(&s.executionCount, 1)
 	job.info.ExecutionCount++
-	now := time.Now()
+	now := time.Now().UTC()
 	job.info.LastRun = &now
 
 	// Execute with timeout if specified
@@ -283,8 +283,8 @@ func (s *ScheduleModule) Monthly(dayOfMonth int, handler goja.Callable) string {
 	return s.addCronJob(spec, handler, nil)
 }
 
-// At schedules a job to run daily at a specific time
-// timeStr: "HH:MM" format (24-hour)
+// At schedules a job to run daily at a specific time in UTC
+// timeStr: "HH:MM" format (24-hour, UTC timezone)
 func (s *ScheduleModule) At(timeStr string, handler goja.Callable) string {
 	parts := strings.Split(timeStr, ":")
 	if len(parts) != 2 {
@@ -359,7 +359,7 @@ func (s *ScheduleModule) Every(call goja.FunctionCall, vm *goja.Runtime) goja.Va
 			Type:      "interval",
 			Interval:  intervalStr,
 			Status:    JobStatusActive,
-			CreatedAt: time.Now(),
+			CreatedAt: time.Now().UTC(),
 		},
 		handler: handler,
 	}
@@ -372,11 +372,11 @@ func (s *ScheduleModule) Every(call goja.FunctionCall, vm *goja.Runtime) goja.Va
 		}
 		s.executeJob(job)
 		job.timer = time.AfterFunc(duration, runJob)
-		next := time.Now().Add(duration)
+		next := time.Now().UTC().Add(duration)
 		job.info.NextRun = &next
 	}
 
-	next := time.Now().Add(duration)
+	next := time.Now().UTC().Add(duration)
 	job.info.NextRun = &next
 	job.timer = time.AfterFunc(duration, runJob)
 	s.jobs[jobID] = job
@@ -433,7 +433,7 @@ func (s *ScheduleModule) Once(call goja.FunctionCall, vm *goja.Runtime) goja.Val
 			Type:      "once",
 			Status:    JobStatusOneTime,
 			NextRun:   &targetTime,
-			CreatedAt: time.Now(),
+			CreatedAt: time.Now().UTC(),
 		},
 		handler: handler,
 	}
@@ -464,7 +464,7 @@ func (s *ScheduleModule) Delay(ms int64, handler goja.Callable) string {
 	defer s.mu.Unlock()
 
 	jobID := s.generateJobID()
-	targetTime := time.Now().Add(time.Duration(ms) * time.Millisecond)
+	targetTime := time.Now().UTC().Add(time.Duration(ms) * time.Millisecond)
 
 	job := &internalJob{
 		info: JobInfo{
@@ -472,7 +472,7 @@ func (s *ScheduleModule) Delay(ms int64, handler goja.Callable) string {
 			Type:      "delay",
 			Status:    JobStatusOneTime,
 			NextRun:   &targetTime,
-			CreatedAt: time.Now(),
+			CreatedAt: time.Now().UTC(),
 		},
 		handler: handler,
 	}
@@ -583,11 +583,11 @@ func (s *ScheduleModule) Resume(jobID string) bool {
 			}
 			s.executeJob(job)
 			job.timer = time.AfterFunc(duration, runJob)
-			next := time.Now().Add(duration)
+			next := time.Now().UTC().Add(duration)
 			job.info.NextRun = &next
 		}
 
-		next := time.Now().Add(duration)
+		next := time.Now().UTC().Add(duration)
 		job.info.NextRun = &next
 		job.timer = time.AfterFunc(duration, runJob)
 	}
@@ -846,9 +846,9 @@ func (s *ScheduleModule) GetSchema() schema.ModuleSchema {
 			},
 			{
 				Name:        "at",
-				Description: "Schedule a job to run daily at a specific time",
+				Description: "Schedule a job to run daily at a specific time (UTC)",
 				Params: []schema.ParamSchema{
-					{Name: "time", Type: "string", Description: "Time in HH:MM format (24-hour)"},
+					{Name: "time", Type: "string", Description: "Time in HH:MM format (24-hour, UTC timezone)"},
 					{Name: "handler", Type: "() => void", Description: "Function to execute"},
 				},
 				Returns: &schema.ParamSchema{Name: "jobId", Type: "string", Description: "Job ID"},

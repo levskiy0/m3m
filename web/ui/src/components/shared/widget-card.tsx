@@ -1,4 +1,6 @@
 import { forwardRef, useState, useEffect } from 'react';
+import { useMutation } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import {
   Target,
   Trash2,
@@ -11,7 +13,11 @@ import {
   Database,
   Clock,
   CalendarClock,
+  Loader2,
+  Play,
 } from 'lucide-react';
+
+import { actionsApi } from '@/api/actions';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -25,7 +31,7 @@ import { Badge } from '@/components/ui/badge';
 import { Sparkline } from '@/components/shared/sparkline';
 import { cn } from '@/lib/utils';
 import { formatBytes } from '@/lib/format';
-import type { Goal, GoalStats, Widget, WidgetType, RuntimeStats } from '@/types';
+import type { Goal, GoalStats, Widget, WidgetType, RuntimeStats, Action, ActionState } from '@/types';
 
 // Format duration from seconds to human readable string
 function formatUptime(seconds: number): string {
@@ -49,12 +55,16 @@ function formatUptime(seconds: number): string {
 
 interface WidgetCardProps {
   widget: Widget;
+  projectId?: string;
   // For goal widgets
   goal?: Goal;
   stats?: GoalStats;
   // For monitoring widgets
   runtimeStats?: RuntimeStats;
   isRunning?: boolean;
+  // For action widgets
+  action?: Action;
+  actionState?: ActionState;
   // Actions
   onEdit?: () => void;
   onDelete: () => void;
@@ -76,10 +86,20 @@ const WIDGET_CONFIG: Record<WidgetType, {
   database: { icon: Database, label: 'Database', color: '#ec4899' },
   uptime: { icon: Clock, label: 'Uptime', color: '#06b6d4' },
   jobs: { icon: CalendarClock, label: 'Jobs', color: '#84cc16' },
+  action: { icon: Zap, label: 'Action', color: '#6366f1' },
+};
+
+const ACTION_ICON_COLOR_CLASSES: Record<string, string> = {
+  blue: 'text-blue-500',
+  green: 'text-green-500',
+  yellow: 'text-yellow-500',
+  red: 'text-red-500',
+  purple: 'text-purple-500',
+  orange: 'text-orange-500',
 };
 
 export const WidgetCard = forwardRef<HTMLDivElement, WidgetCardProps>(
-  ({ widget, goal, stats, runtimeStats, isRunning, onEdit, onDelete, dragHandleProps, isDragging, style }, ref) => {
+  ({ widget, projectId, goal, stats, runtimeStats, isRunning, action, actionState, onEdit, onDelete, dragHandleProps, isDragging, style }, ref) => {
     const config = WIDGET_CONFIG[widget.type] || WIDGET_CONFIG.goal;
     const Icon = config.icon;
 
@@ -97,6 +117,24 @@ export const WidgetCard = forwardRef<HTMLDivElement, WidgetCardProps>(
           widget={widget}
           goal={goal}
           stats={stats}
+          onEdit={onEdit}
+          onDelete={onDelete}
+          dragHandleProps={dragHandleProps}
+          isDragging={isDragging}
+          style={cardStyle}
+        />
+      );
+    }
+
+    // Render action widget
+    if (widget.type === 'action' && action && projectId) {
+      return (
+        <ActionWidgetCard
+          ref={ref}
+          projectId={projectId}
+          action={action}
+          actionState={actionState}
+          isRunning={isRunning}
           onEdit={onEdit}
           onDelete={onDelete}
           dragHandleProps={dragHandleProps}
@@ -367,22 +405,30 @@ const MonitoringWidgetCard = forwardRef<HTMLDivElement, {
 }>(({ widget, runtimeStats, isRunning, config, Icon, onEdit, onDelete, dragHandleProps, style }, ref) => {
   // Calculate uptime locally from started_at to avoid needing frequent WS updates
   const [computedUptime, setComputedUptime] = useState<string>('--');
+  // Current UTC time for uptime widget
+  const [currentUtcTime, setCurrentUtcTime] = useState<string>('');
 
   useEffect(() => {
-    if (widget.type !== 'uptime' || !isRunning || !runtimeStats?.started_at) {
-      setComputedUptime('--');
-      return;
-    }
+    if (widget.type !== 'uptime') return;
 
-    const updateUptime = () => {
-      const startedAt = new Date(runtimeStats.started_at).getTime();
-      const now = Date.now();
-      const seconds = Math.floor((now - startedAt) / 1000);
-      setComputedUptime(formatUptime(seconds));
+    const updateTime = () => {
+      const now = new Date();
+      const hours = String(now.getUTCHours()).padStart(2, '0');
+      const minutes = String(now.getUTCMinutes()).padStart(2, '0');
+      setCurrentUtcTime(`${hours}:${minutes}`);
+
+      if (isRunning && runtimeStats?.started_at) {
+        const startedAt = new Date(runtimeStats.started_at).getTime();
+        const nowMs = Date.now();
+        const uptimeSeconds = Math.floor((nowMs - startedAt) / 1000);
+        setComputedUptime(formatUptime(uptimeSeconds));
+      } else {
+        setComputedUptime('--');
+      }
     };
 
-    updateUptime();
-    const interval = setInterval(updateUptime, 1000);
+    updateTime();
+    const interval = setInterval(updateTime, 1000);
 
     return () => clearInterval(interval);
   }, [widget.type, isRunning, runtimeStats?.started_at]);
@@ -430,9 +476,7 @@ const MonitoringWidgetCard = forwardRef<HTMLDivElement, {
       case 'database':
         return 'Collections data';
       case 'uptime':
-        return runtimeStats?.started_at
-          ? `Since ${new Date(runtimeStats.started_at).toLocaleString()}`
-          : 'Service not running';
+        return currentUtcTime ? `UTC ${currentUtcTime}` : 'Server time';
       case 'jobs':
         return runtimeStats?.scheduler_active ? 'Scheduler active' : 'Scheduler inactive';
       default:
@@ -506,3 +550,76 @@ const MonitoringWidgetCard = forwardRef<HTMLDivElement, {
 });
 
 MonitoringWidgetCard.displayName = 'MonitoringWidgetCard';
+
+// Action Widget Card
+const ActionWidgetCard = forwardRef<HTMLDivElement, {
+  projectId: string;
+  action: Action;
+  actionState?: ActionState;
+  isRunning?: boolean;
+  onEdit?: () => void;
+  onDelete: () => void;
+  dragHandleProps?: React.HTMLAttributes<HTMLButtonElement>;
+  isDragging?: boolean;
+  style?: React.CSSProperties;
+}>(({ projectId, action, actionState = 'enabled', isRunning, onEdit, onDelete, dragHandleProps, isDragging, style }, ref) => {
+  const triggerMutation = useMutation({
+    mutationFn: () => actionsApi.trigger(projectId, action.slug),
+    onError: (err) => {
+      toast.error(err instanceof Error ? err.message : 'Failed to trigger action');
+    },
+  });
+
+  const isDisabled = actionState === 'disabled' || !isRunning;
+  const isLoading = actionState === 'loading' || triggerMutation.isPending;
+  const iconColorClass = action.color ? ACTION_ICON_COLOR_CLASSES[action.color] : 'text-muted-foreground';
+
+  return (
+    <Card ref={ref} style={style} className={cn("group relative", isDragging && "z-50")}>
+      <div className="absolute top-2 right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        {dragHandleProps && (
+          <button
+            className="cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground p-1"
+            {...dragHandleProps}
+          >
+            <GripVertical className="size-3.5" />
+          </button>
+        )}
+        {onEdit && (
+          <Button variant="ghost" size="icon" className="size-6" onClick={onEdit}>
+            <Edit className="size-3.5 text-muted-foreground hover:text-foreground" />
+          </Button>
+        )}
+        <Button variant="ghost" size="icon" className="size-6" onClick={onDelete}>
+          <Trash2 className="size-3.5 text-muted-foreground hover:text-destructive" />
+        </Button>
+      </div>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <CardTitle className="text-sm font-medium">{action.name}</CardTitle>
+        <Zap className={cn("size-4", iconColorClass)} />
+      </CardHeader>
+      <CardContent>
+        <div className="flex items-end justify-between gap-4">
+          <p className="text-xs text-muted-foreground">
+            {!isRunning ? 'Service not running' : action.group || 'Action'}
+          </p>
+          <Button
+            variant="outline"
+            size="icon"
+            className="size-10"
+            disabled={isDisabled || isLoading}
+            onClick={() => triggerMutation.mutate()}
+          >
+            {isLoading ? (
+              <Loader2 className="size-5 animate-spin" />
+            ) : (
+              <Play className="size-5" />
+            )}
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+});
+
+ActionWidgetCard.displayName = 'ActionWidgetCard';

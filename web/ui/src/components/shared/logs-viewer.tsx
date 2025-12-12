@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
-import { ArrowDown, Download } from 'lucide-react';
+import { ArrowDownToLine, Download, RefreshCw } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   Select,
@@ -12,6 +13,7 @@ import {
 } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { LOG_LEVEL_COLORS } from '@/lib/constants';
+import { formatTime } from '@/lib/format';
 import type { LogEntry } from '@/types';
 
 type LogLevel = 'all' | 'debug' | 'info' | 'warn' | 'error';
@@ -22,6 +24,7 @@ interface LogsViewerProps {
   limit?: number;
   emptyMessage?: string;
   onDownload?: () => void;
+  onRefresh?: () => void;
   className?: string;
 }
 
@@ -31,6 +34,7 @@ export function LogsViewer({
   limit,
   emptyMessage = 'No logs available',
   onDownload,
+  onRefresh,
   className,
 }: LogsViewerProps) {
   const [levelFilter, setLevelFilter] = useState<LogLevel>('all');
@@ -49,20 +53,11 @@ export function LogsViewer({
     }
   }, [logs, autoScroll]);
 
-  const scrollToBottom = () => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
-  };
-
   return (
     <div className={cn('flex flex-col overflow-hidden', className)} style={{ height }}>
       {/* Header */}
       <div className="flex items-center justify-between flex-shrink-0 px-4 py-3 border-b">
         <div className="flex items-center gap-4">
-          <span className="text-sm font-medium">
-            {displayLogs.length} log entries
-          </span>
           <Select
             value={levelFilter}
             onValueChange={(v) => setLevelFilter(v as LogLevel)}
@@ -79,44 +74,55 @@ export function LogsViewer({
             </SelectContent>
           </Select>
         </div>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setAutoScroll(!autoScroll)}
-            className={cn('h-8', autoScroll && 'bg-muted')}
-          >
-            Auto-scroll: {autoScroll ? 'On' : 'Off'}
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8"
-            onClick={scrollToBottom}
-          >
-            <ArrowDown className="size-4" />
-          </Button>
+        <div className="flex items-center gap-1">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setAutoScroll(!autoScroll)}
+                className={cn('h-8 w-8', autoScroll && 'bg-muted')}
+              >
+                <ArrowDownToLine className="size-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Auto-scroll: {autoScroll ? 'On' : 'Off'}</TooltipContent>
+          </Tooltip>
+          {onRefresh && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="ghost" size="icon" onClick={onRefresh} className="h-8 w-8">
+                  <RefreshCw className="size-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Refresh</TooltipContent>
+            </Tooltip>
+          )}
           {onDownload && (
-            <Button variant="outline" size="sm" onClick={onDownload} className="h-8">
-              <Download className="mr-2 size-4" />
-              Download
-            </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="ghost" size="icon" onClick={onDownload} className="h-8 w-8">
+                  <Download className="size-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Download</TooltipContent>
+            </Tooltip>
           )}
         </div>
       </div>
 
       {/* Logs Content */}
-      <ScrollArea ref={scrollRef} className="flex-1 bg-zinc-950 font-mono text-xs">
+      <ScrollArea ref={scrollRef} className="flex-1 bg-zinc-950 font-mono text-xs h-full">
         {displayLogs.length === 0 ? (
           <div className="flex items-center justify-center h-full text-muted-foreground py-12">
             {logs.length === 0 ? emptyMessage : 'No logs match the filter'}
           </div>
         ) : (
-          <div className="space-y-0.5 p-4">
+          <div className="space-y-0.5 p-4 mb-20">
             {displayLogs.map((log, index) => (
               <div key={index} className="flex gap-2 text-gray-300">
                 <span className="text-gray-500 shrink-0">
-                  {new Date(log.timestamp).toLocaleTimeString()}
+                  {formatTime(log.timestamp)}
                 </span>
                 <span
                   className={cn(

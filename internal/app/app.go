@@ -296,7 +296,14 @@ func StartWebSocket(
 			broadcaster.SetProjectService(projectService)
 			runtimeManager.SetLogBroadcaster(broadcaster)
 			runtimeManager.SetHookBroadcaster(broadcaster)
+			runtimeManager.SetUIBroadcaster(broadcaster)
 			runtimeManager.SetStopHandler(broadcaster)
+
+			// Wire up UI response handler
+			hub.SetUIResponseHandler(func(projectID, requestID string, data interface{}) {
+				runtimeManager.HandleUIResponse(projectID, requestID, data)
+			})
+
 			broadcaster.Start(ctx)
 
 			logger.Info("WebSocket hub and broadcaster started")

@@ -1,26 +1,51 @@
-import { format } from 'date-fns';
-
 /**
- * Format datetime to local timezone string
+ * Format datetime to UTC string (no timezone conversion)
  */
 export function formatDateTime(value: string | Date): string {
   try {
     const d = value instanceof Date ? value : new Date(value);
     if (isNaN(d.getTime())) return String(value);
-    return format(d, 'dd.MM.yyyy HH:mm:ss');
+    // Use UTC methods to avoid timezone conversion
+    const day = String(d.getUTCDate()).padStart(2, '0');
+    const month = String(d.getUTCMonth() + 1).padStart(2, '0');
+    const year = d.getUTCFullYear();
+    const hours = String(d.getUTCHours()).padStart(2, '0');
+    const minutes = String(d.getUTCMinutes()).padStart(2, '0');
+    const seconds = String(d.getUTCSeconds()).padStart(2, '0');
+    return `${day}.${month}.${year} ${hours}:${minutes}:${seconds}`;
   } catch {
     return String(value);
   }
 }
 
 /**
- * Format date only (no time)
+ * Format date only (no time), UTC
  */
 export function formatDate(value: string | Date): string {
   try {
     const d = value instanceof Date ? value : new Date(value);
     if (isNaN(d.getTime())) return String(value);
-    return format(d, 'dd.MM.yyyy');
+    // Use UTC methods to avoid timezone conversion
+    const day = String(d.getUTCDate()).padStart(2, '0');
+    const month = String(d.getUTCMonth() + 1).padStart(2, '0');
+    const year = d.getUTCFullYear();
+    return `${day}.${month}.${year}`;
+  } catch {
+    return String(value);
+  }
+}
+
+/**
+ * Format time only, UTC (HH:mm:ss)
+ */
+export function formatTime(value: string | Date): string {
+  try {
+    const d = value instanceof Date ? value : new Date(value);
+    if (isNaN(d.getTime())) return String(value);
+    const hours = String(d.getUTCHours()).padStart(2, '0');
+    const minutes = String(d.getUTCMinutes()).padStart(2, '0');
+    const seconds = String(d.getUTCSeconds()).padStart(2, '0');
+    return `${hours}:${minutes}:${seconds}`;
   } catch {
     return String(value);
   }

@@ -41,6 +41,7 @@ func (h *ActionHandler) Register(r *gin.RouterGroup, authMiddleware *middleware.
 		actions.PUT("/:actionId", h.Update)
 		actions.DELETE("/:actionId", h.Delete)
 		actions.GET("/states", h.GetStates)
+		actions.POST("/:actionSlug/trigger", h.Trigger)
 	}
 }
 
@@ -191,4 +192,62 @@ func (h *ActionHandler) GetStates(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, states)
+}
+
+// TriggerActionRequest is the request body for action trigger
+type TriggerActionRequest struct {
+	SessionID string `json:"sessionId"`
+}
+
+// Trigger triggers an action with session context for $ui dialogs
+func (h *ActionHandler) Trigger(c *gin.Context) {
+	projectID, ok := h.checkAccess(c)
+	if !ok {
+		return
+	}
+
+	actionSlug := c.Param("actionSlug")
+
+	// Parse request body for sessionId
+	var req TriggerActionRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		// sessionId is optional for backward compatibility
+		req.SessionID = ""
+	}
+
+	// Verify action exists
+	_, err := h.actionService.GetBySlug(c.Request.Context(), projectID, actionSlug)
+	if err != nil {
+		if errors.Is(err, repository.ErrActionNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "action not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Check if project is running
+	if !h.runtimeManager.IsRunning(projectID) {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "project not running"})
+		return
+	}
+
+	// Check action state - only allow triggering if enabled
+	state, ok := h.runtimeManager.GetActionState(projectID, actionSlug)
+	if ok && state != domain.ActionStateEnabled {
+		c.JSON(http.StatusConflict, gin.H{"error": "action is " + string(state)})
+		return
+	}
+
+	// Get current user ID for action context
+	user := middleware.GetCurrentUser(c)
+	userID := user.ID.Hex()
+
+	// Trigger action with session context
+	if err := h.runtimeManager.TriggerActionWithSession(projectID, actionSlug, userID, req.SessionID); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "action triggered successfully"})
 }

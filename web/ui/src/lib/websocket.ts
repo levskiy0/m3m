@@ -2,7 +2,58 @@ import { config } from '@/lib/config';
 import { getToken } from '@/api/client';
 import type { ActionRuntimeState } from '@/types';
 
-export type EventType = 'monitor' | 'log' | 'running' | 'goals' | 'actions';
+export type EventType = 'monitor' | 'log' | 'running' | 'goals' | 'actions' | 'ui_request' | 'time';
+
+export interface ServerTime {
+  timestamp: number;
+  date: string;
+  time: string;
+}
+
+export type UIDialogType = 'alert' | 'confirm' | 'prompt' | 'form' | 'toast' | 'form_update';
+
+export interface UIRequestData {
+  requestId: string;
+  dialogType: UIDialogType;
+  options: UIRequestOptions | UIFormUpdateOptions;
+}
+
+export interface UIRequestOptions {
+  title?: string;
+  text?: string;
+  severity?: 'info' | 'success' | 'warning' | 'error';
+  icon?: string;
+  yes?: string;
+  no?: string;
+  placeholder?: string;
+  defaultValue?: string;
+  schema?: UIFormField[];
+  actions?: UIFormAction[];
+}
+
+export interface UIFormUpdateOptions {
+  loading?: boolean;
+  errors?: Record<string, string>;
+  close?: boolean;
+}
+
+export interface UIFormField {
+  name: string;
+  type: 'input' | 'textarea' | 'checkbox' | 'select' | 'combobox' | 'radiogroup' | 'date' | 'datetime';
+  label?: string;
+  hint?: string;
+  colspan?: number | 'full';
+  required?: boolean;
+  placeholder?: string;
+  defaultValue?: unknown;
+  options?: string[] | { label: string; value: string }[];
+}
+
+export interface UIFormAction {
+  label: string;
+  variant?: 'default' | 'outline' | 'destructive';
+  action: string;
+}
 
 export interface WSEvent {
   projectId: string;
@@ -18,6 +69,8 @@ export interface WSEventHandlers {
   onRunning?: (projectId: string, data: { running: boolean }) => void;
   onGoals?: (projectId: string, data: unknown) => void;
   onActions?: (projectId: string, data: ActionRuntimeState[]) => void;
+  onUIRequest?: (projectId: string, data: UIRequestData) => void;
+  onTime?: (data: ServerTime) => void;
   onConnect?: () => void;
   onDisconnect?: () => void;
   onError?: (error: Event) => void;
@@ -33,6 +86,7 @@ class WebSocketClient {
   private maxReconnectAttempts = 5;
   private reconnectDelay = 1000;
   private unsubscribeDelay = 500; // ms to wait before actually unsubscribing
+  private _sessionId: string | null = null; // unique session ID for this connection
 
   private getWSUrl(): string {
     // config.apiURL is like http://localhost:8080 or https://example.com
@@ -129,6 +183,7 @@ class WebSocketClient {
     }
 
     this.subscriptionCounts.clear();
+    this._sessionId = null;
   }
 
   private handleMessage(data: string): void {
@@ -137,9 +192,25 @@ class WebSocketClient {
       const messages = data.split('\n').filter(Boolean);
 
       for (const msg of messages) {
-        const event: WSEvent = JSON.parse(msg);
+        const parsed = JSON.parse(msg);
 
-        switch (event.event.type) {
+        // Handle session message (sent on connect)
+        if (parsed.type === 'session' && parsed.sessionId) {
+          this._sessionId = parsed.sessionId;
+          console.log('WebSocket: Session ID received:', this._sessionId);
+          continue;
+        }
+
+        // Handle global events (no projectId)
+        if (parsed.event?.type === 'time') {
+          this.handlers.onTime?.(parsed.event.data as ServerTime);
+          continue;
+        }
+
+        // Handle regular events
+        const event = parsed as WSEvent;
+
+        switch (event.event?.type) {
           case 'monitor':
             this.handlers.onMonitor?.(event.projectId, event.event.data);
             break;
@@ -154,6 +225,9 @@ class WebSocketClient {
             break;
           case 'actions':
             this.handlers.onActions?.(event.projectId, event.event.data as ActionRuntimeState[]);
+            break;
+          case 'ui_request':
+            this.handlers.onUIRequest?.(event.projectId, event.event.data as UIRequestData);
             break;
         }
       }
@@ -174,6 +248,10 @@ class WebSocketClient {
 
   private sendUnsubscribe(projectId: string): void {
     this.send({ action: 'unsubscribe', projectId });
+  }
+
+  sendUIResponse(projectId: string, requestId: string, data: unknown): void {
+    this.send({ action: 'ui_response', projectId, requestId, data });
   }
 
   subscribe(projectId: string): void {
@@ -225,6 +303,10 @@ class WebSocketClient {
 
   isConnected(): boolean {
     return this.ws?.readyState === WebSocket.OPEN;
+  }
+
+  get sessionId(): string | null {
+    return this._sessionId;
   }
 }
 

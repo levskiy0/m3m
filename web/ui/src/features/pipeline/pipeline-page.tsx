@@ -13,14 +13,17 @@ import {
   Code,
   ScrollText,
   Zap,
+  PanelRight,
+  PanelRightClose,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { pipelineApi, runtimeApi, projectsApi, templatesApi, actionsApi } from '@/api';
 import { queryKeys } from '@/lib/query-keys';
+import { formatDateTime } from '@/lib/format';
 import { useTitle, useWebSocket, useProjectRuntime } from '@/hooks';
 import { RELEASE_TAGS } from '@/features/pipeline/constants';
-import type { CreateBranchRequest, CreateReleaseRequest, LogEntry, ActionRuntimeState, ActionState } from '@/types';
+import type { CreateBranchRequest, CreateReleaseRequest, LogEntry, ActionState } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { LogsViewer } from '@/components/shared/logs-viewer';
@@ -53,6 +56,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { ActionsDropdown } from '@/components/shared/actions-dropdown';
 import { ActionsList } from '@/features/pipeline/actions/actions-list';
 import { cn } from '@/lib/utils';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
 
 // Parse runtime errors from log entries
 // Format: "Start error: ReferenceError: xxx is not defined at <eval>:25:17(46)"
@@ -73,6 +78,20 @@ function parseRuntimeError(message: string): RuntimeError | null {
 }
 
 type PipelineTab = 'editor' | 'logs' | 'releases' | 'actions';
+type EditorViewMode = 'tabs' | 'split';
+
+const VIEW_MODE_STORAGE_KEY = 'pipeline-editor-view-mode';
+const PANEL_LAYOUT_STORAGE_KEY = 'pipeline-editor-layout';
+
+function getStoredViewMode(): EditorViewMode {
+  try {
+    const stored = localStorage.getItem(VIEW_MODE_STORAGE_KEY);
+    if (stored === 'tabs' || stored === 'split') return stored;
+  } catch {
+    // localStorage unavailable
+  }
+  return 'tabs';
+}
 
 export function PipelinePage() {
   useTitle('Pipeline');
@@ -87,6 +106,7 @@ export function PipelinePage() {
   const [code, setCode] = useState('');
   const [hasChanges, setHasChanges] = useState(false);
   const [activeTab, setActiveTab] = useState<PipelineTab>('editor');
+  const [viewMode, setViewMode] = useState<EditorViewMode>(getStoredViewMode);
 
   // Dialogs
   const [createBranchOpen, setCreateBranchOpen] = useState(false);
@@ -143,12 +163,12 @@ export function PipelinePage() {
     enabled: !!projectId,
   });
 
-  // Fetch logs when Logs tab is opened
+  // Fetch logs when Logs tab or split panel is opened (only in debug mode)
   useEffect(() => {
-    if (activeTab === 'logs') {
+    if (isDebugMode && (activeTab === 'logs' || viewMode === 'split')) {
       refetchLogs();
     }
-  }, [activeTab, refetchLogs]);
+  }, [activeTab, viewMode, isDebugMode, refetchLogs]);
 
   const logs: LogEntry[] = Array.isArray(logsData) ? logsData : [];
 
@@ -159,7 +179,21 @@ export function PipelinePage() {
     enabled: !!projectId,
   });
 
-  const [actionStates, setActionStates] = useState<Map<string, ActionState>>(new Map());
+  // Fetch action states via API (refetched via queryClient on WebSocket updates)
+  const { data: actionStatesData = [] } = useQuery({
+    queryKey: queryKeys.actions.states(projectId!),
+    queryFn: () => actionsApi.getStates(projectId!),
+    enabled: !!projectId,
+  });
+
+  // Convert array to Map for quick lookup
+  const actionStates = useMemo(() => {
+    const map = new Map<string, ActionState>();
+    actionStatesData.forEach((item) => {
+      map.set(item.slug, item.state);
+    });
+    return map;
+  }, [actionStatesData]);
 
   // WebSocket for status and action states (logs handled by useProjectRuntime)
   useWebSocket({
@@ -169,12 +203,9 @@ export function PipelinePage() {
       // Refetch project data when running status changes
       queryClient.invalidateQueries({ queryKey: queryKeys.projects.detail(projectId!) });
     },
-    onActions: (data: ActionRuntimeState[]) => {
-      const newStates = new Map<string, ActionState>();
-      data.forEach((item) => {
-        newStates.set(item.slug, item.state);
-      });
-      setActionStates(newStates);
+    onActions: () => {
+      // Refetch action states when WebSocket notifies of changes
+      queryClient.invalidateQueries({ queryKey: queryKeys.actions.states(projectId!) });
     },
   });
 
@@ -419,6 +450,31 @@ export function PipelinePage() {
     setHasChanges(value !== (currentBranch?.code || defaultTemplate || ''));
   };
 
+  const toggleViewMode = useCallback(() => {
+    setViewMode((current) => {
+      const next = current === 'tabs' ? 'split' : 'tabs';
+      try {
+        localStorage.setItem(VIEW_MODE_STORAGE_KEY, next);
+      } catch {
+        // localStorage unavailable
+      }
+      // Switch to editor tab when entering split mode if on logs tab
+      if (next === 'split' && activeTab === 'logs') {
+        setActiveTab('editor');
+      }
+      return next;
+    });
+  }, [activeTab]);
+
+  // Save panel layout to localStorage
+  const handlePanelLayoutChange = useCallback((sizes: number[]) => {
+    try {
+      localStorage.setItem(PANEL_LAYOUT_STORAGE_KEY, JSON.stringify(sizes));
+    } catch {
+      // localStorage unavailable
+    }
+  }, []);
+
   const selectedBranchSummary = branches.find((b) => b.id === selectedBranchId);
   const isDevelopBranch = currentBranch?.name === 'develop';
   const isLoading = branchesLoading || releasesLoading || (selectedBranchId && branchLoading);
@@ -483,24 +539,26 @@ export function PipelinePage() {
             Editor
           </EditorTab>
 
-          <EditorTab
-            active={activeTab === 'logs'}
-            onClick={() => setActiveTab('logs')}
-            icon={<ScrollText className="size-4" />}
-            badge={
-              logs.filter(l => l.level === 'error').length > 0 ? (
-                <Badge variant="destructive" className="ml-1 h-5 px-1.5 text-xs">
-                  {logs.filter(l => l.level === 'error').length}
-                </Badge>
-              ) : isDebugMode && runningBranch === currentBranch?.name ? (
-                <Badge variant="outline" className="ml-1 border-amber-500/50 text-amber-500 text-[10px] h-[20px] py-0">
-                  {runningBranch}
-                </Badge>
-              ) : undefined
-            }
-          >
-            Logs
-          </EditorTab>
+          {viewMode === 'tabs' && isDebugMode && (
+            <EditorTab
+              active={activeTab === 'logs'}
+              onClick={() => setActiveTab('logs')}
+              icon={<ScrollText className="size-4" />}
+              badge={
+                logs.filter(l => l.level === 'error').length > 0 ? (
+                  <Badge variant="destructive" className="ml-1 h-5 px-1.5 text-xs">
+                    {logs.filter(l => l.level === 'error').length}
+                  </Badge>
+                ) : runningBranch === currentBranch?.name ? (
+                  <Badge variant="outline" className="ml-1 border-amber-500/50 text-amber-500 text-[10px] h-[20px] py-0">
+                    {runningBranch}
+                  </Badge>
+                ) : undefined
+              }
+            >
+              Logs
+            </EditorTab>
+          )}
 
           <EditorTab
             active={activeTab === 'releases'}
@@ -611,9 +669,9 @@ export function PipelinePage() {
                           Stop
                           <Kbd className="ml-2">^.</Kbd>
                         </Button>
-                        {actions.length > 0 && project?.slug && (
+                        {actions.length > 0 && projectId && (
                           <ActionsDropdown
-                            projectSlug={project.slug}
+                            projectId={projectId}
                             actions={actions}
                             actionStates={actionStates}
                           />
@@ -638,29 +696,79 @@ export function PipelinePage() {
                     Save
                     <Kbd className="ml-2">^S</Kbd>
                   </LoadingButton>
+                  {/* View Mode Toggle (only in debug mode) */}
+                  {isDebugMode && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={toggleViewMode}
+                          className="size-8"
+                        >
+                          {viewMode === 'split' ? (
+                            <PanelRightClose className="size-4" />
+                          ) : (
+                            <PanelRight className="size-4" />
+                          )}
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        {viewMode === 'split' ? 'Hide logs panel' : 'Show logs panel'}
+                      </TooltipContent>
+                    </Tooltip>
+                  )}
                 </div>
               </div>
-              {/* Code Editor */}
-              <div className="flex-1 min-h-0">
-                <CodeEditor
-                  value={code}
-                  onChange={handleCodeChange}
-                  language="javascript"
-                  typeDefinitions={runtimeTypes}
-                  keyBindings={keyBindings}
-                  runtimeErrors={runtimeErrors}
-                />
-              </div>
+              {/* Code Editor with optional Logs Panel */}
+              <ResizablePanelGroup
+                direction="horizontal"
+                className="flex-1 min-h-0"
+                autoSaveId={PANEL_LAYOUT_STORAGE_KEY}
+                onLayout={handlePanelLayoutChange}
+              >
+                <ResizablePanel defaultSize={70} minSize={30}>
+                  <div className="h-full min-h-0 overflow-hidden">
+                    <CodeEditor
+                      value={code}
+                      onChange={handleCodeChange}
+                      language="javascript"
+                      typeDefinitions={runtimeTypes}
+                      keyBindings={keyBindings}
+                      runtimeErrors={runtimeErrors}
+                    />
+                  </div>
+                </ResizablePanel>
+                {viewMode === 'split' && isDebugMode && (
+                  <>
+                    <ResizableHandle />
+                    <ResizablePanel defaultSize={30} minSize={15} maxSize={50}>
+                      <div className="h-full border-l overflow-hidden">
+                        <LogsViewer
+                          logs={logs}
+                          limit={500}
+                          emptyMessage="Waiting for logs..."
+                          onDownload={downloadLogs}
+                          onRefresh={refetchLogs}
+                          height="100%"
+                          className="h-full"
+                        />
+                      </div>
+                    </ResizablePanel>
+                  </>
+                )}
+              </ResizablePanelGroup>
             </>
           )}
 
-          {/* Logs Content */}
-          {activeTab === 'logs' && (
+          {/* Logs Content (only in tabs mode, only in debug mode) */}
+          {activeTab === 'logs' && viewMode === 'tabs' && isDebugMode && (
             <LogsViewer
               logs={logs}
               limit={500}
-              emptyMessage={isRunning ? "Waiting for logs..." : "No logs available. Start the service to see logs."}
+              emptyMessage="Waiting for logs..."
               onDownload={downloadLogs}
+              onRefresh={refetchLogs}
               height="100%"
               className="flex-1"
             />
@@ -725,7 +833,7 @@ export function PipelinePage() {
                             </p>
                           )}
                           <p className="text-xs text-muted-foreground mt-1">
-                            {new Date(release.created_at).toLocaleString()}
+                            {formatDateTime(release.created_at)}
                           </p>
                         </div>
                         <div className="flex items-center gap-1">

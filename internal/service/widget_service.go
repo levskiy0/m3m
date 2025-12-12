@@ -12,18 +12,21 @@ import (
 
 var (
 	ErrGoalIDRequired     = errors.New("goal ID is required for goal widgets")
+	ErrActionIDRequired   = errors.New("action ID is required for action widgets")
 	ErrWidgetNotInProject = errors.New("widget does not belong to this project")
 )
 
 type WidgetService struct {
 	widgetRepo *repository.WidgetRepository
 	goalRepo   *repository.GoalRepository
+	actionRepo *repository.ActionRepository
 }
 
-func NewWidgetService(widgetRepo *repository.WidgetRepository, goalRepo *repository.GoalRepository) *WidgetService {
+func NewWidgetService(widgetRepo *repository.WidgetRepository, goalRepo *repository.GoalRepository, actionRepo *repository.ActionRepository) *WidgetService {
 	return &WidgetService{
 		widgetRepo: widgetRepo,
 		goalRepo:   goalRepo,
+		actionRepo: actionRepo,
 	}
 }
 
@@ -60,6 +63,22 @@ func (s *WidgetService) Create(ctx context.Context, projectID primitive.ObjectID
 			return nil, err
 		}
 		widget.GoalID = &goalID
+	}
+
+	// Only parse and verify action for action-type widgets
+	if widgetType == domain.WidgetTypeAction {
+		if req.ActionID == "" {
+			return nil, ErrActionIDRequired
+		}
+		actionID, err := primitive.ObjectIDFromHex(req.ActionID)
+		if err != nil {
+			return nil, err
+		}
+		// Verify action exists
+		if _, err := s.actionRepo.FindByID(ctx, actionID); err != nil {
+			return nil, err
+		}
+		widget.ActionID = &actionID
 	}
 
 	if err := s.widgetRepo.Create(ctx, widget); err != nil {

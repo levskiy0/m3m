@@ -18,6 +18,7 @@ import { Input } from '@/components/ui/input';
 import { LoadingButton } from '@/components/ui/loading-button';
 import { Field, FieldGroup, FieldLabel, FieldDescription, FieldError } from '@/components/ui/field';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { formatDate } from '@/lib/format';
 
 function getInitials(name: string): string {
   return name
@@ -280,7 +281,7 @@ export function ProfilePage() {
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Member Since</span>
-              <span>{new Date(user.created_at).toLocaleDateString()}</span>
+              <span>{formatDate(user.created_at)}</span>
             </div>
           </div>
         </CardContent>

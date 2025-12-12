@@ -17,7 +17,9 @@ import {
   Plus,
   LayoutGrid,
   BarChart3,
-  Minus, ScrollText,
+  Minus,
+  ScrollText,
+  Zap,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -43,7 +45,7 @@ import { config } from '@/lib/config';
 import { queryKeys } from '@/lib/query-keys';
 import { cn } from '@/lib/utils';
 import { useProjectRuntime, useTitle, useWebSocket } from '@/hooks';
-import type { LogEntry, GoalStats, WidgetVariant, WidgetType, CreateWidgetRequest, UpdateWidgetRequest, Widget, Goal, RuntimeStats, ActionRuntimeState, ActionState } from '@/types';
+import type { LogEntry, GoalStats, WidgetVariant, WidgetType, CreateWidgetRequest, UpdateWidgetRequest, Widget, Goal, RuntimeStats, ActionState, Action } from '@/types';
 import { ActionsDropdown } from '@/components/shared/actions-dropdown';
 import { ConfirmDialog } from '@/components/shared/confirm-dialog';
 import { Button } from '@/components/ui/button';
@@ -87,6 +89,7 @@ type OverviewTab = 'instance' | 'logs';
 
 const WIDGET_TYPES: { value: WidgetType; label: string; description: string }[] = [
   { value: 'goal', label: 'Goal', description: 'Display goal metrics' },
+  { value: 'action', label: 'Action', description: 'Trigger an action button' },
   { value: 'memory', label: 'Memory', description: 'Current memory usage' },
   { value: 'requests', label: 'Requests', description: 'Total request count' },
   { value: 'cpu', label: 'CPU', description: 'CPU utilization' },
@@ -167,18 +170,29 @@ export function ProjectDashboard() {
     enabled: !!projectId,
   });
 
-  const [actionStates, setActionStates] = useState<Map<string, ActionState>>(new Map());
+  // Fetch action states via API (refetched via queryClient on WebSocket updates)
+  const { data: actionStatesData = [] } = useQuery({
+    queryKey: queryKeys.actions.states(projectId!),
+    queryFn: () => actionsApi.getStates(projectId!),
+    enabled: !!projectId,
+  });
+
+  // Convert array to Map for quick lookup
+  const actionStates = useMemo(() => {
+    const map = new Map<string, ActionState>();
+    actionStatesData.forEach((item) => {
+      map.set(item.slug, item.state);
+    });
+    return map;
+  }, [actionStatesData]);
 
   // WebSocket for action states (only when running)
   useWebSocket({
     projectId,
     enabled: !!projectId && isRunning,
-    onActions: (data: ActionRuntimeState[]) => {
-      const newStates = new Map<string, ActionState>();
-      data.forEach((item) => {
-        newStates.set(item.slug, item.state);
-      });
-      setActionStates(newStates);
+    onActions: () => {
+      // Refetch action states when WebSocket notifies of changes
+      queryClient.invalidateQueries({ queryKey: queryKeys.actions.states(projectId!) });
     },
   });
 
@@ -187,6 +201,7 @@ export function ProjectDashboard() {
   const [editingWidget, setEditingWidget] = useState<Widget | null>(null);
   const [selectedWidgetType, setSelectedWidgetType] = useState<WidgetType>('goal');
   const [selectedGoalId, setSelectedGoalId] = useState<string>('');
+  const [selectedActionId, setSelectedActionId] = useState<string>('');
   const [selectedVariant, setSelectedVariant] = useState<WidgetVariant>('mini');
   const [selectedGridSpan, setSelectedGridSpan] = useState(1);
 
@@ -269,6 +284,7 @@ export function ProjectDashboard() {
     setEditingWidget(null);
     setSelectedWidgetType('goal');
     setSelectedGoalId('');
+    setSelectedActionId('');
     setSelectedVariant('mini');
     setSelectedGridSpan(1);
     setWidgetDialogOpen(true);
@@ -278,6 +294,7 @@ export function ProjectDashboard() {
     setEditingWidget(widget);
     setSelectedWidgetType(widget.type || 'goal');
     setSelectedGoalId(widget.goalId || '');
+    setSelectedActionId(widget.actionId || '');
     setSelectedVariant(widget.variant);
     setSelectedGridSpan(widget.gridSpan || 1);
     setWidgetDialogOpen(true);
@@ -288,6 +305,7 @@ export function ProjectDashboard() {
     setEditingWidget(null);
     setSelectedWidgetType('goal');
     setSelectedGoalId('');
+    setSelectedActionId('');
     setSelectedVariant('mini');
     setSelectedGridSpan(1);
   };
@@ -308,9 +326,14 @@ export function ProjectDashboard() {
         toast.error('Please select a goal');
         return;
       }
+      if (selectedWidgetType === 'action' && !selectedActionId) {
+        toast.error('Please select an action');
+        return;
+      }
       createWidgetMutation.mutate({
         type: selectedWidgetType,
         goalId: selectedWidgetType === 'goal' ? selectedGoalId : undefined,
+        actionId: selectedWidgetType === 'action' ? selectedActionId : undefined,
         variant: selectedVariant,
         gridSpan: selectedGridSpan,
       });
@@ -410,9 +433,9 @@ export function ProjectDashboard() {
                 <Square className="size-4" />
                 Stop
               </Button>
-              {actions.length > 0 && project?.slug && (
+              {actions.length > 0 && projectId && (
                 <ActionsDropdown
-                  projectSlug={project.slug}
+                  projectId={projectId}
                   actions={actions}
                   actionStates={actionStates}
                 />
@@ -566,17 +589,28 @@ export function ProjectDashboard() {
                             : undefined;
                           const stat = goal ? goalStatsMap.get(goal.id) : undefined;
 
+                          // For action widgets
+                          const action = widget.type === 'action' && widget.actionId
+                            ? actions.find(a => a.id === widget.actionId)
+                            : undefined;
+                          const actState = action ? actionStates.get(action.slug) : undefined;
+
                           // For goal widgets, skip if goal not found
                           if (widget.type === 'goal' && !goal) return null;
+                          // For action widgets, skip if action not found
+                          if (widget.type === 'action' && !action) return null;
 
                           return (
                             <SortableWidgetCard
                               key={widget.id}
                               widget={widget}
+                              projectId={projectId}
                               goal={goal}
                               stats={stat}
                               runtimeStats={stats}
                               isRunning={isRunning}
+                              action={action}
+                              actionState={actState}
                               onEdit={() => openEditWidget(widget)}
                               onDelete={() => deleteWidgetMutation.mutate(widget.id)}
                             />
@@ -607,6 +641,7 @@ export function ProjectDashboard() {
               height={"calc(100vh - 205px)"}
               logs={logs}
               onDownload={runtime.downloadLogs}
+              onRefresh={runtime.refetchLogs}
             />
           </Card>
         )}
@@ -667,6 +702,33 @@ export function ProjectDashboard() {
                           <Badge variant="secondary" className="ml-auto text-xs">
                             {goal.type === 'daily_counter' ? 'Daily' : 'Counter'}
                           </Badge>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {/* Action Selection (only for action type) */}
+            {selectedWidgetType === 'action' && !editingWidget && (
+              <div className="space-y-2">
+                <Label>Action</Label>
+                <Select value={selectedActionId} onValueChange={setSelectedActionId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select an action" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {actions.map((action) => (
+                      <SelectItem key={action.id} value={action.id}>
+                        <div className="flex items-center gap-2">
+                          <Zap className="size-3.5 text-muted-foreground" />
+                          {action.name}
+                          {action.group && (
+                            <Badge variant="secondary" className="ml-auto text-xs">
+                              {action.group}
+                            </Badge>
+                          )}
                         </div>
                       </SelectItem>
                     ))}
@@ -743,6 +805,7 @@ export function ProjectDashboard() {
               onClick={handleSaveWidget}
               disabled={
                 (selectedWidgetType === 'goal' && !editingWidget && !selectedGoalId) ||
+                (selectedWidgetType === 'action' && !editingWidget && !selectedActionId) ||
                 createWidgetMutation.isPending ||
                 updateWidgetMutation.isPending
               }
@@ -787,18 +850,24 @@ export function ProjectDashboard() {
 
 function SortableWidgetCard({
   widget,
+  projectId,
   goal,
   stats,
   runtimeStats,
   isRunning,
+  action,
+  actionState,
   onEdit,
   onDelete,
 }: {
   widget: Widget;
+  projectId?: string;
   goal?: Goal;
   stats?: GoalStats;
   runtimeStats?: RuntimeStats;
   isRunning?: boolean;
+  action?: Action;
+  actionState?: ActionState;
   onEdit: () => void;
   onDelete: () => void;
 }) {
@@ -820,10 +889,13 @@ function SortableWidgetCard({
     <WidgetCard
       ref={setNodeRef}
       widget={widget}
+      projectId={projectId}
       goal={goal}
       stats={stats}
       runtimeStats={runtimeStats}
       isRunning={isRunning}
+      action={action}
+      actionState={actionState}
       onEdit={onEdit}
       onDelete={onDelete}
       dragHandleProps={{ ...attributes, ...listeners }}

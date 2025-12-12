@@ -42,13 +42,15 @@ type modelHandler struct {
 
 // HookModule manages action and model handlers
 type HookModule struct {
-	actionHandlers map[string]*actionHandler                    // slug -> handler
-	modelHandlers  map[string]map[ModelHookType][]*modelHandler // modelName -> hookType -> handlers
-	actionStates   map[string]domain.ActionState                // slug -> state
-	mu             sync.RWMutex
-	vm             *goja.Runtime
-	projectID      primitive.ObjectID
-	broadcaster    HookBroadcaster
+	actionHandlers   map[string]*actionHandler                    // slug -> handler
+	modelHandlers    map[string]map[ModelHookType][]*modelHandler // modelName -> hookType -> handlers
+	actionStates     map[string]domain.ActionState                // slug -> state
+	mu               sync.RWMutex
+	vm               *goja.Runtime
+	projectID        primitive.ObjectID
+	broadcaster      HookBroadcaster
+	currentUserID    string // current user ID for action context
+	currentSessionID string // current WebSocket session ID for UI targeting
 }
 
 // NewHookModule creates a new HookModule
@@ -233,19 +235,60 @@ func (m *HookModule) TriggerModelHook(modelSlug string, hookType ModelHookType, 
 	return nil
 }
 
+// SetCurrentUser sets the current user ID for action context
+func (m *HookModule) SetCurrentUser(userID string) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.currentUserID = userID
+}
+
+// ClearCurrentUser clears the current user ID
+func (m *HookModule) ClearCurrentUser() {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.currentUserID = ""
+}
+
+// SetCurrentSession sets the current session ID for UI targeting
+func (m *HookModule) SetCurrentSession(sessionID string) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.currentSessionID = sessionID
+}
+
+// ClearCurrentSession clears the current session ID
+func (m *HookModule) ClearCurrentSession() {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.currentSessionID = ""
+}
+
 // createActionContext creates a JS object with action info and control methods
 func (m *HookModule) createActionContext(name, slug string) map[string]interface{} {
+	// Capture current user and session IDs at the time the action is triggered
+	m.mu.RLock()
+	userID := m.currentUserID
+	sessionID := m.currentSessionID
+	m.mu.RUnlock()
+
 	return map[string]interface{}{
-		"name": name,
-		"slug": slug,
-		"disable": func() {
-			m.setActionState(slug, domain.ActionStateDisabled)
+		"name":      name,
+		"slug":      slug,
+		"userId":    userID,    // Include userId for informational purposes
+		"sessionId": sessionID, // Include sessionId for async $ui calls
+		"loading": func(loading bool) {
+			if loading {
+				m.setActionState(slug, domain.ActionStateLoading)
+			} else {
+				m.setActionState(slug, domain.ActionStateEnabled)
+			}
 		},
-		"enable": func() {
-			m.setActionState(slug, domain.ActionStateEnabled)
-		},
-		"loader": func() {
-			m.setActionState(slug, domain.ActionStateLoading)
+		"active": func(active bool) {
+			if active {
+				m.setActionState(slug, domain.ActionStateEnabled)
+			} else {
+				m.setActionState(slug, domain.ActionStateDisabled)
+			}
 		},
 	}
 }
@@ -305,6 +348,14 @@ func (m *HookModule) HasActionHandler(slug string) bool {
 	return ok
 }
 
+// GetActionState returns the current state of an action
+func (m *HookModule) GetActionState(slug string) (domain.ActionState, bool) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	state, ok := m.actionStates[slug]
+	return state, ok
+}
+
 // HasModelHandler checks if a handler is registered for the given model and hook type
 func (m *HookModule) HasModelHandler(modelSlug string, hookType ModelHookType) bool {
 	m.mu.RLock()
@@ -336,9 +387,10 @@ func (m *HookModule) GetSchema() schema.ModuleSchema {
 				Fields: []schema.ParamSchema{
 					{Name: "name", Type: "string", Description: "Action name"},
 					{Name: "slug", Type: "string", Description: "Action slug identifier"},
-					{Name: "disable", Type: "() => void", Description: "Disable the action button"},
-					{Name: "enable", Type: "() => void", Description: "Enable the action button"},
-					{Name: "loader", Type: "() => void", Description: "Show loading spinner on the button"},
+					{Name: "userId", Type: "string", Description: "ID of the user who triggered the action"},
+					{Name: "sessionId", Type: "string", Description: "WebSocket session ID for UI targeting"},
+					{Name: "loading", Type: "(loading: boolean) => void", Description: "Set loading state (true shows spinner, false enables button)"},
+					{Name: "active", Type: "(active: boolean) => void", Description: "Set active state (true enables, false disables button)"},
 				},
 			},
 		},

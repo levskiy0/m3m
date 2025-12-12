@@ -1,5 +1,6 @@
+import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Trash2, Edit, MoreHorizontal, Zap } from 'lucide-react';
+import { Trash2, Edit, MoreHorizontal, Zap, Circle } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { actionsApi } from '@/api/actions';
@@ -25,10 +26,38 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
-import { Field, FieldLabel, FieldDescription } from '@/components/ui/field';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Field, FieldLabel, FieldDescription, FieldGroup } from '@/components/ui/field';
 import { ConfirmDialog } from '@/components/shared/confirm-dialog';
 import { EmptyState } from '@/components/shared/empty-state';
 import { Skeleton } from '@/components/ui/skeleton';
+
+const ACTION_COLORS = [
+  { value: 'none', label: 'Default' },
+  { value: 'blue', label: 'Blue' },
+  { value: 'green', label: 'Green' },
+  { value: 'yellow', label: 'Yellow' },
+  { value: 'red', label: 'Red' },
+  { value: 'purple', label: 'Purple' },
+  { value: 'orange', label: 'Orange' },
+];
+
+const colorClasses: Record<string, string> = {
+  blue: 'text-blue-500',
+  green: 'text-green-500',
+  yellow: 'text-yellow-500',
+  red: 'text-red-500',
+  purple: 'text-purple-500',
+  orange: 'text-orange-500',
+};
 
 interface ActionsListProps {
   projectId: string;
@@ -41,6 +70,9 @@ export function ActionsList({ projectId }: ActionsListProps) {
   const deleteDialog = useDeleteDialog<Action>();
 
   const { name, slug, setName, setSlug, reset: resetSlug } = useAutoSlug();
+  const [group, setGroup] = useState('');
+  const [showInMenu, setShowInMenu] = useState(true);
+  const [color, setColor] = useState('none');
 
   const { data: actions = [], isLoading } = useQuery({
     queryKey: queryKeys.actions.all(projectId),
@@ -89,6 +121,9 @@ export function ActionsList({ projectId }: ActionsListProps) {
 
   const resetForm = () => {
     resetSlug();
+    setGroup('');
+    setShowInMenu(true);
+    setColor('none');
   };
 
   const openCreateDialog = () => {
@@ -99,19 +134,35 @@ export function ActionsList({ projectId }: ActionsListProps) {
   const openEditDialog = (action: Action) => {
     setName(action.name);
     setSlug(action.slug);
+    setGroup(action.group || '');
+    setShowInMenu(action.show_in_menu);
+    setColor(action.color || 'none');
     formDialog.openEdit(action);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
+    const colorValue = color === 'none' ? undefined : color;
+
     if (formDialog.mode === 'edit' && formDialog.selectedItem) {
       updateMutation.mutate({
         id: formDialog.selectedItem.id,
-        data: { name },
+        data: {
+          name,
+          group: group || undefined,
+          show_in_menu: showInMenu,
+          color: colorValue,
+        },
       });
     } else {
-      createMutation.mutate({ name, slug });
+      createMutation.mutate({
+        name,
+        slug,
+        group: group || undefined,
+        show_in_menu: showInMenu,
+        color: colorValue,
+      });
     }
   };
 
@@ -163,11 +214,21 @@ export function ActionsList({ projectId }: ActionsListProps) {
               >
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
-                    <Zap className="size-4 text-muted-foreground" />
+                    <Zap className={`size-4 ${action.color ? colorClasses[action.color] : 'text-muted-foreground'}`} />
                     <span className="font-medium">{action.name}</span>
                     <code className="rounded bg-muted px-2 py-0.5 text-xs text-muted-foreground">
                       {action.slug}
                     </code>
+                    {action.group && (
+                      <span className="rounded bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+                        {action.group}
+                      </span>
+                    )}
+                    {!action.show_in_menu && (
+                      <span className="rounded bg-yellow-100 dark:bg-yellow-900/30 px-2 py-0.5 text-xs text-yellow-700 dark:text-yellow-400">
+                        Hidden
+                      </span>
+                    )}
                   </div>
                 </div>
                 <DropdownMenu>
@@ -239,6 +300,55 @@ export function ActionsList({ projectId }: ActionsListProps) {
                   </FieldDescription>
                 </Field>
               )}
+              <Field>
+                <FieldLabel>Group</FieldLabel>
+                <Input
+                  value={group}
+                  onChange={(e) => setGroup(e.target.value)}
+                  placeholder="e.g. Admin, Debug"
+                />
+                <FieldDescription>
+                  Optional group name to organize actions in the menu.
+                </FieldDescription>
+              </Field>
+              <FieldGroup className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label htmlFor="show-in-menu">Show in Menu</Label>
+                  <FieldDescription>
+                    Display this action in the actions dropdown.
+                  </FieldDescription>
+                </div>
+                <Switch
+                  id="show-in-menu"
+                  checked={showInMenu}
+                  onCheckedChange={setShowInMenu}
+                />
+              </FieldGroup>
+              <Field>
+                <FieldLabel>Color</FieldLabel>
+                <Select value={color} onValueChange={setColor}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Default" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {ACTION_COLORS.map((c) => (
+                      <SelectItem key={c.value} value={c.value}>
+                        <div className="flex items-center gap-2">
+                          {c.value !== 'none' && (
+                            <Circle
+                              className={`size-3 fill-current ${colorClasses[c.value] || ''}`}
+                            />
+                          )}
+                          {c.label}
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FieldDescription>
+                  Color indicator for the action button.
+                </FieldDescription>
+              </Field>
             </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={formDialog.close}>
