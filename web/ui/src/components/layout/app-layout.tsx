@@ -1,9 +1,15 @@
 import React from 'react';
 import { Outlet, useLocation, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Star, Github } from 'lucide-react';
+import { Star, Github, Clock } from 'lucide-react';
 
 import { projectsApi, versionApi } from '@/api';
+import { useServerTimeStore } from '@/stores/server-time-store';
+import {
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+} from '@/components/ui/hover-card';
 import { AppSidebar } from './app-sidebar';
 import {
   Breadcrumb,
@@ -108,6 +114,7 @@ function useBreadcrumbs(): BreadcrumbItem[] {
 
 export function AppLayout() {
   const breadcrumbs = useBreadcrumbs();
+  const serverTime = useServerTimeStore((state) => state.serverTime);
 
   const { data: versionInfo } = useQuery({
     queryKey: ['version'],
@@ -144,25 +151,38 @@ export function AppLayout() {
             </Breadcrumb>
           </div>
 
-          {/* Right section: GitHub + Version */}
+          {/* Right section: Server Time + Version + GitHub */}
           <div className="flex items-center gap-3 px-4">
+            {serverTime && (
+              <HoverCard openDelay={100} closeDelay={100}>
+                <HoverCardTrigger asChild>
+                  <button className="text-muted-foreground hover:text-foreground transition-colors">
+                    <Clock className="h-4 w-4" />
+                  </button>
+                </HoverCardTrigger>
+                <HoverCardContent className="w-auto px-3 py-2" align="center">
+                  <span className="text-sm font-medium">{serverTime.date} {serverTime.time}</span>
+                </HoverCardContent>
+              </HoverCard>
+            )}
+            {serverTime && <Separator orientation="vertical" className="h-4" />}
             <div className="flex items-center gap-2 text-sm">
               <span className="font-semibold">{versionInfo?.name || 'M3M'}</span>
               {versionInfo?.version && (
-                  <span className="text-muted-foreground bg-muted px-1.5 py-0.5 rounded text-xs">
+                <span className="text-muted-foreground bg-muted px-1.5 py-0.5 rounded text-xs">
                   {versionInfo.version}
                 </span>
               )}
             </div>
-            <Separator orientation="vertical" className="h-4"/>
+            <Separator orientation="vertical" className="h-4" />
             <a
-                href="https://github.com/levskiy0/m3m"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-2 px-2.5 py-1 border rounded-md text-sm hover:bg-muted transition-colors"
+              href="https://github.com/levskiy0/m3m"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 px-2.5 py-1 border rounded-md text-sm hover:bg-muted transition-colors"
             >
-              <Github className="h-4 w-4"/>
-              <Star className="h-3.5 w-3.5 text-yellow-500"/>
+              <Github className="h-4 w-4" />
+              <Star className="h-3.5 w-3.5 text-yellow-500" />
             </a>
           </div>
         </header>

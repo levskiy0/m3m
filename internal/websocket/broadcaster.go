@@ -89,11 +89,14 @@ func (b *Broadcaster) Start(_ context.Context) {
 	bgCtx, cancel := context.WithCancel(context.Background())
 	b.cancel = cancel
 
-	// Start monitor broadcast (every 1 second)
+	// Start monitor broadcast (every 10 seconds)
 	go b.monitorLoop(bgCtx)
 
 	// Start goals broadcast (every 30 seconds)
 	go b.goalsLoop(bgCtx)
+
+	// Start time broadcast (every 1 second)
+	go b.timeLoop(bgCtx)
 
 	b.logger.Info("WebSocket broadcaster started")
 }
@@ -134,6 +137,39 @@ func (b *Broadcaster) goalsLoop(ctx context.Context) {
 			b.broadcastGoalsData()
 		}
 	}
+}
+
+// ServerTime represents server time data
+type ServerTime struct {
+	Timestamp int64  `json:"timestamp"`
+	Date      string `json:"date"`
+	Time      string `json:"time"`
+}
+
+// timeLoop broadcasts server time to all connected clients
+func (b *Broadcaster) timeLoop(ctx context.Context) {
+	ticker := time.NewTicker(1 * time.Second)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			b.broadcastTime()
+		}
+	}
+}
+
+// broadcastTime sends current server time to all connected clients
+func (b *Broadcaster) broadcastTime() {
+	now := time.Now()
+	serverTime := ServerTime{
+		Timestamp: now.Unix(),
+		Date:      now.Format("2006-01-02"),
+		Time:      now.Format("15:04"),
+	}
+	b.hub.BroadcastToAll(EventTime, serverTime)
 }
 
 // broadcastMonitorData sends monitor data to all project subscribers

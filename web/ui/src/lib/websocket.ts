@@ -2,7 +2,13 @@ import { config } from '@/lib/config';
 import { getToken } from '@/api/client';
 import type { ActionRuntimeState } from '@/types';
 
-export type EventType = 'monitor' | 'log' | 'running' | 'goals' | 'actions' | 'ui_request';
+export type EventType = 'monitor' | 'log' | 'running' | 'goals' | 'actions' | 'ui_request' | 'time';
+
+export interface ServerTime {
+  timestamp: number;
+  date: string;
+  time: string;
+}
 
 export type UIDialogType = 'alert' | 'confirm' | 'prompt' | 'form' | 'toast' | 'form_update';
 
@@ -64,6 +70,7 @@ export interface WSEventHandlers {
   onGoals?: (projectId: string, data: unknown) => void;
   onActions?: (projectId: string, data: ActionRuntimeState[]) => void;
   onUIRequest?: (projectId: string, data: UIRequestData) => void;
+  onTime?: (data: ServerTime) => void;
   onConnect?: () => void;
   onDisconnect?: () => void;
   onError?: (error: Event) => void;
@@ -191,6 +198,12 @@ class WebSocketClient {
         if (parsed.type === 'session' && parsed.sessionId) {
           this._sessionId = parsed.sessionId;
           console.log('WebSocket: Session ID received:', this._sessionId);
+          continue;
+        }
+
+        // Handle global events (no projectId)
+        if (parsed.event?.type === 'time') {
+          this.handlers.onTime?.(parsed.event.data as ServerTime);
           continue;
         }
 

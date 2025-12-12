@@ -20,6 +20,7 @@ const (
 	EventGoals     EventType = "goals"
 	EventActions   EventType = "actions"
 	EventUIRequest EventType = "ui_request"
+	EventTime      EventType = "time"
 )
 
 // Event represents a WebSocket event message
@@ -32,6 +33,11 @@ type Event struct {
 type EventData struct {
 	Type EventType   `json:"type"`
 	Data interface{} `json:"data,omitempty"`
+}
+
+// GlobalEvent represents a global event (not tied to a project)
+type GlobalEvent struct {
+	Event EventData `json:"event"`
 }
 
 // Client represents a connected WebSocket client
@@ -71,6 +77,9 @@ type Hub struct {
 	// Broadcast to project subscribers
 	broadcast chan *Broadcast
 
+	// Broadcast to all clients
+	globalBroadcast chan *EventData
+
 	// UI response handler
 	uiResponseHandler UIResponseHandler
 
@@ -93,15 +102,16 @@ type Broadcast struct {
 // NewHub creates a new Hub
 func NewHub(logger *slog.Logger) *Hub {
 	return &Hub{
-		projectClients: make(map[string]map[*Client]bool),
-		clients:        make(map[*Client]bool),
-		sessionClients: make(map[string]*Client),
-		register:       make(chan *Client),
-		unregister:     make(chan *Client),
-		subscribe:      make(chan *Subscription),
-		unsubscribe:    make(chan *Subscription),
-		broadcast:      make(chan *Broadcast, 256),
-		logger:         logger,
+		projectClients:  make(map[string]map[*Client]bool),
+		clients:         make(map[*Client]bool),
+		sessionClients:  make(map[string]*Client),
+		register:        make(chan *Client),
+		unregister:      make(chan *Client),
+		subscribe:       make(chan *Subscription),
+		unsubscribe:     make(chan *Subscription),
+		broadcast:       make(chan *Broadcast, 256),
+		globalBroadcast: make(chan *EventData, 64),
+		logger:          logger,
 	}
 }
 
@@ -195,6 +205,36 @@ func (h *Hub) Run() {
 					h.logger.Warn("Client buffer full, skipping message")
 				}
 			}
+
+		case eventData := <-h.globalBroadcast:
+			h.mu.RLock()
+			allClients := make([]*Client, 0, len(h.clients))
+			for client := range h.clients {
+				allClients = append(allClients, client)
+			}
+			h.mu.RUnlock()
+
+			if len(allClients) == 0 {
+				continue
+			}
+
+			globalEvent := GlobalEvent{
+				Event: *eventData,
+			}
+
+			message, err := json.Marshal(globalEvent)
+			if err != nil {
+				h.logger.Error("Failed to marshal global event", "error", err)
+				continue
+			}
+
+			for _, client := range allClients {
+				select {
+				case client.send <- message:
+				default:
+					// skip
+				}
+			}
 		}
 	}
 }
@@ -212,6 +252,14 @@ func (h *Hub) BroadcastToProject(projectID string, eventType EventType, data int
 			Type: eventType,
 			Data: data,
 		},
+	}
+}
+
+// BroadcastToAll sends an event to all connected clients
+func (h *Hub) BroadcastToAll(eventType EventType, data interface{}) {
+	h.globalBroadcast <- &EventData{
+		Type: eventType,
+		Data: data,
 	}
 }
 
