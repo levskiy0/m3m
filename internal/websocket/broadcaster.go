@@ -161,9 +161,9 @@ func (b *Broadcaster) timeLoop(ctx context.Context) {
 	}
 }
 
-// broadcastTime sends current server time to all connected clients
+// broadcastTime sends current server time to all connected clients (UTC)
 func (b *Broadcaster) broadcastTime() {
-	now := time.Now()
+	now := time.Now().UTC()
 	serverTime := ServerTime{
 		Timestamp: now.Unix(),
 		Date:      now.Format("2006-01-02"),
@@ -236,8 +236,8 @@ func (b *Broadcaster) broadcastGoalsData() {
 			goalIDs[i] = g.ID.Hex()
 		}
 
-		// Get stats for last 7 days
-		now := time.Now()
+		// Get stats for last 7 days (UTC)
+		now := time.Now().UTC()
 		startDate := now.AddDate(0, 0, -7)
 		today := now.Format("2006-01-02")
 

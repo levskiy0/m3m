@@ -88,10 +88,10 @@ func (g *GoalsModule) GetValue(slug string) (int64, error) {
 		return 0, err
 	}
 
-	// Determine the date to query
+	// Determine the date to query (UTC)
 	var date string
 	if goal.Type == domain.GoalTypeDailyCounter {
-		date = time.Now().Format("2006-01-02")
+		date = time.Now().UTC().Format("2006-01-02")
 	} else {
 		date = "total"
 	}

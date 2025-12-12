@@ -425,9 +425,9 @@ func parseLogLine(line string) LogEntry {
 	if len(line) > 21 && line[0] == '[' {
 		closeBracket := strings.Index(line, "]")
 		if closeBracket > 0 {
-			// Convert "2006-01-02 15:04:05" to ISO format "2006-01-02T15:04:05"
+			// Convert "2006-01-02 15:04:05" to ISO format "2006-01-02T15:04:05Z" (Z indicates UTC)
 			ts := line[1:closeBracket]
-			entry.Timestamp = strings.Replace(ts, " ", "T", 1)
+			entry.Timestamp = strings.Replace(ts, " ", "T", 1) + "Z"
 			line = strings.TrimPrefix(line[closeBracket+1:], " ")
 
 			// Try to parse level: [LEVEL]

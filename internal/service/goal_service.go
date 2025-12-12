@@ -159,7 +159,7 @@ func (s *GoalService) Increment(ctx context.Context, goalSlug string, projectID 
 
 	var date string
 	if goal.Type == domain.GoalTypeDailyCounter {
-		date = time.Now().Format("2006-01-02")
+		date = time.Now().UTC().Format("2006-01-02")
 	} else {
 		date = "total"
 	}
