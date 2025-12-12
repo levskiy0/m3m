@@ -165,10 +165,10 @@ export function PipelinePage() {
 
   // Fetch logs when Logs tab or split panel is opened
   useEffect(() => {
-    if (activeTab === 'logs' || (viewMode === 'split' && isDebugMode)) {
+    if (activeTab === 'logs' || viewMode === 'split') {
       refetchLogs();
     }
-  }, [activeTab, viewMode, isDebugMode, refetchLogs]);
+  }, [activeTab, viewMode, refetchLogs]);
 
   const logs: LogEntry[] = Array.isArray(logsData) ? logsData : [];
 
@@ -737,7 +737,7 @@ export function PipelinePage() {
                     />
                   </div>
                 </ResizablePanel>
-                {viewMode === 'split' && isDebugMode && (
+                {viewMode === 'split' && (
                   <>
                     <ResizableHandle />
                     <ResizablePanel defaultSize={30} minSize={15} maxSize={50}>
