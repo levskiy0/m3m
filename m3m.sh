@@ -121,12 +121,23 @@ cmd_update() {
     cmd_rebuild
 }
 
+clean_plugins() {
+    log "Cleaning old plugins..."
+    # Clean .so files from data directory (mounted volume)
+    find "$M3M_DATA" -name "*.so" -type f -delete 2>/dev/null || true
+    # Clean .so files from source plugins directory
+    find "$M3M_BASE/src/plugins" -name "*.so" -type f -delete 2>/dev/null || true
+}
+
 cmd_rebuild() {
     local version=$(cat "$M3M_VERSION_FILE" 2>/dev/null || echo "dev")
 
     log "Rebuilding M3M with plugins..."
 
     [ -d "$M3M_BASE/src" ] || error "M3M not installed. Run './m3m.sh install' first."
+
+    # Clean old compiled plugins
+    clean_plugins
 
     # Copy plugins to source
     if [ -d "$M3M_BASE/plugins" ] && [ "$(ls -A $M3M_BASE/plugins 2>/dev/null)" ]; then
