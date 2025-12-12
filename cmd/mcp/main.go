@@ -19,11 +19,14 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"path/filepath"
+	"plugin"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/levskiy0/m3m/internal/runtime/modules"
+	pkgplugin "github.com/levskiy0/m3m/pkg/plugin"
 	"github.com/levskiy0/m3m/pkg/schema"
 )
 
@@ -106,19 +109,96 @@ var moduleSchemas []schema.ModuleSchema
 
 // HTTP mode variables
 var (
-	httpAddr   string
-	sseClients = make(map[string]chan string)
-	sseMutex   sync.RWMutex
+	httpAddr    string
+	pluginsPath string
+	sseClients  = make(map[string]chan string)
+	sseMutex    sync.RWMutex
 )
 
 func init() {
+	// Built-in modules are loaded first
 	moduleSchemas = modules.GetAllSchemas()
+}
+
+// loadPluginSchemas loads .so plugin files and extracts their schemas
+func loadPluginSchemas(pluginsDir string) []schema.ModuleSchema {
+	var schemas []schema.ModuleSchema
+
+	if pluginsDir == "" {
+		return schemas
+	}
+
+	// Check if directory exists
+	info, err := os.Stat(pluginsDir)
+	if err != nil || !info.IsDir() {
+		return schemas
+	}
+
+	// Scan for .so files
+	entries, err := os.ReadDir(pluginsDir)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Warning: failed to read plugins directory: %v\n", err)
+		return schemas
+	}
+
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".so") {
+			continue
+		}
+
+		pluginPath := filepath.Join(pluginsDir, entry.Name())
+		s, err := loadPluginSchema(pluginPath)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: failed to load plugin %s: %v\n", entry.Name(), err)
+			continue
+		}
+
+		schemas = append(schemas, s)
+		fmt.Fprintf(os.Stderr, "Loaded plugin: %s\n", s.Name)
+	}
+
+	return schemas
+}
+
+// loadPluginSchema loads a single .so plugin and extracts its schema
+func loadPluginSchema(path string) (schema.ModuleSchema, error) {
+	// Open the plugin
+	p, err := plugin.Open(path)
+	if err != nil {
+		return schema.ModuleSchema{}, fmt.Errorf("failed to open plugin: %w", err)
+	}
+
+	// Look for NewPlugin function
+	newPluginSym, err := p.Lookup("NewPlugin")
+	if err != nil {
+		return schema.ModuleSchema{}, fmt.Errorf("plugin does not export NewPlugin: %w", err)
+	}
+
+	// Cast to function
+	newPluginFunc, ok := newPluginSym.(func() interface{})
+	if !ok {
+		return schema.ModuleSchema{}, fmt.Errorf("NewPlugin has wrong signature")
+	}
+
+	// Create plugin instance and cast to Plugin interface
+	rawPlugin := newPluginFunc()
+	pluginInstance, ok := rawPlugin.(pkgplugin.Plugin)
+	if !ok {
+		return schema.ModuleSchema{}, fmt.Errorf("plugin does not implement Plugin interface")
+	}
+
+	// Initialize plugin with empty config (only need schema)
+	_ = pluginInstance.Init(map[string]interface{}{})
+
+	return pluginInstance.GetSchema(), nil
 }
 
 func main() {
 	flag.StringVar(&httpAddr, "http", "", "HTTP address to listen on (e.g., :3100)")
+	flag.StringV
 	flag.Parse()
 
+ "plugins", "./plugins", "Path to plugins directory containing .so files"
 	if httpAddr != "" {
 		runHTTPServer()
 	} else {
