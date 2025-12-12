@@ -163,12 +163,12 @@ export function PipelinePage() {
     enabled: !!projectId,
   });
 
-  // Fetch logs when Logs tab or split panel is opened (only in debug mode)
+  // Fetch logs when Logs tab or split panel is opened
   useEffect(() => {
-    if (isDebugMode && (activeTab === 'logs' || viewMode === 'split')) {
+    if (activeTab === 'logs' || viewMode === 'split') {
       refetchLogs();
     }
-  }, [activeTab, viewMode, isDebugMode, refetchLogs]);
+  }, [activeTab, viewMode, refetchLogs]);
 
   const logs: LogEntry[] = Array.isArray(logsData) ? logsData : [];
 
@@ -539,7 +539,7 @@ export function PipelinePage() {
             Editor
           </EditorTab>
 
-          {viewMode === 'tabs' && isDebugMode && (
+          {viewMode === 'tabs' && (
             <EditorTab
               active={activeTab === 'logs'}
               onClick={() => setActiveTab('logs')}
@@ -696,28 +696,26 @@ export function PipelinePage() {
                     Save
                     <Kbd className="ml-2">^S</Kbd>
                   </LoadingButton>
-                  {/* View Mode Toggle (only in debug mode) */}
-                  {isDebugMode && (
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={toggleViewMode}
-                          className="size-8"
-                        >
-                          {viewMode === 'split' ? (
-                            <PanelRightClose className="size-4" />
-                          ) : (
-                            <PanelRight className="size-4" />
-                          )}
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        {viewMode === 'split' ? 'Hide logs panel' : 'Show logs panel'}
-                      </TooltipContent>
-                    </Tooltip>
-                  )}
+                  {/* View Mode Toggle */}
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={toggleViewMode}
+                        className="size-8"
+                      >
+                        {viewMode === 'split' ? (
+                          <PanelRightClose className="size-4" />
+                        ) : (
+                          <PanelRight className="size-4" />
+                        )}
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      {viewMode === 'split' ? 'Hide logs panel' : 'Show logs panel'}
+                    </TooltipContent>
+                  </Tooltip>
                 </div>
               </div>
               {/* Code Editor with optional Logs Panel */}
@@ -739,7 +737,7 @@ export function PipelinePage() {
                     />
                   </div>
                 </ResizablePanel>
-                {viewMode === 'split' && isDebugMode && (
+                {viewMode === 'split' && (
                   <>
                     <ResizableHandle />
                     <ResizablePanel defaultSize={30} minSize={15} maxSize={50}>
@@ -761,8 +759,8 @@ export function PipelinePage() {
             </>
           )}
 
-          {/* Logs Content (only in tabs mode, only in debug mode) */}
-          {activeTab === 'logs' && viewMode === 'tabs' && isDebugMode && (
+          {/* Logs Content (only in tabs mode) */}
+          {activeTab === 'logs' && viewMode === 'tabs' && (
             <LogsViewer
               logs={logs}
               limit={500}
