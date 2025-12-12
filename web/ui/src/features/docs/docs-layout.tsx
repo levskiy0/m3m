@@ -1,6 +1,6 @@
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Search, Rocket, Code2, RefreshCw, Database } from 'lucide-react';
+import { Search, Rocket, Code2, RefreshCw, Database, Layout } from 'lucide-react';
 import { useState, useMemo } from 'react';
 
 import { runtimeApi } from '@/api';
@@ -12,6 +12,7 @@ const staticPages = [
   { id: 'getting-started', title: 'Getting Started', icon: Rocket },
   { id: 'lifecycle', title: 'Development Guide', icon: RefreshCw },
   { id: 'database', title: 'Database Guide', icon: Database },
+  { id: 'ui', title: 'UI Guide', icon: Layout },
 ];
 
 export function DocsLayout() {

@@ -17,6 +17,7 @@ import { GettingStartedPage } from '@/features/docs/getting-started';
 import { LifecyclePage } from '@/features/docs/lifecycle';
 import { ModulePage } from '@/features/docs/module-page';
 import { DatabaseGuidePage } from '@/features/docs/database-guide';
+import { UIGuidePage } from '@/features/docs/ui-guide';
 import { EnvironmentPage } from '@/features/environment/environment-page';
 import { UsersPage } from '@/features/users/users-page';
 import { ProfilePage } from '@/features/users/profile-page';
@@ -109,6 +110,7 @@ export function AppRouter() {
               <Route path="getting-started" element={<GettingStartedPage />} />
               <Route path="lifecycle" element={<LifecyclePage />} />
               <Route path="database" element={<DatabaseGuidePage />} />
+              <Route path="ui" element={<UIGuidePage />} />
               <Route path="api/:moduleId" element={<ModulePage />} />
             </Route>
 
