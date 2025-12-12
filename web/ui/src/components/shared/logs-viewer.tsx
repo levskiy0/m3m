@@ -12,6 +12,7 @@ import {
 } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { LOG_LEVEL_COLORS } from '@/lib/constants';
+import { formatTime } from '@/lib/format';
 import type { LogEntry } from '@/types';
 
 type LogLevel = 'all' | 'debug' | 'info' | 'warn' | 'error';
@@ -120,7 +121,7 @@ export function LogsViewer({
             {displayLogs.map((log, index) => (
               <div key={index} className="flex gap-2 text-gray-300">
                 <span className="text-gray-500 shrink-0">
-                  {new Date(log.timestamp).toLocaleTimeString()}
+                  {formatTime(log.timestamp)}
                 </span>
                 <span
                   className={cn(

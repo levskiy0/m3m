@@ -405,22 +405,30 @@ const MonitoringWidgetCard = forwardRef<HTMLDivElement, {
 }>(({ widget, runtimeStats, isRunning, config, Icon, onEdit, onDelete, dragHandleProps, style }, ref) => {
   // Calculate uptime locally from started_at to avoid needing frequent WS updates
   const [computedUptime, setComputedUptime] = useState<string>('--');
+  // Current UTC time for uptime widget
+  const [currentUtcTime, setCurrentUtcTime] = useState<string>('');
 
   useEffect(() => {
-    if (widget.type !== 'uptime' || !isRunning || !runtimeStats?.started_at) {
-      setComputedUptime('--');
-      return;
-    }
+    if (widget.type !== 'uptime') return;
 
-    const updateUptime = () => {
-      const startedAt = new Date(runtimeStats.started_at).getTime();
-      const now = Date.now();
-      const seconds = Math.floor((now - startedAt) / 1000);
-      setComputedUptime(formatUptime(seconds));
+    const updateTime = () => {
+      const now = new Date();
+      const hours = String(now.getUTCHours()).padStart(2, '0');
+      const minutes = String(now.getUTCMinutes()).padStart(2, '0');
+      setCurrentUtcTime(`${hours}:${minutes}`);
+
+      if (isRunning && runtimeStats?.started_at) {
+        const startedAt = new Date(runtimeStats.started_at).getTime();
+        const nowMs = Date.now();
+        const uptimeSeconds = Math.floor((nowMs - startedAt) / 1000);
+        setComputedUptime(formatUptime(uptimeSeconds));
+      } else {
+        setComputedUptime('--');
+      }
     };
 
-    updateUptime();
-    const interval = setInterval(updateUptime, 1000);
+    updateTime();
+    const interval = setInterval(updateTime, 1000);
 
     return () => clearInterval(interval);
   }, [widget.type, isRunning, runtimeStats?.started_at]);
@@ -468,9 +476,7 @@ const MonitoringWidgetCard = forwardRef<HTMLDivElement, {
       case 'database':
         return 'Collections data';
       case 'uptime':
-        return runtimeStats?.started_at
-          ? `Since ${new Date(runtimeStats.started_at).toLocaleString()}`
-          : 'Service not running';
+        return currentUtcTime ? `UTC ${currentUtcTime}` : 'Server time';
       case 'jobs':
         return runtimeStats?.scheduler_active ? 'Scheduler active' : 'Scheduler inactive';
       default:

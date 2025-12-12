@@ -20,6 +20,7 @@ import { toast } from 'sonner';
 
 import { pipelineApi, runtimeApi, projectsApi, templatesApi, actionsApi } from '@/api';
 import { queryKeys } from '@/lib/query-keys';
+import { formatDateTime } from '@/lib/format';
 import { useTitle, useWebSocket, useProjectRuntime } from '@/hooks';
 import { RELEASE_TAGS } from '@/features/pipeline/constants';
 import type { CreateBranchRequest, CreateReleaseRequest, LogEntry, ActionState } from '@/types';
@@ -830,7 +831,7 @@ export function PipelinePage() {
                             </p>
                           )}
                           <p className="text-xs text-muted-foreground mt-1">
-                            {new Date(release.created_at).toLocaleString()}
+                            {formatDateTime(release.created_at)}
                           </p>
                         </div>
                         <div className="flex items-center gap-1">
