@@ -16,7 +16,7 @@ func (p *TelegramPlugin) Name() string {
 }
 
 func (p *TelegramPlugin) Version() string {
-	return "1.0.0"
+	return "1.0.1"
 }
 
 func (p *TelegramPlugin) Description() string {

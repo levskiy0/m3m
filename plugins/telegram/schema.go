@@ -64,6 +64,21 @@ interface TelegramDocument {
     fileSize?: number;
 }
 
+interface TelegramForwardOrigin {
+    type: "user" | "hidden_user" | "chat" | "channel";
+    date: number;
+    /** For type="user" */
+    senderUser?: TelegramUser;
+    /** For type="hidden_user" */
+    senderUserName?: string;
+    /** For type="chat" */
+    senderChat?: TelegramChat;
+    authorSignature?: string;
+    /** For type="channel" */
+    chat?: TelegramChat;
+    messageId?: number;
+}
+
 interface TelegramMessage {
     messageId: number;
     date: number;
@@ -72,6 +87,7 @@ interface TelegramMessage {
     from?: TelegramUser;
     photo?: TelegramPhotoSize[];
     document?: TelegramDocument;
+    forwardOrigin?: TelegramForwardOrigin;
 }
 
 interface TelegramCallbackQuery {

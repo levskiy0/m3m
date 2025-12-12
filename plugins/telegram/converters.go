@@ -61,6 +61,42 @@ func (uctx *UpdateContext) convertMessage(m *models.Message) map[string]interfac
 			"fileSize":     m.Document.FileSize,
 		}
 	}
+	// Forward origin (new API)
+	if m.ForwardOrigin != nil {
+		origin := map[string]interface{}{
+			"type": string(m.ForwardOrigin.Type),
+		}
+		switch m.ForwardOrigin.Type {
+		case "user":
+			if m.ForwardOrigin.MessageOriginUser != nil {
+				origin["date"] = m.ForwardOrigin.MessageOriginUser.Date
+				origin["senderUser"] = uctx.convertUser(&m.ForwardOrigin.MessageOriginUser.SenderUser)
+			}
+		case "hidden_user":
+			if m.ForwardOrigin.MessageOriginHiddenUser != nil {
+				origin["date"] = m.ForwardOrigin.MessageOriginHiddenUser.Date
+				origin["senderUserName"] = m.ForwardOrigin.MessageOriginHiddenUser.SenderUserName
+			}
+		case "chat":
+			if m.ForwardOrigin.MessageOriginChat != nil {
+				origin["date"] = m.ForwardOrigin.MessageOriginChat.Date
+				origin["senderChat"] = uctx.convertChat(m.ForwardOrigin.MessageOriginChat.SenderChat)
+				if m.ForwardOrigin.MessageOriginChat.AuthorSignature != nil {
+					origin["authorSignature"] = *m.ForwardOrigin.MessageOriginChat.AuthorSignature
+				}
+			}
+		case "channel":
+			if m.ForwardOrigin.MessageOriginChannel != nil {
+				origin["date"] = m.ForwardOrigin.MessageOriginChannel.Date
+				origin["chat"] = uctx.convertChat(m.ForwardOrigin.MessageOriginChannel.Chat)
+				origin["messageId"] = m.ForwardOrigin.MessageOriginChannel.MessageID
+				if m.ForwardOrigin.MessageOriginChannel.AuthorSignature != nil {
+					origin["authorSignature"] = *m.ForwardOrigin.MessageOriginChannel.AuthorSignature
+				}
+			}
+		}
+		msg["forwardOrigin"] = origin
+	}
 	return msg
 }
 
