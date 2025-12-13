@@ -162,8 +162,20 @@ export function CodeEditor({
       return;
     }
 
+    // Filter out errors with invalid line numbers (Monaco requires 1 <= line <= lineCount)
+    const lineCount = model.getLineCount();
+    const validErrors = errors.filter(
+      (e) => e.line >= 1 && e.line <= lineCount && Number.isFinite(e.line)
+    );
+
+    if (validErrors.length === 0) {
+      monaco.editor.setModelMarkers(model, 'runtime', []);
+      decorationsRef.current = editor.deltaDecorations(decorationsRef.current, []);
+      return;
+    }
+
     // Set markers (for Problems panel / hover tooltip)
-    const markers = errors.map((error) => {
+    const markers = validErrors.map((error) => {
       const lineLength = model.getLineLength(error.line) || 100;
       return {
         severity: monaco.MarkerSeverity.Error as MarkerSeverity,
@@ -177,7 +189,7 @@ export function CodeEditor({
     monaco.editor.setModelMarkers(model, 'runtime', markers);
 
     // Set decorations (for line highlight)
-    const decorations = errors.map((error) => ({
+    const decorations = validErrors.map((error) => ({
       range: new monaco.Range(error.line, 1, error.line, 1),
       options: {
         isWholeLine: true,
