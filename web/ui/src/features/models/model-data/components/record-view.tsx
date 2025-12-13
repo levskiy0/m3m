@@ -133,7 +133,7 @@ export function RecordView({
       <CardContent className="flex-1 overflow-y-auto max-h-[calc(100vh-360px)]">
         <div>
           <div className="rounded-md border overflow-hidden">
-            <Table>
+            <Table className="table-fixed">
               <TableBody>
                 {/* Regular fields */}
                 {orderedFormFields.map((field) => {
@@ -144,7 +144,7 @@ export function RecordView({
                         {formatFieldLabel(field.key)}
                         {field.required && <span className="text-destructive ml-1">*</span>}
                       </TableCell>
-                      <TableCell className="py-2">
+                      <TableCell className="py-2 w-2/3 whitespace-normal">
                         {isEditing ? (
                           <div className="space-y-1">
                             <FieldInput
@@ -162,7 +162,7 @@ export function RecordView({
                         ) : (
                           <>
                             {field.type === 'document' ? (
-                              <pre className="text-md bg-muted p-2 rounded overflow-auto max-h-32">
+                              <pre className="text-md bg-muted p-2 rounded overflow-auto max-h-48 max-w-full whitespace-pre-wrap break-all">
                                 {JSON.stringify(data?.[field.key], null, 2)}
                               </pre>
                             ) : (
