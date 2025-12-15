@@ -166,6 +166,7 @@ export class ApiClient {
     const response = await fetch(`${this.baseURL}${endpoint}`, {
       method: 'GET',
       headers: this.getAuthHeaders(),
+      cache: 'no-store',
     });
 
     if (!response.ok) {

@@ -123,6 +123,8 @@ export function FileBrowser({
     queryKey: ['storage', projectId, currentPath],
     queryFn: () => storageApi.list(projectId, currentPath),
     enabled: !!projectId,
+    refetchOnMount: 'always',
+    staleTime: 0,
   });
 
   // Filter and sort items

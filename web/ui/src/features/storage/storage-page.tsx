@@ -63,7 +63,28 @@ export function StoragePage() {
     // Check if already open
     const existing = tabs.find((t) => t.path === item.path);
     if (existing) {
-      setActiveTabId(existing.id);
+      // If file has unsaved changes, just switch to the tab
+      const isDirty = existing.content !== existing.originalContent;
+      if (isDirty) {
+        setActiveTabId(existing.id);
+        return;
+      }
+      // Otherwise reload the file from server
+      try {
+        const blob = await storageApi.download(projectId!, item.path);
+        const text = await blob.text();
+        setTabs((prev) =>
+          prev.map((t) =>
+            t.id === existing.id
+              ? { ...t, content: text, originalContent: text }
+              : t
+          )
+        );
+        setActiveTabId(existing.id);
+      } catch {
+        toast.error('Failed to reload file');
+        setActiveTabId(existing.id);
+      }
       return;
     }
 
