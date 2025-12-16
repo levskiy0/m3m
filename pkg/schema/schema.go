@@ -83,6 +83,37 @@ func (s *ModuleSchema) GenerateTypeScript() string {
 		sb.WriteString("}\n\n")
 	}
 
+	// Handle standalone function modules (like $require, $exports)
+	if s.IsFunction && len(s.Methods) == 1 {
+		m := s.Methods[0]
+		if s.Description != "" {
+			sb.WriteString(fmt.Sprintf("/** %s */\n", s.Description))
+		}
+
+		// Build params
+		params := make([]string, 0, len(m.Params))
+		for _, p := range m.Params {
+			optional := ""
+			if p.Optional {
+				optional = "?"
+			}
+			if p.Variadic {
+				params = append(params, fmt.Sprintf("...%s: %s[]", p.Name, MapTypeToTS(p.Type)))
+			} else {
+				params = append(params, fmt.Sprintf("%s%s: %s", p.Name, optional, MapTypeToTS(p.Type)))
+			}
+		}
+
+		// Build return type
+		returnType := "void"
+		if m.Returns != nil {
+			returnType = MapTypeToTS(m.Returns.Type)
+		}
+
+		sb.WriteString(fmt.Sprintf("declare function %s(%s): %s;\n", s.Name, strings.Join(params, ", "), returnType))
+		return sb.String()
+	}
+
 	// Generate module declaration
 	if s.Description != "" {
 		sb.WriteString(fmt.Sprintf("/** %s */\n", s.Description))
