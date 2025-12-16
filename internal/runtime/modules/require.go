@@ -131,13 +131,14 @@ func (r *RequireModule) GetSchema() schema.ModuleSchema {
 func GetExportsSchema() schema.ModuleSchema {
 	return schema.ModuleSchema{
 		Name:        "$exports",
-		Description: "Export values from the current file for use by other files via $require",
+		Description: "Export an object with named values. Can be called multiple times. Example: $exports({ helper: myFunction, VERSION: '1.0' });",
+		IsFunction:  true,
 		Methods: []schema.MethodSchema{
 			{
 				Name:        "$exports",
 				Description: "Export an object with named values. Can be called multiple times. Example: $exports({ helper: myFunction, VERSION: '1.0' });",
 				Params: []schema.ParamSchema{
-					{Name: "exports", Type: "object", Description: "Object with key-value pairs to export"},
+					{Name: "exports", Type: "{ [key: string]: any }", Description: "Object with key-value pairs to export"},
 				},
 			},
 		},
