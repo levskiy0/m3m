@@ -26,6 +26,26 @@ func GetAllSchemas() []schema.ModuleSchema {
 		GetMailSchema(),
 		GetHookSchema(),
 		GetUISchema(),
+		GetRequireSchema(),
+		GetExportsSchema(),
+	}
+}
+
+// GetRequireSchema returns the $require module schema
+func GetRequireSchema() schema.ModuleSchema {
+	return schema.ModuleSchema{
+		Name:        "$require",
+		Description: "Load and use code from other files in your service. Files are executed once and cached.",
+		Methods: []schema.MethodSchema{
+			{
+				Name:        "$require",
+				Description: "Import exports from another file. The file is executed once and its exports are cached for subsequent calls.",
+				Params: []schema.ParamSchema{
+					{Name: "name", Type: "string", Description: "File name without extension (e.g., 'utils', 'helpers')"},
+				},
+				Returns: &schema.ParamSchema{Type: "object", Description: "Object containing exported values from the module"},
+			},
+		},
 	}
 }
 
