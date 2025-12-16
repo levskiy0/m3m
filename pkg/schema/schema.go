@@ -43,9 +43,10 @@ type ModuleSchema struct {
 	Name        string               `json:"name"`
 	Description string               `json:"description"`
 	Methods     []MethodSchema       `json:"methods"`
-	Types       []TypeSchema         `json:"types,omitempty"`    // Custom types used by this module
-	Nested      []NestedModuleSchema `json:"nested,omitempty"`   // Nested namespaces/objects
-	RawTypes    string               `json:"rawTypes,omitempty"` // Raw TypeScript for complex types
+	Types       []TypeSchema         `json:"types,omitempty"`      // Custom types used by this module
+	Nested      []NestedModuleSchema `json:"nested,omitempty"`     // Nested namespaces/objects
+	RawTypes    string               `json:"rawTypes,omitempty"`   // Raw TypeScript for complex types
+	IsFunction  bool                 `json:"isFunction,omitempty"` // If true, generate as standalone function instead of object with methods
 }
 
 // SchemaProvider interface for modules that provide schema
