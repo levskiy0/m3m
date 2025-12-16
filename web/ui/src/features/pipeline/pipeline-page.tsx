@@ -288,15 +288,22 @@ export function PipelinePage() {
     staleTime: Infinity, // Template doesn't change during session
   });
 
-  // Load branch files
+  // Track which branch we last loaded to avoid resetting editor state on refetch
+  const [loadedBranchId, setLoadedBranchId] = useState<string | null>(null);
+
+  // Load branch files - only reset editor state when switching branches
   useEffect(() => {
     if (currentBranch) {
       // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: sync files state with fetched branch data
       setFiles(currentBranch.files || []);
       setDirtyFiles(new Set());
-      // Reset to main file and ensure it's in open files
-      setActiveFileName('main');
-      setOpenFiles(['main']);
+
+      // Only reset active file and open files when switching to a different branch
+      if (loadedBranchId !== currentBranch.id) {
+        setActiveFileName('main');
+        setOpenFiles(['main']);
+        setLoadedBranchId(currentBranch.id);
+      }
     } else if (branches.length === 0 && defaultTemplate) {
       // New project without branches - create default main file
       setFiles([{ name: 'main', code: defaultTemplate }]);
@@ -304,7 +311,7 @@ export function PipelinePage() {
       setActiveFileName('main');
       setOpenFiles(['main']);
     }
-  }, [currentBranch, branches.length, defaultTemplate]);
+  }, [currentBranch, branches.length, defaultTemplate, loadedBranchId]);
 
   // Mutations
   const saveMutation = useMutation({
@@ -858,7 +865,13 @@ export function PipelinePage() {
                   <>
                     <ResizableHandle />
                     <ResizablePanel defaultSize={30} minSize={15} maxSize={50}>
-                      <div className="h-full border-l overflow-hidden">
+                      <div className="flex flex-col h-full border-l overflow-hidden">
+                        {/* Logs Header */}
+                        <div className="flex items-center justify-between px-3 py-2 border-b shrink-0">
+                          <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                            Logs
+                          </span>
+                        </div>
                         <LogsViewer
                           logs={logs}
                           limit={500}
@@ -866,7 +879,7 @@ export function PipelinePage() {
                           onDownload={downloadLogs}
                           onRefresh={refetchLogs}
                           height="100%"
-                          className="h-full"
+                          className="flex-1 min-h-0"
                         />
                       </div>
                     </ResizablePanel>

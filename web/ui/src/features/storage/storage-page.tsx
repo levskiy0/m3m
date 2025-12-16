@@ -40,8 +40,8 @@ export function StoragePage() {
   const [closeTabConfirmOpen, setCloseTabConfirmOpen] = useState(false);
   const [tabToClose, setTabToClose] = useState<string | null>(null);
 
-  // Track current directory for new files
-  const [currentDir] = useState('');
+  // Track current directory for FileBrowser persistence and new files
+  const [currentDir, setCurrentDir] = useState('');
 
   const activeTab = tabs.find((t) => t.id === activeTabId);
 
@@ -208,6 +208,8 @@ export function StoragePage() {
               onCreateFile={handleCreateFile}
               showUpload={true}
               className="flex-1"
+              currentPath={currentDir}
+              onPathChange={setCurrentDir}
             />
           ) : activeTab ? (
             <>

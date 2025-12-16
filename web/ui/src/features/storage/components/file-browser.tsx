@@ -77,6 +77,9 @@ export interface FileBrowserProps {
   showUpload?: boolean;
   // Custom height
   className?: string;
+  // Controlled path (optional - for persistence across tab switches)
+  currentPath?: string;
+  onPathChange?: (path: string) => void;
 }
 
 export function FileBrowser({
@@ -89,11 +92,16 @@ export function FileBrowser({
   onCreateFile,
   showUpload = true,
   className,
+  currentPath: controlledPath,
+  onPathChange,
 }: FileBrowserProps) {
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const [currentPath, setCurrentPath] = useState('');
+  // Support both controlled and uncontrolled path
+  const [internalPath, setInternalPath] = useState('');
+  const currentPath = controlledPath ?? internalPath;
+  const setCurrentPath = onPathChange ?? setInternalPath;
   const [selectedItem, setSelectedItem] = useState<StorageItem | null>(null);
 
   // Multi-select (only for browse mode)
@@ -789,55 +797,71 @@ export function FileBrowser({
       {/* Create Folder Dialog */}
       <Dialog open={createFolderOpen} onOpenChange={setCreateFolderOpen}>
         <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Create Folder</DialogTitle>
-          </DialogHeader>
-          <Field>
-            <FieldLabel>Folder Name</FieldLabel>
-            <Input
-              value={newName}
-              onChange={(e) => setNewName(e.target.value)}
-              placeholder="my-folder"
-            />
-          </Field>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setCreateFolderOpen(false)}>
-              Cancel
-            </Button>
-            <Button
-              onClick={() => createFolderMutation.mutate(newName)}
-              disabled={!newName || createFolderMutation.isPending}
-            >
-              Create
-            </Button>
-          </DialogFooter>
+          <form onSubmit={(e) => {
+            e.preventDefault();
+            if (newName && !createFolderMutation.isPending) {
+              createFolderMutation.mutate(newName);
+            }
+          }}>
+            <DialogHeader>
+              <DialogTitle>Create Folder</DialogTitle>
+            </DialogHeader>
+            <Field className="py-4">
+              <FieldLabel>Folder Name</FieldLabel>
+              <Input
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+                placeholder="my-folder"
+                autoFocus
+              />
+            </Field>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setCreateFolderOpen(false)}>
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={!newName || createFolderMutation.isPending}
+              >
+                Create
+              </Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
 
       {/* Rename Dialog */}
       <Dialog open={renameOpen} onOpenChange={setRenameOpen}>
         <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Rename</DialogTitle>
-          </DialogHeader>
-          <Field>
-            <FieldLabel>New Name</FieldLabel>
-            <Input
-              value={newName}
-              onChange={(e) => setNewName(e.target.value)}
-            />
-          </Field>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setRenameOpen(false)}>
-              Cancel
-            </Button>
-            <Button
-              onClick={() => renameMutation.mutate()}
-              disabled={!newName || renameMutation.isPending}
-            >
-              Rename
-            </Button>
-          </DialogFooter>
+          <form onSubmit={(e) => {
+            e.preventDefault();
+            if (newName && !renameMutation.isPending) {
+              renameMutation.mutate();
+            }
+          }}>
+            <DialogHeader>
+              <DialogTitle>Rename</DialogTitle>
+            </DialogHeader>
+            <Field className="py-4">
+              <FieldLabel>New Name</FieldLabel>
+              <Input
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+                autoFocus
+              />
+            </Field>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setRenameOpen(false)}>
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={!newName || renameMutation.isPending}
+              >
+                Rename
+              </Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
 
