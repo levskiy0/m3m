@@ -298,13 +298,35 @@ func (r *PipelineRepository) AddFileToBranch(ctx context.Context, branchID primi
 }
 
 // DeleteFileFromBranch removes a file from a branch
+// Uses find-filter-replace approach for FerretDB compatibility ($pull not supported)
 func (r *PipelineRepository) DeleteFileFromBranch(ctx context.Context, branchID primitive.ObjectID, fileName string) error {
+	// Get current branch
+	var branch domain.Branch
+	err := r.branchesCollection.FindOne(ctx, bson.M{"_id": branchID}).Decode(&branch)
+	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			return ErrBranchNotFound
+		}
+		return err
+	}
+
+	// Filter out the file
+	newFiles := make([]domain.CodeFile, 0, len(branch.Files))
+	for _, f := range branch.Files {
+		if f.Name != fileName {
+			newFiles = append(newFiles, f)
+		}
+	}
+
+	// Update with filtered files
 	result, err := r.branchesCollection.UpdateOne(
 		ctx,
 		bson.M{"_id": branchID},
 		bson.M{
-			"$pull": bson.M{"files": bson.M{"name": fileName}},
-			"$set":  bson.M{"updated_at": time.Now()},
+			"$set": bson.M{
+				"files":      newFiles,
+				"updated_at": time.Now(),
+			},
 		},
 	)
 	if err != nil {
