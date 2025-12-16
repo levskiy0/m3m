@@ -61,7 +61,7 @@ export function LogsViewer({
           value={levelFilter}
           onValueChange={(v) => setLevelFilter(v as LogLevel)}
         >
-          <SelectTrigger className="w-28 h-6 px-2 py-0 text-xs">
+          <SelectTrigger className="w-28 !h-6 px-2 py-0 text-xs">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
