@@ -112,7 +112,7 @@ func (h *RuntimeHandler) Start(c *gin.Context) {
 	// Body is optional - ignore EOF errors
 	c.ShouldBindJSON(&req)
 
-	var code string
+	var files []domain.CodeFile
 	var runningSource string
 
 	if req.Branch != "" {
@@ -122,7 +122,7 @@ func (h *RuntimeHandler) Start(c *gin.Context) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "branch not found"})
 			return
 		}
-		code = branch.Code
+		files = branch.Files
 		runningSource = "debug:" + req.Branch
 	} else if req.Version != "" {
 		// Run specific release version
@@ -131,7 +131,7 @@ func (h *RuntimeHandler) Start(c *gin.Context) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "release not found"})
 			return
 		}
-		code = release.Code
+		files = release.Files
 		runningSource = "release:" + req.Version
 
 		// Activate this release
@@ -147,10 +147,10 @@ func (h *RuntimeHandler) Start(c *gin.Context) {
 				c.JSON(http.StatusNotFound, gin.H{"error": "no code to run"})
 				return
 			}
-			code = branch.Code
+			files = branch.Files
 			runningSource = "debug:develop"
 		} else {
-			code = release.Code
+			files = release.Files
 			runningSource = "release:" + release.Version
 		}
 	}
@@ -159,7 +159,7 @@ func (h *RuntimeHandler) Start(c *gin.Context) {
 	h.storageService.ClearLogs(projectID.Hex())
 
 	// Start runtime with background context (runtime should outlive HTTP request)
-	if err := h.runtimeManager.Start(context.Background(), projectID, code); err != nil {
+	if err := h.runtimeManager.Start(context.Background(), projectID, files); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -224,7 +224,7 @@ func (h *RuntimeHandler) Restart(c *gin.Context) {
 	// Stop the runtime (ignore error if not running)
 	h.runtimeManager.Stop(projectID)
 
-	var code string
+	var files []domain.CodeFile
 	var runningSource string
 
 	// If explicit branch/version provided, use it
@@ -234,7 +234,7 @@ func (h *RuntimeHandler) Restart(c *gin.Context) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "branch not found"})
 			return
 		}
-		code = branch.Code
+		files = branch.Files
 		runningSource = "debug:" + req.Branch
 	} else if req.Version != "" {
 		release, err := h.pipelineService.GetRelease(c.Request.Context(), projectID, req.Version)
@@ -242,7 +242,7 @@ func (h *RuntimeHandler) Restart(c *gin.Context) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "release not found"})
 			return
 		}
-		code = release.Code
+		files = release.Files
 		runningSource = "release:" + req.Version
 	} else {
 		// Use the same source that was running before
@@ -252,34 +252,34 @@ func (h *RuntimeHandler) Restart(c *gin.Context) {
 			branchName := strings.TrimPrefix(runningSource, "debug:")
 			branch, err := h.pipelineService.GetBranch(c.Request.Context(), projectID, branchName)
 			if err == nil {
-				code = branch.Code
+				files = branch.Files
 			}
 		} else if strings.HasPrefix(runningSource, "release:") {
 			version := strings.TrimPrefix(runningSource, "release:")
 			release, err := h.pipelineService.GetRelease(c.Request.Context(), projectID, version)
 			if err == nil {
-				code = release.Code
+				files = release.Files
 			}
 		}
 
 		// Fallback to active release or develop branch
-		if code == "" {
+		if len(files) == 0 {
 			if project.ActiveRelease != "" {
 				release, err := h.pipelineService.GetRelease(c.Request.Context(), projectID, project.ActiveRelease)
 				if err == nil {
-					code = release.Code
+					files = release.Files
 					runningSource = "release:" + project.ActiveRelease
 				}
 			}
 		}
 
-		if code == "" {
+		if len(files) == 0 {
 			branch, err := h.pipelineService.GetBranch(c.Request.Context(), projectID, "develop")
 			if err != nil {
 				c.JSON(http.StatusNotFound, gin.H{"error": "no code to run"})
 				return
 			}
-			code = branch.Code
+			files = branch.Files
 			runningSource = "debug:develop"
 		}
 	}
@@ -288,7 +288,7 @@ func (h *RuntimeHandler) Restart(c *gin.Context) {
 	h.storageService.ClearLogs(projectID.Hex())
 
 	// Start runtime with background context (runtime should outlive HTTP request)
-	if err := h.runtimeManager.Start(context.Background(), projectID, code); err != nil {
+	if err := h.runtimeManager.Start(context.Background(), projectID, files); err != nil {
 		// Update status to stopped on failure
 		h.projectService.UpdateStatus(c.Request.Context(), projectID, domain.ProjectStatusStopped)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})

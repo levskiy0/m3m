@@ -73,13 +73,13 @@ type ProjectRuntime struct {
 	metricsCancel context.CancelFunc
 	lastHitCount  int64
 	lastJobCount  int64
-	code          string      // stored for auto-restart
-	logFile       string      // log file path for auto-restart
-	crashReason   CrashReason // reason for last crash
-	crashMessage  string      // crash error message
-	restartCount  int         // number of restarts
-	lastRestartAt time.Time   // last restart time
-	stopRequested bool        // true if stop was explicitly requested (no auto-restart)
+	files         []domain.CodeFile // stored for auto-restart
+	logFile       string            // log file path for auto-restart
+	crashReason   CrashReason       // reason for last crash
+	crashMessage  string            // crash error message
+	restartCount  int               // number of restarts
+	lastRestartAt time.Time         // last restart time
+	stopRequested bool              // true if stop was explicitly requested (no auto-restart)
 }
 
 // LogBroadcaster interface for broadcasting log updates
@@ -173,8 +173,8 @@ func (m *Manager) HandleUIResponse(projectID, requestID string, data interface{}
 	runtime.UI.HandleResponse(requestID, data)
 }
 
-// Start starts a project with the given code
-func (m *Manager) Start(ctx context.Context, projectID primitive.ObjectID, code string) error {
+// Start starts a project with the given files
+func (m *Manager) Start(ctx context.Context, projectID primitive.ObjectID, files []domain.CodeFile) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -233,6 +233,10 @@ func (m *Manager) Start(ctx context.Context, projectID primitive.ObjectID, code 
 
 	metricsCtx, metricsCancel := context.WithCancel(context.Background())
 
+	// Register require module for multi-file support
+	requireModule := modules.NewRequireModule(vm, files)
+	requireModule.Register(vm)
+
 	rt := &ProjectRuntime{
 		ProjectID:     projectID,
 		VM:            vm,
@@ -246,7 +250,7 @@ func (m *Manager) Start(ctx context.Context, projectID primitive.ObjectID, code 
 		StartedAt:     time.Now(),
 		Metrics:       NewMetricsHistory(),
 		metricsCancel: metricsCancel,
-		code:          code,
+		files:         files,
 		logFile:       logFile,
 	}
 
@@ -351,14 +355,14 @@ func (m *Manager) Start(ctx context.Context, projectID primitive.ObjectID, code 
 					"delay", delay.String(),
 				)
 
-				code := rt.code
+				savedFiles := rt.files
 				savedLogFile := rt.logFile
 
 				time.Sleep(delay)
 
 				// Restart with preserved restart info
 				go func() {
-					if err := m.startWithRestartInfo(projectID, code, restartCount, lastRestartAt, savedLogFile); err != nil {
+					if err := m.startWithRestartInfo(projectID, savedFiles, restartCount, lastRestartAt, savedLogFile); err != nil {
 						m.logger.Error("Auto-restart failed",
 							"project", projectIDStr,
 							"error", err,
@@ -376,7 +380,23 @@ func (m *Manager) Start(ctx context.Context, projectID primitive.ObjectID, code 
 			}
 		}()
 
-		_, err := vm.RunString(code)
+		// Find and execute main file
+		var mainCode string
+		for _, f := range files {
+			if f.Name == "main" {
+				mainCode = f.Code
+				break
+			}
+		}
+		if mainCode == "" {
+			crashReason = CrashReasonCodeError
+			crashMessage = "main file not found"
+			loggerModule.Error("Runtime error: main file not found")
+			m.logger.Error("Runtime execution error", "project", projectIDStr, "error", "main file not found")
+			return
+		}
+
+		_, err := vm.RunString(mainCode)
 		if err != nil {
 			crashReason = crashReasonForError(err)
 			crashMessage = err.Error()
@@ -888,7 +908,7 @@ func (m *Manager) registerModules(
 }
 
 // startWithRestartInfo starts a project with preserved restart information
-func (m *Manager) startWithRestartInfo(projectID primitive.ObjectID, code string, restartCount int, lastRestartAt time.Time, existingLogFile string) error {
+func (m *Manager) startWithRestartInfo(projectID primitive.ObjectID, files []domain.CodeFile, restartCount int, lastRestartAt time.Time, existingLogFile string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -950,6 +970,10 @@ func (m *Manager) startWithRestartInfo(projectID primitive.ObjectID, code string
 		}
 	}
 
+	// Register require module for multi-file support
+	requireModule := modules.NewRequireModule(vm, files)
+	requireModule.Register(vm)
+
 	metricsCtx, metricsCancel := context.WithCancel(context.Background())
 
 	rt := &ProjectRuntime{
@@ -964,7 +988,7 @@ func (m *Manager) startWithRestartInfo(projectID primitive.ObjectID, code string
 		StartedAt:     time.Now(),
 		Metrics:       NewMetricsHistory(),
 		metricsCancel: metricsCancel,
-		code:          code,
+		files:         files,
 		logFile:       logFile,
 		restartCount:  restartCount,
 		lastRestartAt: lastRestartAt,
@@ -1071,14 +1095,14 @@ func (m *Manager) startWithRestartInfo(projectID primitive.ObjectID, code string
 					"delay", delay.String(),
 				)
 
-				savedCode := rt.code
+				savedFiles := rt.files
 				savedLogFile := rt.logFile
 
 				time.Sleep(delay)
 
 				// Restart with preserved restart info
 				go func() {
-					if err := m.startWithRestartInfo(projectID, savedCode, newRestartCount, newLastRestartAt, savedLogFile); err != nil {
+					if err := m.startWithRestartInfo(projectID, savedFiles, newRestartCount, newLastRestartAt, savedLogFile); err != nil {
 						m.logger.Error("Auto-restart failed",
 							"project", projectIDStr,
 							"error", err,
@@ -1098,7 +1122,23 @@ func (m *Manager) startWithRestartInfo(projectID primitive.ObjectID, code string
 
 		loggerModule.Info(fmt.Sprintf("Service restarted (attempt %d/%d)", restartCount, MaxRestartsPerHour))
 
-		_, err := vm.RunString(code)
+		// Find and execute main file
+		var mainCode string
+		for _, f := range files {
+			if f.Name == "main" {
+				mainCode = f.Code
+				break
+			}
+		}
+		if mainCode == "" {
+			crashReason = CrashReasonCodeError
+			crashMessage = "main file not found"
+			loggerModule.Error("Runtime error: main file not found")
+			m.logger.Error("Runtime execution error", "project", projectIDStr, "error", "main file not found")
+			return
+		}
+
+		_, err := vm.RunString(mainCode)
 		if err != nil {
 			crashReason = crashReasonForError(err)
 			crashMessage = err.Error()

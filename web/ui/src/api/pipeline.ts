@@ -8,6 +8,9 @@ import type {
   UpdateBranchRequest,
   ResetBranchRequest,
   CreateReleaseRequest,
+  CreatePipelineFileRequest,
+  UpdatePipelineFileRequest,
+  RenamePipelineFileRequest,
 } from '@/types';
 
 export const pipelineApi = {
@@ -45,6 +48,52 @@ export const pipelineApi = {
 
   deleteBranch: async (projectId: string, branchId: string): Promise<void> => {
     return api.delete(`/api/projects/${projectId}/pipeline/branches/${branchId}`);
+  },
+
+  // Files
+  createFile: async (
+    projectId: string,
+    branchId: string,
+    data: CreatePipelineFileRequest
+  ): Promise<Branch> => {
+    return api.post<Branch>(
+      `/api/projects/${projectId}/pipeline/branches/${branchId}/files`,
+      data
+    );
+  },
+
+  updateFile: async (
+    projectId: string,
+    branchId: string,
+    fileName: string,
+    data: UpdatePipelineFileRequest
+  ): Promise<void> => {
+    return api.put(
+      `/api/projects/${projectId}/pipeline/branches/${branchId}/files/${encodeURIComponent(fileName)}`,
+      data
+    );
+  },
+
+  deleteFile: async (
+    projectId: string,
+    branchId: string,
+    fileName: string
+  ): Promise<Branch> => {
+    return api.delete<Branch>(
+      `/api/projects/${projectId}/pipeline/branches/${branchId}/files/${encodeURIComponent(fileName)}`
+    );
+  },
+
+  renameFile: async (
+    projectId: string,
+    branchId: string,
+    fileName: string,
+    data: RenamePipelineFileRequest
+  ): Promise<Branch> => {
+    return api.post<Branch>(
+      `/api/projects/${projectId}/pipeline/branches/${branchId}/files/${encodeURIComponent(fileName)}/rename`,
+      data
+    );
   },
 
   // Releases

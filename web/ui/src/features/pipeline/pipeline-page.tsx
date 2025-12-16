@@ -23,7 +23,9 @@ import { queryKeys } from '@/lib/query-keys';
 import { formatDateTime } from '@/lib/format';
 import { useTitle, useWebSocket, useProjectRuntime } from '@/hooks';
 import { RELEASE_TAGS } from '@/features/pipeline/constants';
-import type { CreateBranchRequest, CreateReleaseRequest, LogEntry, ActionState } from '@/types';
+import type { CreateBranchRequest, CreateReleaseRequest, LogEntry, ActionState, CodeFile } from '@/types';
+import { FileSidebar } from '@/features/pipeline/components/file-sidebar';
+import { FileTabs } from '@/features/pipeline/components/file-tabs';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { LogsViewer } from '@/components/shared/logs-viewer';
@@ -103,8 +105,10 @@ export function PipelinePage() {
   const initialBranchName = (location.state as { branch?: string } | null)?.branch;
 
   const [selectedBranchId, setSelectedBranchId] = useState<string>('');
-  const [code, setCode] = useState('');
-  const [hasChanges, setHasChanges] = useState(false);
+  const [files, setFiles] = useState<CodeFile[]>([]);
+  const [activeFileName, setActiveFileName] = useState('main');
+  const [openFiles, setOpenFiles] = useState<string[]>(['main']);
+  const [dirtyFiles, setDirtyFiles] = useState<Set<string>>(new Set());
   const [activeTab, setActiveTab] = useState<PipelineTab>('editor');
   const [viewMode, setViewMode] = useState<EditorViewMode>(getStoredViewMode);
 
@@ -240,11 +244,18 @@ export function PipelinePage() {
     enabled: !!projectId && !!selectedBranchId,
   });
 
+  // Computed values for current file
+  const currentCode = useMemo(() => {
+    return files.find((f) => f.name === activeFileName)?.code || '';
+  }, [files, activeFileName]);
+
+  const hasChanges = dirtyFiles.size > 0;
+
   // Extract runtime errors from error logs for Monaco markers
   // Clear errors when code is modified (stale errors not relevant to current code)
   const runtimeErrors = useMemo(() => {
     // Don't show stale errors if user modified code
-    if (hasChanges) return [];
+    if (dirtyFiles.has(activeFileName)) return [];
 
     // Only look at recent error logs (last 10 errors max)
     const errorLogs = logs.filter((l) => l.level === 'error').slice(-10);
@@ -263,7 +274,7 @@ export function PipelinePage() {
       }
     }
     return errors;
-  }, [logs, hasChanges]);
+  }, [logs, dirtyFiles, activeFileName]);
 
   const { data: runtimeTypes } = useQuery({
     queryKey: ['runtime-types'],
@@ -277,27 +288,30 @@ export function PipelinePage() {
     staleTime: Infinity, // Template doesn't change during session
   });
 
-  // Load branch code
+  // Load branch files
   useEffect(() => {
     if (currentBranch) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: sync code state with fetched branch data
-      setCode(currentBranch.code);
-
-      setHasChanges(false);
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: sync files state with fetched branch data
+      setFiles(currentBranch.files || []);
+      setDirtyFiles(new Set());
+      // Reset to main file and ensure it's in open files
+      setActiveFileName('main');
+      setOpenFiles(['main']);
     } else if (branches.length === 0 && defaultTemplate) {
-
-      setCode(defaultTemplate);
-
-      setHasChanges(true);
+      // New project without branches - create default main file
+      setFiles([{ name: 'main', code: defaultTemplate }]);
+      setDirtyFiles(new Set(['main']));
+      setActiveFileName('main');
+      setOpenFiles(['main']);
     }
   }, [currentBranch, branches.length, defaultTemplate]);
 
   // Mutations
   const saveMutation = useMutation({
-    mutationFn: () => pipelineApi.updateBranch(projectId!, selectedBranchId, { code }),
+    mutationFn: () => pipelineApi.updateBranch(projectId!, selectedBranchId, { files }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['branch', projectId, selectedBranchId] });
-      setHasChanges(false);
+      setDirtyFiles(new Set());
       toast.success('Code saved');
     },
     onError: (err) => {
@@ -446,8 +460,85 @@ export function PipelinePage() {
   };
 
   const handleCodeChange = (value: string) => {
-    setCode(value);
-    setHasChanges(value !== (currentBranch?.code || defaultTemplate || ''));
+    // Update the code for the active file
+    setFiles((prev) =>
+      prev.map((f) => (f.name === activeFileName ? { ...f, code: value } : f))
+    );
+    // Mark as dirty
+    const originalFile = currentBranch?.files?.find((f) => f.name === activeFileName);
+    const originalCode = originalFile?.code || (activeFileName === 'main' ? defaultTemplate : '') || '';
+    if (value !== originalCode) {
+      setDirtyFiles((prev) => new Set([...prev, activeFileName]));
+    } else {
+      setDirtyFiles((prev) => {
+        const next = new Set(prev);
+        next.delete(activeFileName);
+        return next;
+      });
+    }
+  };
+
+  // File management handlers
+  const handleFileSelect = (fileName: string) => {
+    setActiveFileName(fileName);
+    if (!openFiles.includes(fileName)) {
+      setOpenFiles((prev) => [...prev, fileName]);
+    }
+  };
+
+  const handleFileClose = (fileName: string) => {
+    if (fileName === 'main') return; // Can't close main
+    setOpenFiles((prev) => prev.filter((f) => f !== fileName));
+    // If closing active file, switch to another open file
+    if (fileName === activeFileName) {
+      const remaining = openFiles.filter((f) => f !== fileName);
+      setActiveFileName(remaining[remaining.length - 1] || 'main');
+    }
+  };
+
+  const handleFileCreate = async (name: string) => {
+    await pipelineApi.createFile(projectId!, selectedBranchId, { name });
+    queryClient.invalidateQueries({ queryKey: ['branch', projectId, selectedBranchId] });
+    // The useEffect will update files when branch is refetched
+    // Open the new file
+    setOpenFiles((prev) => [...prev, name]);
+    setActiveFileName(name);
+    toast.success('File created');
+  };
+
+  const handleFileRename = async (oldName: string, newName: string) => {
+    await pipelineApi.renameFile(projectId!, selectedBranchId, oldName, { new_name: newName });
+    queryClient.invalidateQueries({ queryKey: ['branch', projectId, selectedBranchId] });
+    // Update local state
+    setOpenFiles((prev) => prev.map((f) => (f === oldName ? newName : f)));
+    if (activeFileName === oldName) {
+      setActiveFileName(newName);
+    }
+    setDirtyFiles((prev) => {
+      const next = new Set(prev);
+      if (next.has(oldName)) {
+        next.delete(oldName);
+        next.add(newName);
+      }
+      return next;
+    });
+    toast.success('File renamed');
+  };
+
+  const handleFileDelete = async (name: string) => {
+    await pipelineApi.deleteFile(projectId!, selectedBranchId, name);
+    queryClient.invalidateQueries({ queryKey: ['branch', projectId, selectedBranchId] });
+    // Remove from open files
+    setOpenFiles((prev) => prev.filter((f) => f !== name));
+    if (activeFileName === name) {
+      setActiveFileName('main');
+    }
+    setDirtyFiles((prev) => {
+      const next = new Set(prev);
+      next.delete(name);
+      return next;
+    });
+    toast.success('File deleted');
   };
 
   const toggleViewMode = useCallback(() => {
@@ -718,23 +809,49 @@ export function PipelinePage() {
                   </Tooltip>
                 </div>
               </div>
-              {/* Code Editor with optional Logs Panel */}
+              {/* Code Editor with File Sidebar and optional Logs Panel */}
               <ResizablePanelGroup
                 direction="horizontal"
                 className="flex-1 min-h-0"
                 autoSaveId={PANEL_LAYOUT_STORAGE_KEY}
                 onLayout={handlePanelLayoutChange}
               >
-                <ResizablePanel defaultSize={70} minSize={30}>
-                  <div className="h-full min-h-0 overflow-hidden">
-                    <CodeEditor
-                      value={code}
-                      onChange={handleCodeChange}
-                      language="javascript"
-                      typeDefinitions={runtimeTypes}
-                      keyBindings={keyBindings}
-                      runtimeErrors={runtimeErrors}
+                {/* File Sidebar */}
+                <ResizablePanel defaultSize={12} minSize={8} maxSize={20}>
+                  <FileSidebar
+                    files={files}
+                    activeFileName={activeFileName}
+                    dirtyFiles={dirtyFiles}
+                    onFileSelect={handleFileSelect}
+                    onFileCreate={handleFileCreate}
+                    onFileRename={handleFileRename}
+                    onFileDelete={handleFileDelete}
+                    disabled={!selectedBranchId}
+                  />
+                </ResizablePanel>
+                <ResizableHandle />
+                {/* Editor Panel */}
+                <ResizablePanel defaultSize={58} minSize={30}>
+                  <div className="flex flex-col h-full min-h-0 overflow-hidden">
+                    {/* File Tabs */}
+                    <FileTabs
+                      openFiles={openFiles}
+                      activeFileName={activeFileName}
+                      dirtyFiles={dirtyFiles}
+                      onFileSelect={handleFileSelect}
+                      onFileClose={handleFileClose}
                     />
+                    {/* Monaco Editor */}
+                    <div className="flex-1 min-h-0">
+                      <CodeEditor
+                        value={currentCode}
+                        onChange={handleCodeChange}
+                        language="javascript"
+                        typeDefinitions={runtimeTypes}
+                        keyBindings={keyBindings}
+                        runtimeErrors={runtimeErrors}
+                      />
+                    </div>
                   </div>
                 </ResizablePanel>
                 {viewMode === 'split' && (

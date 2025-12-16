@@ -103,7 +103,7 @@ func (r *PipelineRepository) FindBranchesByProject(ctx context.Context, projectI
 }
 
 func (r *PipelineRepository) FindBranchSummariesByProject(ctx context.Context, projectID primitive.ObjectID) ([]*domain.BranchSummary, error) {
-	opts := options.Find().SetProjection(bson.M{"code": 0})
+	opts := options.Find().SetProjection(bson.M{"files": 0})
 	cursor, err := r.branchesCollection.Find(ctx, bson.M{"project_id": projectID}, opts)
 	if err != nil {
 		return nil, err
@@ -187,7 +187,7 @@ func (r *PipelineRepository) FindReleasesByProject(ctx context.Context, projectI
 }
 
 func (r *PipelineRepository) FindReleaseSummariesByProject(ctx context.Context, projectID primitive.ObjectID) ([]*domain.ReleaseSummary, error) {
-	opts := options.Find().SetSort(bson.D{{Key: "created_at", Value: -1}}).SetProjection(bson.M{"code": 0})
+	opts := options.Find().SetSort(bson.D{{Key: "created_at", Value: -1}}).SetProjection(bson.M{"files": 0})
 	cursor, err := r.releasesCollection.Find(ctx, bson.M{"project_id": projectID}, opts)
 	if err != nil {
 		return nil, err
@@ -250,6 +250,92 @@ func (r *PipelineRepository) DeleteRelease(ctx context.Context, id primitive.Obj
 	}
 	if result.DeletedCount == 0 {
 		return ErrReleaseNotFound
+	}
+	return nil
+}
+
+// UpdateBranchFile updates a single file's code in a branch
+func (r *PipelineRepository) UpdateBranchFile(ctx context.Context, branchID primitive.ObjectID, fileName string, code string) error {
+	result, err := r.branchesCollection.UpdateOne(
+		ctx,
+		bson.M{
+			"_id":        branchID,
+			"files.name": fileName,
+		},
+		bson.M{
+			"$set": bson.M{
+				"files.$.code": code,
+				"updated_at":   time.Now(),
+			},
+		},
+	)
+	if err != nil {
+		return err
+	}
+	if result.MatchedCount == 0 {
+		return ErrBranchNotFound
+	}
+	return nil
+}
+
+// AddFileToBranch adds a new file to a branch
+func (r *PipelineRepository) AddFileToBranch(ctx context.Context, branchID primitive.ObjectID, file domain.CodeFile) error {
+	result, err := r.branchesCollection.UpdateOne(
+		ctx,
+		bson.M{"_id": branchID},
+		bson.M{
+			"$push": bson.M{"files": file},
+			"$set":  bson.M{"updated_at": time.Now()},
+		},
+	)
+	if err != nil {
+		return err
+	}
+	if result.MatchedCount == 0 {
+		return ErrBranchNotFound
+	}
+	return nil
+}
+
+// DeleteFileFromBranch removes a file from a branch
+func (r *PipelineRepository) DeleteFileFromBranch(ctx context.Context, branchID primitive.ObjectID, fileName string) error {
+	result, err := r.branchesCollection.UpdateOne(
+		ctx,
+		bson.M{"_id": branchID},
+		bson.M{
+			"$pull": bson.M{"files": bson.M{"name": fileName}},
+			"$set":  bson.M{"updated_at": time.Now()},
+		},
+	)
+	if err != nil {
+		return err
+	}
+	if result.MatchedCount == 0 {
+		return ErrBranchNotFound
+	}
+	return nil
+}
+
+// RenameFileInBranch renames a file in a branch
+func (r *PipelineRepository) RenameFileInBranch(ctx context.Context, branchID primitive.ObjectID, oldName, newName string) error {
+	result, err := r.branchesCollection.UpdateOne(
+		ctx,
+		bson.M{
+			"_id":        branchID,
+			"files.name": oldName,
+		},
+		bson.M{
+			"$set": bson.M{
+				"files.$.name": newName,
+				"updated_at":   time.Now(),
+			},
+		},
+	)
+	if err != nil {
+		return err
+	}
+	if result.MatchedCount == 0 {
+		return ErrBranchNotFound
 	}
 	return nil
 }

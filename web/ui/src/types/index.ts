@@ -78,11 +78,16 @@ export interface UpdateProjectRequest {
 }
 
 // Pipeline types
+export interface CodeFile {
+  name: string;
+  code: string;
+}
+
 export interface Branch {
   id: string;
   project_id: string;
   name: string;
-  code: string;
+  files: CodeFile[];
   parent_branch?: string;
   created_from_release?: string;
   created_at: string;
@@ -107,18 +112,30 @@ export interface CreateBranchRequest {
 }
 
 export interface UpdateBranchRequest {
-  code: string;
+  files: CodeFile[];
 }
 
 export interface ResetBranchRequest {
   target_version: string;
 }
 
+export interface CreatePipelineFileRequest {
+  name: string;
+}
+
+export interface UpdatePipelineFileRequest {
+  code: string;
+}
+
+export interface RenamePipelineFileRequest {
+  new_name: string;
+}
+
 export interface Release {
   id: string;
   project_id: string;
   version: string;
-  code: string;
+  files: CodeFile[];
   comment?: string;
   tag?: ReleaseTag;
   is_active: boolean;

@@ -24,28 +24,31 @@ func NewPipelineService(pipelineRepo *repository.PipelineRepository) *PipelineSe
 }
 
 func (s *PipelineService) CreateBranch(ctx context.Context, projectID primitive.ObjectID, req *domain.CreateBranchRequest) (*domain.Branch, error) {
-	var code string
+	var files []domain.CodeFile
 
 	if req.CreatedFromRelease != nil {
 		release, err := s.pipelineRepo.FindReleaseByVersion(ctx, projectID, *req.CreatedFromRelease)
 		if err != nil {
 			return nil, err
 		}
-		code = release.Code
+		files = release.Files
 	} else if req.ParentBranch != nil {
 		parent, err := s.pipelineRepo.FindBranchByName(ctx, projectID, *req.ParentBranch)
 		if err != nil {
 			return nil, err
 		}
-		code = parent.Code
+		files = parent.Files
 	} else {
-		code = constants.DefaultServiceCode
+		// Default: single main file with default code
+		files = []domain.CodeFile{
+			{Name: "main", Code: constants.DefaultServiceCode},
+		}
 	}
 
 	branch := &domain.Branch{
 		ProjectID:          projectID,
 		Name:               req.Name,
-		Code:               code,
+		Files:              files,
 		ParentBranch:       req.ParentBranch,
 		CreatedFromRelease: req.CreatedFromRelease,
 	}
@@ -86,7 +89,11 @@ func (s *PipelineService) UpdateBranch(ctx context.Context, projectID primitive.
 		return nil, err
 	}
 
-	branch.Code = req.Code
+	if err := s.validateFiles(req.Files); err != nil {
+		return nil, err
+	}
+
+	branch.Files = req.Files
 
 	if err := s.pipelineRepo.UpdateBranch(ctx, branch); err != nil {
 		return nil, err
@@ -101,13 +108,46 @@ func (s *PipelineService) UpdateBranchByID(ctx context.Context, projectID primit
 		return nil, err
 	}
 
-	branch.Code = req.Code
+	if err := s.validateFiles(req.Files); err != nil {
+		return nil, err
+	}
+
+	branch.Files = req.Files
 
 	if err := s.pipelineRepo.UpdateBranch(ctx, branch); err != nil {
 		return nil, err
 	}
 
 	return branch, nil
+}
+
+// validateFiles checks that files array is valid
+func (s *PipelineService) validateFiles(files []domain.CodeFile) error {
+	if len(files) == 0 {
+		return fmt.Errorf("at least one file is required")
+	}
+
+	hasMain := false
+	names := make(map[string]bool)
+
+	for _, f := range files {
+		if f.Name == "" {
+			return fmt.Errorf("file name cannot be empty")
+		}
+		if f.Name == "main" {
+			hasMain = true
+		}
+		if names[f.Name] {
+			return fmt.Errorf("duplicate file name: %s", f.Name)
+		}
+		names[f.Name] = true
+	}
+
+	if !hasMain {
+		return fmt.Errorf("main file is required")
+	}
+
+	return nil
 }
 
 func (s *PipelineService) ResetBranch(ctx context.Context, projectID primitive.ObjectID, name string, req *domain.ResetBranchRequest) (*domain.Branch, error) {
@@ -121,7 +161,7 @@ func (s *PipelineService) ResetBranch(ctx context.Context, projectID primitive.O
 		return nil, err
 	}
 
-	branch.Code = release.Code
+	branch.Files = release.Files
 	branch.CreatedFromRelease = &req.TargetVersion
 
 	if err := s.pipelineRepo.UpdateBranch(ctx, branch); err != nil {
@@ -142,7 +182,7 @@ func (s *PipelineService) ResetBranchByID(ctx context.Context, projectID primiti
 		return nil, err
 	}
 
-	branch.Code = release.Code
+	branch.Files = release.Files
 	branch.CreatedFromRelease = &req.TargetVersion
 
 	if err := s.pipelineRepo.UpdateBranch(ctx, branch); err != nil {
@@ -185,7 +225,7 @@ func (s *PipelineService) CreateRelease(ctx context.Context, projectID primitive
 	release := &domain.Release{
 		ProjectID: projectID,
 		Version:   version,
-		Code:      branch.Code,
+		Files:     branch.Files,
 		Comment:   req.Comment,
 		Tag:       req.Tag,
 		IsActive:  false,
@@ -281,6 +321,100 @@ func (s *PipelineService) getNextVersion(ctx context.Context, projectID primitiv
 	}
 
 	return fmt.Sprintf("%d.%d", major, minor), nil
+}
+
+// File operations
+
+// AddFile adds a new file to a branch
+func (s *PipelineService) AddFile(ctx context.Context, projectID, branchID primitive.ObjectID, req *domain.CreateFileRequest) (*domain.Branch, error) {
+	branch, err := s.GetBranchByID(ctx, projectID, branchID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Check if file already exists
+	if branch.GetFile(req.Name) != nil {
+		return nil, fmt.Errorf("file already exists: %s", req.Name)
+	}
+
+	// Add file with empty code
+	file := domain.CodeFile{Name: req.Name, Code: ""}
+	if err := s.pipelineRepo.AddFileToBranch(ctx, branchID, file); err != nil {
+		return nil, err
+	}
+
+	// Return updated branch
+	return s.GetBranchByID(ctx, projectID, branchID)
+}
+
+// UpdateFile updates a single file's code
+func (s *PipelineService) UpdateFile(ctx context.Context, projectID, branchID primitive.ObjectID, fileName string, req *domain.UpdateFileRequest) error {
+	branch, err := s.GetBranchByID(ctx, projectID, branchID)
+	if err != nil {
+		return err
+	}
+
+	// Check if file exists
+	if branch.GetFile(fileName) == nil {
+		return fmt.Errorf("file not found: %s", fileName)
+	}
+
+	return s.pipelineRepo.UpdateBranchFile(ctx, branchID, fileName, req.Code)
+}
+
+// DeleteFile removes a file from a branch
+func (s *PipelineService) DeleteFile(ctx context.Context, projectID, branchID primitive.ObjectID, fileName string) (*domain.Branch, error) {
+	// Cannot delete main file
+	if fileName == "main" {
+		return nil, fmt.Errorf("cannot delete main file")
+	}
+
+	branch, err := s.GetBranchByID(ctx, projectID, branchID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Check if file exists
+	if branch.GetFile(fileName) == nil {
+		return nil, fmt.Errorf("file not found: %s", fileName)
+	}
+
+	if err := s.pipelineRepo.DeleteFileFromBranch(ctx, branchID, fileName); err != nil {
+		return nil, err
+	}
+
+	// Return updated branch
+	return s.GetBranchByID(ctx, projectID, branchID)
+}
+
+// RenameFile renames a file in a branch
+func (s *PipelineService) RenameFile(ctx context.Context, projectID, branchID primitive.ObjectID, fileName string, req *domain.RenameFileRequest) (*domain.Branch, error) {
+	// Cannot rename main file
+	if fileName == "main" {
+		return nil, fmt.Errorf("cannot rename main file")
+	}
+
+	branch, err := s.GetBranchByID(ctx, projectID, branchID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Check if source file exists
+	if branch.GetFile(fileName) == nil {
+		return nil, fmt.Errorf("file not found: %s", fileName)
+	}
+
+	// Check if target name is available
+	if branch.GetFile(req.NewName) != nil {
+		return nil, fmt.Errorf("file already exists: %s", req.NewName)
+	}
+
+	if err := s.pipelineRepo.RenameFileInBranch(ctx, branchID, fileName, req.NewName); err != nil {
+		return nil, err
+	}
+
+	// Return updated branch
+	return s.GetBranchByID(ctx, projectID, branchID)
 }
 
 // EnsureDevelopBranch creates develop branch if it doesn't exist

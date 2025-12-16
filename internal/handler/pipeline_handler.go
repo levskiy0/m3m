@@ -34,6 +34,12 @@ func (h *PipelineHandler) Register(r *gin.RouterGroup, authMiddleware *middlewar
 		pipeline.POST("/branches/:branchId/reset", h.ResetBranch)
 		pipeline.DELETE("/branches/:branchId", h.DeleteBranch)
 
+		// File operations
+		pipeline.POST("/branches/:branchId/files", h.CreateFile)
+		pipeline.PUT("/branches/:branchId/files/:fileName", h.UpdateFile)
+		pipeline.DELETE("/branches/:branchId/files/:fileName", h.DeleteFile)
+		pipeline.POST("/branches/:branchId/files/:fileName/rename", h.RenameFile)
+
 		pipeline.GET("/releases", h.ListReleases)
 		pipeline.POST("/releases", h.CreateRelease)
 		pipeline.DELETE("/releases/:releaseId", h.DeleteRelease)
@@ -262,4 +268,125 @@ func (h *PipelineHandler) ActivateRelease(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "release activated successfully"})
+}
+
+// File operations
+
+func (h *PipelineHandler) CreateFile(c *gin.Context) {
+	projectID, ok := h.checkAccess(c)
+	if !ok {
+		return
+	}
+
+	branchID, err := primitive.ObjectIDFromHex(c.Param("branchId"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid branch id"})
+		return
+	}
+
+	var req domain.CreateFileRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	branch, err := h.pipelineService.AddFile(c.Request.Context(), projectID, branchID, &req)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusCreated, branch)
+}
+
+func (h *PipelineHandler) UpdateFile(c *gin.Context) {
+	projectID, ok := h.checkAccess(c)
+	if !ok {
+		return
+	}
+
+	branchID, err := primitive.ObjectIDFromHex(c.Param("branchId"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid branch id"})
+		return
+	}
+
+	fileName := c.Param("fileName")
+	if fileName == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "file name is required"})
+		return
+	}
+
+	var req domain.UpdateFileRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if err := h.pipelineService.UpdateFile(c.Request.Context(), projectID, branchID, fileName, &req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "file updated successfully"})
+}
+
+func (h *PipelineHandler) DeleteFile(c *gin.Context) {
+	projectID, ok := h.checkAccess(c)
+	if !ok {
+		return
+	}
+
+	branchID, err := primitive.ObjectIDFromHex(c.Param("branchId"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid branch id"})
+		return
+	}
+
+	fileName := c.Param("fileName")
+	if fileName == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "file name is required"})
+		return
+	}
+
+	branch, err := h.pipelineService.DeleteFile(c.Request.Context(), projectID, branchID, fileName)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, branch)
+}
+
+func (h *PipelineHandler) RenameFile(c *gin.Context) {
+	projectID, ok := h.checkAccess(c)
+	if !ok {
+		return
+	}
+
+	branchID, err := primitive.ObjectIDFromHex(c.Param("branchId"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid branch id"})
+		return
+	}
+
+	fileName := c.Param("fileName")
+	if fileName == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "file name is required"})
+		return
+	}
+
+	var req domain.RenameFileRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	branch, err := h.pipelineService.RenameFile(c.Request.Context(), projectID, branchID, fileName, &req)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, branch)
 }

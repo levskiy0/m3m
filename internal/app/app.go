@@ -178,6 +178,16 @@ func registerUIRoutes(r *gin.Engine, cfg *config.Config, logger *slog.Logger) {
 	logger.Info("UI routes registered")
 }
 
+// RunMigrations runs database migrations on app startup
+func RunMigrations(db *repository.MongoDB, logger *slog.Logger) error {
+	logger.Info("Running database migrations...")
+	if err := repository.MigrateCodeToFiles(db.Database, logger); err != nil {
+		logger.Error("Migration failed", "error", err)
+		return err
+	}
+	return nil
+}
+
 func StartServer(lc fx.Lifecycle, r *gin.Engine, cfg *config.Config, logger *slog.Logger, runtimeManager *runtime.Manager) {
 	server := &http.Server{
 		Addr:    fmt.Sprintf("%s:%d", cfg.Server.Host, cfg.Server.Port),
@@ -261,7 +271,7 @@ func AutoStartRuntimes(
 					}
 
 					// Use background context - runtime should outlive the OnStart callback
-					if err := runtimeManager.Start(context.Background(), project.ID, release.Code); err != nil {
+					if err := runtimeManager.Start(context.Background(), project.ID, release.Files); err != nil {
 						logger.Error("Failed to autostart project",
 							"project", project.Slug, "error", err)
 						projectService.UpdateStatus(ctx, project.ID, domain.ProjectStatusStopped)
@@ -377,6 +387,6 @@ func New(configPath string) *fx.App {
 			handler.NewTemplateHandler,
 			handler.NewActionHandler,
 		),
-		fx.Invoke(RegisterRoutes, StartServer, AutoStartRuntimes, StartWebSocket),
+		fx.Invoke(RunMigrations, RegisterRoutes, StartServer, AutoStartRuntimes, StartWebSocket),
 	)
 }
