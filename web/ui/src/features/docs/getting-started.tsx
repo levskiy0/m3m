@@ -1,5 +1,5 @@
 import { useTitle } from '@/hooks';
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle, Terminal, Server, Database, Folder } from 'lucide-react';
 
 export function GettingStartedPage() {
   useTitle('Getting Started - Docs');
@@ -9,7 +9,7 @@ export function GettingStartedPage() {
       <div>
         <h1 className="text-3xl font-bold tracking-tight mb-2">Getting Started</h1>
         <p className="text-muted-foreground text-lg">
-          Learn how to create and deploy JavaScript services with M3M.
+          Learn how to install, configure and run M3M.
         </p>
       </div>
 
@@ -116,12 +116,171 @@ export function GettingStartedPage() {
         </div>
       </section>
 
+      {/* Installation */}
+      <section className="space-y-6">
+        <div className="flex items-center gap-2">
+          <Server className="h-5 w-5 text-primary" />
+          <h2 className="text-xl font-semibold">Installation</h2>
+        </div>
+
+        {/* Docker Install */}
+        <div className="space-y-4">
+          <h3 className="font-medium">Quick Install (Docker + MongoDB)</h3>
+          <p className="text-sm text-muted-foreground">
+            Recommended for production. Includes MongoDB, automatic updates, and process supervision.
+          </p>
+
+          <div className="border rounded-lg p-4 space-y-3">
+            <div>
+              <p className="text-sm font-medium mb-2">1. Download and install</p>
+              <pre className="bg-muted rounded-md p-3 text-sm overflow-x-auto">
+                <code>{`# Download script
+curl -fsSL https://raw.githubusercontent.com/levskiy0/m3m/main/m3m.sh -o m3m.sh
+chmod +x m3m.sh
+
+# Install latest release
+./m3m.sh install
+
+# Or install specific version
+./m3m.sh install v1.0.0`}</code>
+              </pre>
+            </div>
+
+            <div>
+              <p className="text-sm font-medium mb-2">2. Start and create admin user</p>
+              <pre className="bg-muted rounded-md p-3 text-sm overflow-x-auto">
+                <code>{`# Start server
+./m3m.sh start
+
+# Create admin user
+./m3m.sh admin admin@example.com yourpassword
+
+# View logs
+./m3m.sh logs`}</code>
+              </pre>
+            </div>
+
+            <p className="text-sm text-muted-foreground">
+              Open <code className="font-mono bg-muted px-1.5 py-0.5 rounded">http://localhost:8080</code> and login.
+            </p>
+          </div>
+        </div>
+
+        {/* Binary Install */}
+        <div className="space-y-4">
+          <h3 className="font-medium">Standalone Binary</h3>
+          <p className="text-sm text-muted-foreground">
+            Zero configuration required. Uses embedded SQLite database.
+          </p>
+
+          <div className="border rounded-lg p-4 space-y-3">
+            <pre className="bg-muted rounded-md p-3 text-sm overflow-x-auto">
+              <code>{`# Download binary from releases, then:
+./m3m new-admin admin@example.com yourpassword
+./m3m serve`}</code>
+            </pre>
+            <p className="text-sm text-muted-foreground">
+              On first run, M3M automatically creates <code className="font-mono bg-muted px-1.5 py-0.5 rounded">config.yaml</code> with
+              SQLite database and random JWT secret.
+            </p>
+          </div>
+        </div>
+
+        {/* Build from Source */}
+        <div className="space-y-4">
+          <h3 className="font-medium">Build from Source</h3>
+          <p className="text-sm text-muted-foreground">
+            Requires Go 1.24+ and Node.js 20+.
+          </p>
+
+          <div className="border rounded-lg p-4">
+            <pre className="bg-muted rounded-md p-3 text-sm overflow-x-auto">
+              <code>{`git clone https://github.com/levskiy0/m3m.git
+cd m3m
+make build
+./build/m3m new-admin admin@example.com yourpassword
+./build/m3m serve`}</code>
+            </pre>
+          </div>
+        </div>
+      </section>
+
+      {/* Directory Structure */}
+      <section className="space-y-4">
+        <div className="flex items-center gap-2">
+          <Folder className="h-5 w-5 text-primary" />
+          <h2 className="text-xl font-semibold">Directory Structure</h2>
+        </div>
+        <p className="text-sm text-muted-foreground">
+          After Docker installation, you'll have the following structure:
+        </p>
+        <pre className="bg-muted rounded-lg p-4 text-sm overflow-x-auto">
+          <code>{`.m3m/
+├── config      # Configuration file
+├── version     # Installed version
+├── src/        # Repository clone
+├── plugins/    # Plugin sources (copy here, then rebuild)
+└── data/       # Persistent data (mounted to container)
+    ├── storage/    # File storage for services
+    ├── plugins/    # Compiled plugins (.so files)
+    ├── logs/       # Application logs
+    └── mongodb/    # MongoDB database files`}</code>
+        </pre>
+      </section>
+
+      {/* Database Drivers */}
+      <section className="space-y-4">
+        <div className="flex items-center gap-2">
+          <Database className="h-5 w-5 text-primary" />
+          <h2 className="text-xl font-semibold">Database Drivers</h2>
+        </div>
+        <p className="text-sm text-muted-foreground">
+          M3M supports two database backends. Both use identical MongoDB query syntax.
+        </p>
+
+        <div className="border rounded-lg overflow-hidden">
+          <table className="w-full text-sm">
+            <thead className="bg-muted">
+              <tr>
+                <th className="px-4 py-2 text-left font-medium">Driver</th>
+                <th className="px-4 py-2 text-left font-medium">Config</th>
+                <th className="px-4 py-2 text-left font-medium">Requirements</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y">
+              <tr>
+                <td className="px-4 py-2 font-mono">sqlite</td>
+                <td className="px-4 py-2 text-muted-foreground">
+                  <code className="bg-muted px-1 rounded">driver: "sqlite"</code>
+                </td>
+                <td className="px-4 py-2 text-muted-foreground">None — embedded in binary</td>
+              </tr>
+              <tr>
+                <td className="px-4 py-2 font-mono">mongodb</td>
+                <td className="px-4 py-2 text-muted-foreground">
+                  <code className="bg-muted px-1 rounded">driver: "mongodb"</code>
+                </td>
+                <td className="px-4 py-2 text-muted-foreground">External MongoDB server</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <p className="text-sm text-muted-foreground">
+          <strong>SQLite mode</strong> uses embedded FerretDB with SQLite backend.
+          All MongoDB query syntax (<code className="font-mono bg-muted px-1 rounded">$eq</code>,
+          <code className="font-mono bg-muted px-1 rounded">$gt</code>,
+          <code className="font-mono bg-muted px-1 rounded">$in</code>, etc.) works identically in both modes —
+          switch anytime without code changes.
+        </p>
+      </section>
+
       {/* CLI Commands */}
       <section className="space-y-4">
-        <h2 className="text-xl font-semibold">CLI Commands</h2>
-        <p className="text-muted-foreground mb-4">
-          M3M provides a command-line interface for managing the server and users:
-        </p>
+        <div className="flex items-center gap-2">
+          <Terminal className="h-5 w-5 text-primary" />
+          <h2 className="text-xl font-semibold">CLI Commands</h2>
+        </div>
 
         <div className="space-y-3">
           <div className="border rounded-lg p-4">
@@ -168,110 +327,65 @@ m3m serve --config /path/to/config.yaml`}</code>
         </div>
       </section>
 
-      {/* Service Lifecycle */}
+      {/* Docker Commands */}
       <section className="space-y-4">
-        <h2 className="text-xl font-semibold">Service Lifecycle</h2>
-        <p className="text-muted-foreground mb-4">
-          Every service has three lifecycle phases managed by the <code className="font-mono text-sm bg-muted px-1.5 py-0.5 rounded">$service</code> module:
-        </p>
-
-        <div className="space-y-3">
-          <div className="border rounded-lg p-4">
-            <h3 className="font-medium mb-1">1. Boot Phase</h3>
-            <p className="text-sm text-muted-foreground mb-2">
-              Initialize your service, set up routes, and configure modules.
-            </p>
-            <pre className="bg-muted rounded-md p-3 text-sm overflow-x-auto">
-              <code>{`$service.boot(() => {
-  // Set up routes
-  $router.get('/hello', (ctx) => {
-    return { message: 'Hello World!' };
-  });
-
-  // Configure scheduler
-  $schedule.every('1h', () => {
-    $logger.info('Hourly task running');
-  });
-});`}</code>
-            </pre>
-          </div>
-
-          <div className="border rounded-lg p-4">
-            <h3 className="font-medium mb-1">2. Start Phase</h3>
-            <p className="text-sm text-muted-foreground mb-2">
-              Called when service is ready. Good for initial data loading.
-            </p>
-            <pre className="bg-muted rounded-md p-3 text-sm overflow-x-auto">
-              <code>{`$service.start(() => {
-  $logger.info('Service started!');
-  // Load initial data, etc.
-});`}</code>
-            </pre>
-          </div>
-
-          <div className="border rounded-lg p-4">
-            <h3 className="font-medium mb-1">3. Shutdown Phase</h3>
-            <p className="text-sm text-muted-foreground mb-2">
-              Called when service is stopping. Clean up resources here.
-            </p>
-            <pre className="bg-muted rounded-md p-3 text-sm overflow-x-auto">
-              <code>{`$service.shutdown(() => {
-  $logger.info('Service stopping...');
-  // Close connections, save state, etc.
-});`}</code>
-            </pre>
-          </div>
-        </div>
-      </section>
-
-      {/* Basic Example */}
-      <section className="space-y-4">
-        <h2 className="text-xl font-semibold">Complete Example</h2>
-        <p className="text-muted-foreground mb-4">
-          Here's a complete service with API endpoints, scheduled tasks, and database usage:
+        <h2 className="text-xl font-semibold">Docker Commands (m3m.sh)</h2>
+        <p className="text-sm text-muted-foreground mb-4">
+          If you installed via Docker, use these commands:
         </p>
 
         <pre className="bg-muted rounded-lg p-4 text-sm overflow-x-auto">
-          <code>{`// Boot phase - configure everything
-$service.boot(() => {
-  // Get database collections
-  const users = $database.collection('users');
+          <code>{`./m3m.sh install [version]    # Install (latest, v1.0.0, or main)
+./m3m.sh update [version]     # Update to version
+./m3m.sh rebuild              # Rebuild image (after adding plugins)
+./m3m.sh start                # Start the container
+./m3m.sh stop                 # Stop the container
+./m3m.sh restart              # Restart the container
+./m3m.sh logs                 # Show container logs
+./m3m.sh status               # Show container status
+./m3m.sh version              # Show installed/latest versions
+./m3m.sh admin <email> <pw>   # Create admin user
+./m3m.sh config               # Show config
+./m3m.sh uninstall            # Remove M3M (keeps data)`}</code>
+        </pre>
+      </section>
 
-  // API Routes
-  $router.get('/users', (ctx) => {
-    const allUsers = users.find({});
-    return { users: allUsers };
-  });
+      {/* Configuration */}
+      <section className="space-y-4">
+        <h2 className="text-xl font-semibold">Configuration</h2>
+        <p className="text-sm text-muted-foreground mb-4">
+          Default config file: <code className="font-mono bg-muted px-1.5 py-0.5 rounded">config.yaml</code> (auto-created on first run)
+        </p>
 
-  $router.post('/users', (ctx) => {
-    const user = users.insert(ctx.body);
-    return { user };
-  });
+        <pre className="bg-muted rounded-lg p-4 text-sm overflow-x-auto">
+          <code>{`server:
+  host: "0.0.0.0"
+  port: 8080
+  uri: "http://127.0.0.1:8080"
 
-  $router.get('/users/:id', (ctx) => {
-    const user = users.findOne({ _id: ctx.params.id });
-    if (!user) {
-      return ctx.response(404, { error: 'User not found' });
-    }
-    return { user };
-  });
+database:
+  driver: "sqlite"  # "mongodb" or "sqlite"
 
-  // Scheduled task - runs every hour
-  $schedule.every('1h', () => {
-    const count = users.count({});
-    $logger.info('Total users:', count);
-  });
+# MongoDB - external server required
+mongodb:
+  uri: "mongodb://localhost:27017"
+  database: "m3m"
 
-  // Daily cleanup at midnight
-  $schedule.cron('0 0 * * *', () => {
-    $logger.info('Daily cleanup running');
-  });
-});
+# SQLite - embedded, no external dependencies (default)
+sqlite:
+  path: "./data"
+  database: "m3m"
 
-// Start phase
-$service.start(() => {
-  $logger.info('Service is ready!');
-});`}</code>
+jwt:
+  secret: "change-me-in-production"
+  expiration: 168h
+
+storage:
+  path: "./storage"
+
+logging:
+  level: "info"
+  path: "./logs"`}</code>
         </pre>
       </section>
 
