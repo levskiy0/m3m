@@ -54,36 +54,34 @@ export function LogsViewer({
   }, [logs, autoScroll]);
 
   return (
-    <div className={cn('flex flex-col overflow-hidden', className)} style={{ height }}>
+    <div className={cn('flex flex-col overflow-hidden bg-muted/30', className)} style={{ height }}>
       {/* Header */}
-      <div className="flex items-center justify-between flex-shrink-0 px-4 py-3 border-b">
-        <div className="flex items-center gap-4">
-          <Select
-            value={levelFilter}
-            onValueChange={(v) => setLevelFilter(v as LogLevel)}
-          >
-            <SelectTrigger className="w-32 h-8">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Levels</SelectItem>
-              <SelectItem value="debug">Debug</SelectItem>
-              <SelectItem value="info">Info</SelectItem>
-              <SelectItem value="warn">Warning</SelectItem>
-              <SelectItem value="error">Error</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="flex items-center gap-1">
+      <div className="flex items-center justify-between flex-shrink-0 h-[41px] px-3 border-b">
+        <Select
+          value={levelFilter}
+          onValueChange={(v) => setLevelFilter(v as LogLevel)}
+        >
+          <SelectTrigger className="w-28 h-6 px-2 py-0 text-xs">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Levels</SelectItem>
+            <SelectItem value="debug">Debug</SelectItem>
+            <SelectItem value="info">Info</SelectItem>
+            <SelectItem value="warn">Warning</SelectItem>
+            <SelectItem value="error">Error</SelectItem>
+          </SelectContent>
+        </Select>
+        <div className="flex items-center gap-0.5">
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
                 variant="ghost"
                 size="icon"
                 onClick={() => setAutoScroll(!autoScroll)}
-                className={cn('h-8 w-8', autoScroll && 'bg-muted')}
+                className={cn('size-6', autoScroll && 'bg-accent')}
               >
-                <ArrowDownToLine className="size-4" />
+                <ArrowDownToLine className="size-3.5" />
               </Button>
             </TooltipTrigger>
             <TooltipContent>Auto-scroll: {autoScroll ? 'On' : 'Off'}</TooltipContent>
@@ -91,8 +89,8 @@ export function LogsViewer({
           {onRefresh && (
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button variant="ghost" size="icon" onClick={onRefresh} className="h-8 w-8">
-                  <RefreshCw className="size-4" />
+                <Button variant="ghost" size="icon" onClick={onRefresh} className="size-6">
+                  <RefreshCw className="size-3.5" />
                 </Button>
               </TooltipTrigger>
               <TooltipContent>Refresh</TooltipContent>
@@ -101,8 +99,8 @@ export function LogsViewer({
           {onDownload && (
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button variant="ghost" size="icon" onClick={onDownload} className="h-8 w-8">
-                  <Download className="size-4" />
+                <Button variant="ghost" size="icon" onClick={onDownload} className="size-6">
+                  <Download className="size-3.5" />
                 </Button>
               </TooltipTrigger>
               <TooltipContent>Download</TooltipContent>
@@ -112,7 +110,7 @@ export function LogsViewer({
       </div>
 
       {/* Logs Content */}
-      <ScrollArea ref={scrollRef} className="flex-1 bg-zinc-950 font-mono text-xs h-full">
+      <ScrollArea viewportRef={scrollRef} className="flex-1 bg-zinc-950 font-mono text-xs h-full">
         {displayLogs.length === 0 ? (
           <div className="flex items-center justify-center h-full text-muted-foreground py-12">
             {logs.length === 0 ? emptyMessage : 'No logs match the filter'}

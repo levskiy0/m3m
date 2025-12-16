@@ -865,23 +865,15 @@ export function PipelinePage() {
                   <>
                     <ResizableHandle />
                     <ResizablePanel defaultSize={30} minSize={15} maxSize={50}>
-                      <div className="flex flex-col h-full border-l overflow-hidden">
-                        {/* Logs Header */}
-                        <div className="flex items-center justify-between px-3 py-2 border-b shrink-0">
-                          <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                            Logs
-                          </span>
-                        </div>
-                        <LogsViewer
-                          logs={logs}
-                          limit={500}
-                          emptyMessage="Waiting for logs..."
-                          onDownload={downloadLogs}
-                          onRefresh={refetchLogs}
-                          height="100%"
-                          className="flex-1 min-h-0"
-                        />
-                      </div>
+                      <LogsViewer
+                        logs={logs}
+                        limit={500}
+                        emptyMessage="Waiting for logs..."
+                        onDownload={downloadLogs}
+                        onRefresh={refetchLogs}
+                        height="100%"
+                        className="h-full border-l"
+                      />
                     </ResizablePanel>
                   </>
                 )}

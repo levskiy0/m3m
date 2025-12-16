@@ -20,7 +20,7 @@ export function FileTabs({
   if (openFiles.length === 0) return null;
 
   return (
-    <div className="flex items-center gap-0.5 px-2 py-1 border-b bg-muted/30 overflow-x-auto">
+    <div className="flex items-center gap-0.5 h-[41px] px-3 border-b bg-muted/30 overflow-x-auto">
       {openFiles.map((fileName) => {
         const isActive = fileName === activeFileName;
         const isDirty = dirtyFiles.has(fileName);
