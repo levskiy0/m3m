@@ -452,8 +452,8 @@ export function PipelinePage() {
   const handleCreateBranch = () => {
     createBranchMutation.mutate({
       name: newBranchName,
-      sourceType: newBranchSource,
-      sourceName: newBranchSourceName,
+      parent_branch: newBranchSource === 'branch' ? newBranchSourceName : undefined,
+      created_from_release: newBranchSource === 'release' ? newBranchSourceName : undefined,
     });
   };
 

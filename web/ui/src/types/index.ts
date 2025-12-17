@@ -107,8 +107,8 @@ export interface BranchSummary {
 
 export interface CreateBranchRequest {
   name: string;
-  sourceType: 'branch' | 'release';
-  sourceName: string;
+  parent_branch?: string;
+  created_from_release?: string;
 }
 
 export interface UpdateBranchRequest {
