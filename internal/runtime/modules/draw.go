@@ -23,7 +23,7 @@ import (
 //go:embed fonts/roboto.ttf
 var embeddedFont embed.FS
 
-var fontPath string
+var defaultFontPath string
 
 func init() {
 	// Extract embedded font to temp file on startup
@@ -34,27 +34,31 @@ func init() {
 	}
 
 	tmpDir := os.TempDir()
-	fontPath = filepath.Join(tmpDir, "m3m_roboto.ttf")
+	defaultFontPath = filepath.Join(tmpDir, "m3m_roboto.ttf")
 
-	if err := os.WriteFile(fontPath, data, 0644); err != nil {
+	if err := os.WriteFile(defaultFontPath, data, 0644); err != nil {
 		fmt.Printf("[WARN] Failed to write font to temp: %v\n", err)
-		fontPath = ""
+		defaultFontPath = ""
 	}
 }
 
 // Canvas represents a drawing canvas in JS
 type Canvas struct {
-	ctx       *gg.Context
-	width     int
-	height    int
-	projectID string
-	storage   *service.StorageService
+	ctx         *gg.Context
+	width       int
+	height      int
+	projectID   string
+	storage     *service.StorageService
+	fonts       map[string]string // reference to module's font registry
+	currentFont string            // current font name (empty = default)
+	fontSize    float64
 }
 
 // DrawModule provides canvas drawing operations
 type DrawModule struct {
 	storage   *service.StorageService
 	projectID string
+	fonts     map[string]string // name -> absolute path
 }
 
 // NewDrawModule creates a new draw module
@@ -62,6 +66,7 @@ func NewDrawModule(storage *service.StorageService, projectID string) *DrawModul
 	return &DrawModule{
 		storage:   storage,
 		projectID: projectID,
+		fonts:     make(map[string]string),
 	}
 }
 
@@ -75,7 +80,28 @@ func (d *DrawModule) Register(vm interface{}) {
 	vm.(*goja.Runtime).Set(d.Name(), map[string]interface{}{
 		"createCanvas": d.CreateCanvas,
 		"loadImage":    d.LoadImage,
+		"loadFont":     d.LoadFont,
 	})
+}
+
+// LoadFont loads a font from storage and registers it by name
+func (d *DrawModule) LoadFont(name, storagePath string) error {
+	if d.storage == nil {
+		return fmt.Errorf("storage service not available")
+	}
+
+	absPath, err := d.storage.GetPath(d.projectID, storagePath)
+	if err != nil {
+		return err
+	}
+
+	// Verify file exists
+	if _, err := os.Stat(absPath); os.IsNotExist(err) {
+		return fmt.Errorf("font file not found: %s", storagePath)
+	}
+
+	d.fonts[name] = absPath
+	return nil
 }
 
 // CreateCanvas creates a new canvas with the specified dimensions
@@ -95,6 +121,8 @@ func (d *DrawModule) CreateCanvas(width, height int) *Canvas {
 		height:    height,
 		projectID: d.projectID,
 		storage:   d.storage,
+		fonts:     d.fonts,
+		fontSize:  12,
 	}
 }
 
@@ -123,6 +151,8 @@ func (d *DrawModule) LoadImage(path string) (*Canvas, error) {
 		height:    bounds.Dy(),
 		projectID: d.projectID,
 		storage:   d.storage,
+		fonts:     d.fonts,
+		fontSize:  12,
 	}, nil
 }
 
@@ -205,22 +235,34 @@ func (c *Canvas) TextCentered(text string, x, y float64) {
 	c.ctx.DrawStringAnchored(text, x, y, 0.5, 0.5)
 }
 
-// SetFontSize sets the font size (uses embedded Roboto font)
+// SetFont sets the current font by name (must be registered with $draw.loadFont first)
+func (c *Canvas) SetFont(name string) error {
+	fontPath, ok := c.fonts[name]
+	if !ok {
+		return fmt.Errorf("font '%s' not found, register it with $draw.loadFont() first", name)
+	}
+	c.currentFont = name
+	return c.ctx.LoadFontFace(fontPath, c.fontSize)
+}
+
+// SetFontSize sets the font size
 func (c *Canvas) SetFontSize(size float64) {
 	if size <= 0 {
 		size = 12
 	}
+	c.fontSize = size
+
+	// Get font path: custom font if set, otherwise default
+	fontPath := defaultFontPath
+	if c.currentFont != "" {
+		if customPath, ok := c.fonts[c.currentFont]; ok {
+			fontPath = customPath
+		}
+	}
+
 	if fontPath != "" {
 		c.ctx.LoadFontFace(fontPath, size)
 	}
-}
-
-// LoadFont loads a font from absolute path
-func (c *Canvas) LoadFont(absPath string, size float64) error {
-	if size <= 0 {
-		size = 12
-	}
-	return c.ctx.LoadFontFace(absPath, size)
 }
 
 // RoundedRect draws a rounded rectangle outline
@@ -443,8 +485,8 @@ func (d *DrawModule) GetSchema() schema.ModuleSchema {
 					{Name: "arc", Type: "(x: number, y: number, r: number, a1: number, a2: number) => void", Description: "Draw an arc"},
 					{Name: "text", Type: "(text: string, x: number, y: number) => void", Description: "Draw text"},
 					{Name: "textCentered", Type: "(text: string, x: number, y: number) => void", Description: "Draw centered text"},
+					{Name: "setFont", Type: "(name: string) => void", Description: "Set font by name (register with $draw.loadFont first)"},
 					{Name: "setFontSize", Type: "(size: number) => void", Description: "Set font size"},
-					{Name: "loadFont", Type: "(path: string, size: number) => void", Description: "Load font from storage"},
 					{Name: "roundedRect", Type: "(x: number, y: number, w: number, h: number, r: number) => void", Description: "Draw rounded rectangle outline"},
 					{Name: "fillRoundedRect", Type: "(x: number, y: number, w: number, h: number, r: number) => void", Description: "Draw filled rounded rectangle"},
 					{Name: "polygon", Type: "(points: number[][]) => void", Description: "Draw polygon outline"},
@@ -476,6 +518,15 @@ func (d *DrawModule) GetSchema() schema.ModuleSchema {
 				Description: "Load an image from storage as a canvas",
 				Params:      []schema.ParamSchema{{Name: "path", Type: "string", Description: "Path to image in storage"}},
 				Returns:     &schema.ParamSchema{Type: "Canvas | null"},
+			},
+			{
+				Name:        "loadFont",
+				Description: "Register a font from storage by name",
+				Params: []schema.ParamSchema{
+					{Name: "name", Type: "string", Description: "Font name to use with canvas.setFont()"},
+					{Name: "path", Type: "string", Description: "Path to TTF font file in storage"},
+				},
+				Returns: &schema.ParamSchema{Type: "void"},
 			},
 		},
 	}
