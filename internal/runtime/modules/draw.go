@@ -2,12 +2,15 @@ package modules
 
 import (
 	"bytes"
+	"embed"
 	"encoding/base64"
 	"fmt"
 	"image"
 	"image/color"
 	"image/jpeg"
 	"image/png"
+	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/dop251/goja"
@@ -16,6 +19,28 @@ import (
 	"github.com/levskiy0/m3m/internal/service"
 	"github.com/levskiy0/m3m/pkg/schema"
 )
+
+//go:embed fonts/roboto.ttf
+var embeddedFont embed.FS
+
+var fontPath string
+
+func init() {
+	// Extract embedded font to temp file on startup
+	data, err := embeddedFont.ReadFile("fonts/roboto.ttf")
+	if err != nil {
+		fmt.Printf("[WARN] Failed to read embedded font: %v\n", err)
+		return
+	}
+
+	tmpDir := os.TempDir()
+	fontPath = filepath.Join(tmpDir, "m3m_roboto.ttf")
+
+	if err := os.WriteFile(fontPath, data, 0644); err != nil {
+		fmt.Printf("[WARN] Failed to write font to temp: %v\n", err)
+		fontPath = ""
+	}
+}
 
 // Canvas represents a drawing canvas in JS
 type Canvas struct {
@@ -180,13 +205,22 @@ func (c *Canvas) TextCentered(text string, x, y float64) {
 	c.ctx.DrawStringAnchored(text, x, y, 0.5, 0.5)
 }
 
-// SetFontSize sets the font size
+// SetFontSize sets the font size (uses embedded Roboto font)
 func (c *Canvas) SetFontSize(size float64) {
 	if size <= 0 {
 		size = 12
 	}
-	// Use built-in font
-	c.ctx.LoadFontFace("/System/Library/Fonts/Helvetica.ttc", size)
+	if fontPath != "" {
+		c.ctx.LoadFontFace(fontPath, size)
+	}
+}
+
+// LoadFont loads a font from absolute path
+func (c *Canvas) LoadFont(absPath string, size float64) error {
+	if size <= 0 {
+		size = 12
+	}
+	return c.ctx.LoadFontFace(absPath, size)
 }
 
 // RoundedRect draws a rounded rectangle outline
@@ -410,6 +444,7 @@ func (d *DrawModule) GetSchema() schema.ModuleSchema {
 					{Name: "text", Type: "(text: string, x: number, y: number) => void", Description: "Draw text"},
 					{Name: "textCentered", Type: "(text: string, x: number, y: number) => void", Description: "Draw centered text"},
 					{Name: "setFontSize", Type: "(size: number) => void", Description: "Set font size"},
+					{Name: "loadFont", Type: "(path: string, size: number) => void", Description: "Load font from storage"},
 					{Name: "roundedRect", Type: "(x: number, y: number, w: number, h: number, r: number) => void", Description: "Draw rounded rectangle outline"},
 					{Name: "fillRoundedRect", Type: "(x: number, y: number, w: number, h: number, r: number) => void", Description: "Draw filled rounded rectangle"},
 					{Name: "polygon", Type: "(points: number[][]) => void", Description: "Draw polygon outline"},
