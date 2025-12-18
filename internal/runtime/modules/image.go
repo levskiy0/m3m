@@ -12,6 +12,7 @@ import (
 
 	"github.com/dop251/goja"
 	"golang.org/x/image/draw"
+	_ "golang.org/x/image/webp" // WebP decoder
 
 	"github.com/levskiy0/m3m/internal/service"
 	"github.com/levskiy0/m3m/pkg/schema"
